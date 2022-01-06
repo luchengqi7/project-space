@@ -30,4 +30,4 @@ hs_err_pid*
 
 # default matsim output folders
 /output
-/scenarios
+/scenarios/output
