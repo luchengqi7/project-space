@@ -30,7 +30,7 @@ hs_err_pid*
 
 # default matsim output folders
 /output
-/scenarios/output
+/scenarios/cottbus/output
 /.ideas
 .idea/compiler.xml
 .idea/jarRepositories.xml
