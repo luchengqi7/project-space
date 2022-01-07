@@ -11,8 +11,8 @@
 
 	<properties>
 		<matsim.version>14.0-SNAPSHOT</matsim.version>
+		<jsprit.version>1.8</jsprit.version>
 	</properties>
-
 
 	<repositories>
 		<repository>
@@ -39,9 +39,6 @@
 			<artifactId>matsim</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
-
-		<!-- the following dependencies show how to use MATSim contributions. For
-			a list of available contribs, see http://matsim.org/extensions -->
 		<dependency>
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>drt</artifactId>
@@ -57,6 +54,38 @@
 			<artifactId>application</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
+
+		<!-- jsprit for solving vehicle routing problem-->
+		<dependency>
+			<groupId>com.graphhopper</groupId>
+			<artifactId>jsprit-core</artifactId>
+			<version>${jsprit.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.graphhopper</groupId>
+			<artifactId>jsprit-io</artifactId>
+			<version>${jsprit.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>xml-apis</artifactId>
+					<groupId>xml-apis</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<dependency>
+			<groupId>com.graphhopper</groupId>
+			<artifactId>jsprit-analysis</artifactId>
+			<version>${jsprit.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.jfree</groupId>
+					<artifactId>jfreechart</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 
 		<!-- test dependencies -->
 		<dependency>
