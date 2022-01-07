@@ -91,6 +91,6 @@ public class SimpleJspritExample {
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
         // write result as xml
-        new VrpXMLWriter(problem, solutions).write("scenarios/cottbus/output/jsprit-example/optimization-results.xml");
+//        new VrpXMLWriter(problem, solutions).write("scenarios/cottbus/output/jsprit-example/optimization-results.xml");
     }
 }
