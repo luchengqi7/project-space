@@ -7,6 +7,7 @@ import com.graphhopper.jsprit.core.problem.job.Pickup;
 import com.graphhopper.jsprit.core.problem.job.Service;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
+import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -24,27 +25,38 @@ import java.util.List;
 
 public class MatsimDrtRequest2Jsprit {
 
-    static List<Shipment> shipmentsList = new ArrayList<>();
-    static List<Service> servicesList = new ArrayList<>();
-    String matsimConfig;
+    final static List<Vehicle> vehicleList = new ArrayList<>();
+    final static List<Shipment> shipmentsList = new ArrayList<>();
+    final static List<Service> servicesList = new ArrayList<>();
+    String matsimConfigPath;
+    String dvrpMode;
     int WEIGHT_INDEX;
 
     final static int MAXIMAL_WAITINGTIME = 60*15;
     final static int MINIMAL_WAITINGTIME = 60*0;
 
+    // ================ For test purpose
     public static void main(String[] args) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml",0);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0);
         List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("shipment");
         System.out.println(shipmentsList_new);
     }
 
-    MatsimDrtRequest2Jsprit(String matsimConfigPath, int weightIndex){
-        this.matsimConfig = matsimConfigPath;
-        this.WEIGHT_INDEX= weightIndex;
+    MatsimDrtRequest2Jsprit(String matsimConfigPath, String dvrpMode, int WEIGHT_INDEX){
+        this.matsimConfigPath = matsimConfigPath;
+        this.dvrpMode = dvrpMode;
+        this.WEIGHT_INDEX= WEIGHT_INDEX;
     }
 
-    public List<? extends AbstractJob> matsimRequestReader(String feedType) {
-        Config config = ConfigUtils.loadConfig(matsimConfig);
+    // ================ Vehicle Reader
+    List<Vehicle> matsimVehicleReader(){
+
+        return vehicleList;
+    }
+
+    // ================ REQUEST Reader
+    List<? extends AbstractJob> matsimRequestReader(String feedType) {
+        Config config = ConfigUtils.loadConfig(matsimConfigPath);
         Scenario scenario = ScenarioUtils.loadScenario(config);
         new PopulationReader(scenario);
 /*        Config config = ConfigUtils.createConfig();
@@ -93,7 +105,6 @@ public class MatsimDrtRequest2Jsprit {
                     //taxi leg
                     Leg leg = (Leg) person.getSelectedPlan().getPlanElements().get(legIndex);
                     pickupTime = leg.getDepartureTime().seconds();
-                    //ToDo: check
                     //deliveryTime = ((OptionalTime) leg.getAttributes().getAttribute("arr_time")).seconds();
                     deliveryTime = leg.getDepartureTime().seconds()+leg.getTravelTime().seconds();
 

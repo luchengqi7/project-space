@@ -43,6 +43,8 @@ import java.util.List;
 
 public class JspritCottbusScenario {
 
+    final static String matsimConfigPath = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
+    final static String dvrpMode = "taxi";
 
     public static void main(String[] args) {
         /*
@@ -73,7 +75,7 @@ public class JspritCottbusScenario {
         vehicleBuilder.setType(vehicleType);
         VehicleImpl vehicle = vehicleBuilder.build();
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", WEIGHT_INDEX);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfigPath, dvrpMode, WEIGHT_INDEX);
 
 		/*
          * build services at the required locations, each with a capacity-demand of 1.
