@@ -24,26 +24,27 @@ import java.util.List;
 
 public class MatsimDrtRequest2Jsprit {
 
-    int WEIGHT_INDEX;
-    final static int MAXIMAL_WAITINGTIME = 60*15;
-    final static int MINIMAL_WAITINGTIME = 60*0;
-    final static int DILIVERYTOLERANCETIME_OFFSET = 60*15;
     static List<Shipment> shipmentsList = new ArrayList<>();
     static List<Service> servicesList = new ArrayList<>();
-    final static String configPath = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
+    String matsimConfig;
+    int WEIGHT_INDEX;
+
+    final static int MAXIMAL_WAITINGTIME = 60*15;
+    final static int MINIMAL_WAITINGTIME = 60*0;
 
     public static void main(String[] args) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(0);
-        List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("other");
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml",0);
+        List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("shipment");
         System.out.println(shipmentsList_new);
     }
 
-    MatsimDrtRequest2Jsprit(int weightIndex){
+    MatsimDrtRequest2Jsprit(String matsimConfigPath, int weightIndex){
+        this.matsimConfig = matsimConfigPath;
         this.WEIGHT_INDEX= weightIndex;
     }
 
     public List<? extends AbstractJob> matsimRequestReader(String feedType) {
-        Config config = ConfigUtils.loadConfig(configPath);
+        Config config = ConfigUtils.loadConfig(matsimConfig);
         Scenario scenario = ScenarioUtils.loadScenario(config);
         new PopulationReader(scenario);
 /*        Config config = ConfigUtils.createConfig();
@@ -141,6 +142,8 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     private int createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY) {
+        int DILIVERYTOLERANCETIME_OFFSET = 60*15;
+
         String requestId = Integer.toString(requestCount);
         Pickup pickup = Pickup.Builder.newInstance("pickup"+requestId)
             .addSizeDimension(WEIGHT_INDEX, 1)

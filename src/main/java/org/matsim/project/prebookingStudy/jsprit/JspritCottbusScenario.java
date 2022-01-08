@@ -73,6 +73,8 @@ public class JspritCottbusScenario {
         vehicleBuilder.setType(vehicleType);
         VehicleImpl vehicle = vehicleBuilder.build();
 
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", WEIGHT_INDEX);
+
 		/*
          * build services at the required locations, each with a capacity-demand of 1.
 		 */
@@ -81,7 +83,7 @@ public class JspritCottbusScenario {
 
         Service service3 = Service.Builder.newInstance("service3").addSizeDimension(WEIGHT_INDEX, 1).setLocation(Location.newInstance(15, 7)).build();
         Service service4 = Service.Builder.newInstance("service4").addSizeDimension(WEIGHT_INDEX, 1).setLocation(Location.newInstance(15, 13)).build();*/
-        //VehicleRoutingProblem.Builder vrpBuilder = useServiceAsFeeder(WEIGHT_INDEX, vehicle);
+        //VehicleRoutingProblem.Builder vrpBuilder = useServiceAsFeeder(matsimDrtRequest2Jsprit, vehicle);
 
         /*
          *
@@ -98,7 +100,7 @@ public class JspritCottbusScenario {
             //.setMaxTimeInVehicle()
             //.setPriority()
             .build();*/
-        VehicleRoutingProblem.Builder vrpBuilder = useShipmentAsFeeder(WEIGHT_INDEX, vehicle);
+        VehicleRoutingProblem.Builder vrpBuilder = useShipmentAsFeeder(matsimDrtRequest2Jsprit, vehicle);
 
         VehicleRoutingProblem problem = vrpBuilder.build();
         //problem.getJobs();
@@ -126,7 +128,7 @@ public class JspritCottbusScenario {
 		/*
          * plot
 		 */
-        new Plotter(problem,bestSolution).plot("output/plot.png","simple example");
+        //new Plotter(problem,bestSolution).plot("output/plot.png","simple example");
 
         /*
         render problem and solution with GraphStream
@@ -134,8 +136,7 @@ public class JspritCottbusScenario {
         new GraphStreamViewer(problem, bestSolution).labelWith(Label.ID).setRenderDelay(200).display();
     }
 
-    private static VehicleRoutingProblem.Builder useServiceAsFeeder(int WEIGHT_INDEX, VehicleImpl vehicle) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(WEIGHT_INDEX);
+    private static VehicleRoutingProblem.Builder useServiceAsFeeder(MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, VehicleImpl vehicle) {
         List<Service> servicesList = (List<Service>) matsimDrtRequest2Jsprit.matsimRequestReader("useService");
 
         /*
@@ -150,8 +151,7 @@ public class JspritCottbusScenario {
         return vrpBuilder;
     }
 
-    private static VehicleRoutingProblem.Builder useShipmentAsFeeder(int WEIGHT_INDEX, VehicleImpl vehicle) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(WEIGHT_INDEX);
+    private static VehicleRoutingProblem.Builder useShipmentAsFeeder(MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, VehicleImpl vehicle) {
         List<Shipment> shipmentsList = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("useShipment");
 
         /*
