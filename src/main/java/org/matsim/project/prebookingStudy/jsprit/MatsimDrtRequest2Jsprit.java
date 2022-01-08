@@ -2,6 +2,7 @@ package org.matsim.project.prebookingStudy.jsprit;
 
 import com.graphhopper.jsprit.core.problem.AbstractJob;
 import com.graphhopper.jsprit.core.problem.Location;
+import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Delivery;
 import com.graphhopper.jsprit.core.problem.job.Pickup;
 import com.graphhopper.jsprit.core.problem.job.Service;
@@ -15,13 +16,22 @@ import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.PlanElement;
+import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
+import org.matsim.contrib.dvrp.fleet.FleetReader;
+import org.matsim.contrib.dvrp.fleet.FleetSpecification;
+import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.vehicles.VehicleType;
 
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MatsimDrtRequest2Jsprit {
 
@@ -38,7 +48,7 @@ public class MatsimDrtRequest2Jsprit {
     // ================ For test purpose
     public static void main(String[] args) {
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0);
-        List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("shipment");
+        List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("shipment", new VehicleRoutingProblem.Builder());
         System.out.println(shipmentsList_new);
     }
 
@@ -49,13 +59,76 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ Vehicle Reader
-    List<Vehicle> matsimVehicleReader(){
+    int matsimVehicleCapacityReader(String dvrpVehiclePath){
+        int capacity = 0;
+
+        //load dvrp vehicle into fleetReader
+        FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
+        if(isHttpUrl(dvrpVehiclePath)){
+            //support read fleet file using URL
+            try {
+                new FleetReader(dvrpFleetSpecification).parse(new URL(dvrpVehiclePath));
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            new FleetReader(dvrpFleetSpecification).readFile(dvrpVehiclePath);
+        }
+
+        if(dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count()==1){
+            //ToDo: Debug
+            //dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(o -> capacity==o.getCapacity());
+            capacity = 8;
+        } else {
+            throw new RuntimeException("Dvrp vehicles have different capacity/seats.");
+        }
+
+        return capacity;
+    }
+
+    List<Vehicle> matsimVehicleReader(String dvrpVehiclePath){
+        //load dvrp vehicle into fleetReader
+        FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
+        if(isHttpUrl(dvrpVehiclePath)){
+            //support read fleet file using URL
+            try {
+                new FleetReader(dvrpFleetSpecification).parse(new URL(dvrpVehiclePath));
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            new FleetReader(dvrpFleetSpecification).readFile(dvrpVehiclePath);
+        }
+
+        for(DvrpVehicleSpecification dvrpVehicleSpecification: dvrpFleetSpecification.getVehicleSpecifications().values()) {
+
+        }
 
         return vehicleList;
     }
+    /**
+     * determine if a string is a URL
+     * @param urls: URL
+     * @return true: URL, false: not URL
+     */
+    public static boolean isHttpUrl(String urls) {
+        boolean isurl = false;
+        //set regular expressions
+        String regex = "(((https|http)?://)?([a-z0-9]+[.])|(www.))"
+                + "\\w+[.|\\/]([a-z0-9]{0,})?[[.]([a-z0-9]{0,})]+((/[\\S&&[^,;\u4E00-\u9FA5]]+)+)?([.][a-z0-9]{0,}+|/?)";
+        //compare
+        Pattern pat = Pattern.compile(regex.trim());
+        Matcher mat = pat.matcher(urls.trim());
+        //determine if it matches
+        isurl = mat.matches();
+        if (isurl) {
+            isurl = true;
+        }
+        return isurl;
+    }
 
     // ================ REQUEST Reader
-    List<? extends AbstractJob> matsimRequestReader(String feedType) {
+    VehicleRoutingProblem.Builder matsimRequestReader(String feedType, VehicleRoutingProblem.Builder vrpBuilder) {
         Config config = ConfigUtils.loadConfig(matsimConfigPath);
         Scenario scenario = ScenarioUtils.loadScenario(config);
         new PopulationReader(scenario);
@@ -127,13 +200,13 @@ public class MatsimDrtRequest2Jsprit {
 
                 //create request for jsprit
                 if ("useService".equals(feedType)) {
-                    requestCount = createServices(requestCount, pickupLocationX, pickupLocationY, pickupTime, deliveryTime, deliveryLocationX, deliveryLocationY);
+                    vrpBuilder = createServices(requestCount, pickupLocationX, pickupLocationY, pickupTime, deliveryTime, deliveryLocationX, deliveryLocationY, vrpBuilder);
+                    requestCount++;
                 } else if("useShipment".equals(feedType)) {
                     //create Shipment
                     Shipment shipment = createShipment(requestCount, pickupLocationX, pickupLocationY, pickupTime, deliveryTime, deliveryLocationX, deliveryLocationY);
-
+                    vrpBuilder.addJob(shipment);
                     requestCount++;
-                    shipmentsList.add(shipment);
                 } else {
                     throw new RuntimeException("feedType can be 'useService' or 'useShipment'.");
                 }
@@ -143,19 +216,16 @@ public class MatsimDrtRequest2Jsprit {
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
 
         //return requests
-        if ("useService".equals(feedType)) {
-            return servicesList;
-        } else if("useShipment".equals(feedType)) {
-            return shipmentsList;
-        } else {
-            throw new RuntimeException("feedType can be 'useService' or 'useShipment'.");
-        }
+        return vrpBuilder;
     }
 
-    private int createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY) {
+    private VehicleRoutingProblem.Builder createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY, VehicleRoutingProblem.Builder vrpBuilder) {
         int DILIVERYTOLERANCETIME_OFFSET = 60*15;
 
         String requestId = Integer.toString(requestCount);
+        /*
+         * build services at the required locations, each with a capacity-demand of 1.
+         */
         Pickup pickup = Pickup.Builder.newInstance("pickup"+requestId)
             .addSizeDimension(WEIGHT_INDEX, 1)
             .setLocation(Location.newInstance(pickupLocationX, pickupLocationY))
@@ -169,15 +239,17 @@ public class MatsimDrtRequest2Jsprit {
             .setTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
             .build();
 
-        requestCount++;
-        servicesList.add(pickup);
-        servicesList.add(delivery);
-        return requestCount;
+        vrpBuilder.addJob(pickup);
+        vrpBuilder.addJob(delivery);
+        return vrpBuilder;
     }
 
     private Shipment createShipment(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY) {
 
         String shipmentId = Integer.toString(requestCount);
+        /*
+         *
+         */
         return Shipment.Builder.newInstance("shipment"+shipmentId)
             //.setName("myShipment")
             .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
