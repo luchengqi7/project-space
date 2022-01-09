@@ -1,6 +1,5 @@
 package org.matsim.project.prebookingStudy.jsprit;
 
-import com.graphhopper.jsprit.core.problem.AbstractJob;
 import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Delivery;
@@ -9,6 +8,8 @@ import com.graphhopper.jsprit.core.problem.job.Service;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
+import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
+import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -16,17 +17,17 @@ import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.PlanElement;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.drt.run.MultiModeDrtModule;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetReader;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.vehicles.VehicleType;
 
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.net.URL;
@@ -35,10 +36,8 @@ import java.util.regex.Pattern;
 
 public class MatsimDrtRequest2Jsprit {
 
-    final static List<Vehicle> vehicleList = new ArrayList<>();
-    final static List<Shipment> shipmentsList = new ArrayList<>();
-    final static List<Service> servicesList = new ArrayList<>();
-    String matsimConfigPath;
+    Scenario scenario;
+    final FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
     String dvrpMode;
     int WEIGHT_INDEX;
 
@@ -48,32 +47,39 @@ public class MatsimDrtRequest2Jsprit {
     // ================ For test purpose
     public static void main(String[] args) {
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0);
-        List<Shipment> shipmentsList_new = (List<Shipment>) matsimDrtRequest2Jsprit.matsimRequestReader("shipment", new VehicleRoutingProblem.Builder());
-        System.out.println(shipmentsList_new);
     }
 
-    MatsimDrtRequest2Jsprit(String matsimConfigPath, String dvrpMode, int WEIGHT_INDEX){
-        this.matsimConfigPath = matsimConfigPath;
+    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int WEIGHT_INDEX){
         this.dvrpMode = dvrpMode;
         this.WEIGHT_INDEX= WEIGHT_INDEX;
+
+        if("drt".equals(dvrpMode)) {
+            URL fleetSpecificationUrl = null;
+            Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
+            this.scenario = ScenarioUtils.loadScenario(config);
+            for (DrtConfigGroup drtCfg : ((MultiModeDrtConfigGroup) config.getModule("multiModeDrt")).getModalElements()) {
+                fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
+            }
+            new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
+        } else if ("taxi".equals(dvrpMode)) {
+/*            URL fleetSpecificationUrl = null;
+            Config config = ConfigUtils.loadConfig(matsimConfigPath, new MultiModeTaxiConfigGroup());
+            this.scenario = ScenarioUtils.loadScenario(config);
+            for (TaxiConfigGroup taxiCfg : ((MultiModeTaxiConfigGroup) config.getModule("multiModeTaxi")).getModalElements()) {
+                fleetSpecificationUrl = taxiCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
+            }
+            new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);*/
+            throw new RuntimeException("Please add taxi contrib in pom.xml");
+        } else if ("oneTaxi".equals(dvrpMode)) {
+            Config config = ConfigUtils.loadConfig(matsimConfig);
+            this.scenario = ScenarioUtils.loadScenario(config);
+            new FleetReader(dvrpFleetSpecification).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_vehicles.xml");
+        }
     }
 
     // ================ Vehicle Reader
-    int matsimVehicleCapacityReader(String dvrpVehiclePath){
+    int matsimVehicleCapacityReader(){
         int capacity = 0;
-
-        //load dvrp vehicle into fleetReader
-        FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
-        if(isHttpUrl(dvrpVehiclePath)){
-            //support read fleet file using URL
-            try {
-                new FleetReader(dvrpFleetSpecification).parse(new URL(dvrpVehiclePath));
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            }
-        } else {
-            new FleetReader(dvrpFleetSpecification).readFile(dvrpVehiclePath);
-        }
 
         if(dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count()==1){
             //ToDo: Debug
@@ -86,25 +92,36 @@ public class MatsimDrtRequest2Jsprit {
         return capacity;
     }
 
-    List<Vehicle> matsimVehicleReader(String dvrpVehiclePath){
-        //load dvrp vehicle into fleetReader
-        FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
-        if(isHttpUrl(dvrpVehiclePath)){
-            //support read fleet file using URL
-            try {
-                new FleetReader(dvrpFleetSpecification).parse(new URL(dvrpVehiclePath));
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            }
-        } else {
-            new FleetReader(dvrpFleetSpecification).readFile(dvrpVehiclePath);
-        }
+    VehicleRoutingProblem.Builder matsimVehicleReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType){
+        int vehicleCount = 0;
 
         for(DvrpVehicleSpecification dvrpVehicleSpecification: dvrpFleetSpecification.getVehicleSpecifications().values()) {
+            Id<Link> startLinkId = dvrpVehicleSpecification.getStartLinkId();
+            double startLinkLocationX;
+            double startLinkLocationY;
+            if("oneTaxi".equals(dvrpMode)) {
+                startLinkLocationX = scenario.getNetwork().getLinks().get(startLinkId).getCoord().getX();
+                startLinkLocationY = scenario.getNetwork().getLinks().get(startLinkId).getCoord().getY();
+            } else {
+                startLinkLocationX = scenario.getNetwork().getLinks().get(startLinkId).getToNode().getCoord().getX();
+                startLinkLocationY = scenario.getNetwork().getLinks().get(startLinkId).getToNode().getCoord().getY();
+            }
+            /*
+             * get a vehicle-builder and build a vehicle located at (10,10) with type "vehicleType"
+             */
+            VehicleImpl.Builder vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicleSpecification.getId().toString());
+            vehicleBuilder.setStartLocation(Location.newInstance(startLinkLocationX, startLinkLocationY));
+            //ToDo: Are EarliestStart and LatestArrival identical to MATSim dvrp service window?
+            vehicleBuilder.setEarliestStart(dvrpVehicleSpecification.getServiceBeginTime());
+            vehicleBuilder.setLatestArrival(dvrpVehicleSpecification.getServiceEndTime());
+            vehicleBuilder.setType(vehicleType);
 
+            VehicleImpl vehicle = vehicleBuilder.build();
+            vrpBuilder.addVehicle(vehicle);
+            vehicleCount++;
         }
 
-        return vehicleList;
+        return vrpBuilder;
     }
     /**
      * determine if a string is a URL
@@ -129,9 +146,6 @@ public class MatsimDrtRequest2Jsprit {
 
     // ================ REQUEST Reader
     VehicleRoutingProblem.Builder matsimRequestReader(String feedType, VehicleRoutingProblem.Builder vrpBuilder) {
-        Config config = ConfigUtils.loadConfig(matsimConfigPath);
-        Scenario scenario = ScenarioUtils.loadScenario(config);
-        new PopulationReader(scenario);
 /*        Config config = ConfigUtils.createConfig();
     Scenario scenario = ScenarioUtils.loadScenario(config);
     new PopulationReader(scenario).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_population.xml");*/
@@ -153,8 +167,14 @@ public class MatsimDrtRequest2Jsprit {
             for (PlanElement pe : person.getSelectedPlan().getPlanElements()) {
                 if (pe instanceof Leg) {
                     Leg leg = (Leg) pe;
-                    if (("taxi").equals(leg.getMode())) {
-                        legs.add(ii);
+                    if(("oneTaxi").equals(dvrpMode)){
+                        if (("taxi").equals(leg.getMode())) {
+                            legs.add(ii);
+                        }
+                    } else if(("taxi").equals(dvrpMode)|("drt").equals(dvrpMode)){
+                        if ((dvrpMode).equals(leg.getMode())) {
+                            legs.add(ii);
+                        }
                     }
                 }
                 ii++;
@@ -166,8 +186,14 @@ public class MatsimDrtRequest2Jsprit {
                         if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1)).getType().contains("interaction")) {
                             Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1);
                             Id<Link> activityLinkId = activity.getLinkId();
-                            pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                            pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                            if("oneTaxi".equals(dvrpMode)) {
+                                pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
+                                pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                            } else {
+                                pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                                pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                            }
+
                         } else {
                             throw new RuntimeException("Activity before is an 'interaction' activity.");
                         }
@@ -186,8 +212,14 @@ public class MatsimDrtRequest2Jsprit {
                         if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1)).getType().contains("interaction")) {
                             Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1);
                             Id<Link> activityLinkId = activity.getLinkId();
-                            deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                            deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                            if("oneTaxi".equals(dvrpMode)) {
+                                deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
+                                deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                            } else {
+                                deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                                deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                            }
+
                         } else {
                             throw new RuntimeException("Activity after is an 'interaction' activity.");
                         }

@@ -21,14 +21,8 @@ import com.graphhopper.jsprit.analysis.toolbox.GraphStreamViewer;
 import com.graphhopper.jsprit.analysis.toolbox.GraphStreamViewer.Label;
 import com.graphhopper.jsprit.core.algorithm.VehicleRoutingAlgorithm;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
-import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
-import com.graphhopper.jsprit.core.problem.job.Service;
-import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
-import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
-import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
-import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl.Builder;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
@@ -37,14 +31,15 @@ import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.List;
-
 
 public class JspritCottbusScenario {
 
-    final static String matsimConfigPath = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
-    final static String dvrpVehiclePath = "scenarios/cottbus/drt-vehicles/500-taxi-capacity-8.xml";
-    final static String dvrpMode = "taxi";
+    final static String MATSIM_CONFIG = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
+    //final static String matsimConfigPath = "scenarios/cottbus/config.xml";
+    //final static String dvrpMode = "drt";
+    //final static String dvrpMode = "taxi";
+    final static String DVRP_MODE = "oneTaxi";
+
     final static int WEIGHT_INDEX = 0;
 
     public static void main(String[] args) {
@@ -59,31 +54,23 @@ public class JspritCottbusScenario {
             if (result) System.out.println("./output created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfigPath, dvrpMode, WEIGHT_INDEX);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(MATSIM_CONFIG, DVRP_MODE, WEIGHT_INDEX);
+        VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
+
+
 
 
 		/*
          * get a vehicle type-builder and build a type with the typeId "vehicleType" and one capacity dimension, i.e. weight, and capacity dimension value of 2
 		 */
-        VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
-            .addCapacityDimension(WEIGHT_INDEX, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader(dvrpVehiclePath))
+        VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(DVRP_MODE + "-vehicle")
+            .addCapacityDimension(WEIGHT_INDEX, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
             .setMaxVelocity(30);
         VehicleType vehicleType = vehicleTypeBuilder.build();
-        List<Vehicle> vehicleList = matsimDrtRequest2Jsprit.matsimVehicleReader(dvrpVehiclePath);
-		/*
-         * get a vehicle-builder and build a vehicle located at (10,10) with type "vehicleType"
-		 */
-        for (Vehicle vehicle : vehicleList) {
-        }
-        Builder vehicleBuilder = Builder.newInstance("vehicle");
-        vehicleBuilder.setStartLocation(Location.newInstance(10, 10));
-        vehicleBuilder.setType(vehicleType);
-        VehicleImpl vehicle = vehicleBuilder.build();
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
 
 
 
-
-        VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
 
         //use Service to create requests
         //vrpBuilder.addJob(service1).addJob(service2).addJob(service3).addJob(service4);
@@ -91,7 +78,6 @@ public class JspritCottbusScenario {
 
         //use Shipment to create requests
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useShipment", vrpBuilder);
-        vrpBuilder.addVehicle(vehicle);
 
 
 
