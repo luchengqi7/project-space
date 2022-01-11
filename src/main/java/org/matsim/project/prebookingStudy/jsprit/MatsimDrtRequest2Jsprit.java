@@ -82,9 +82,8 @@ public class MatsimDrtRequest2Jsprit {
         int capacity = 0;
 
         if(dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count()==1){
-            //ToDo: Debug
-            //dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(o -> capacity==o.getCapacity());
-            capacity = 8;
+            Object[] dvrpFleetSpecificationArray = dvrpFleetSpecification.getVehicleSpecifications().values().toArray();
+            capacity = ((DvrpVehicleSpecification)(dvrpFleetSpecificationArray[0])).getCapacity();
         } else {
             throw new RuntimeException("Dvrp vehicles have different capacity/seats.");
         }
@@ -122,26 +121,6 @@ public class MatsimDrtRequest2Jsprit {
         }
 
         return vrpBuilder;
-    }
-    /**
-     * determine if a string is a URL
-     * @param urls: URL
-     * @return true: URL, false: not URL
-     */
-    public static boolean isHttpUrl(String urls) {
-        boolean isurl = false;
-        //set regular expressions
-        String regex = "(((https|http)?://)?([a-z0-9]+[.])|(www.))"
-                + "\\w+[.|\\/]([a-z0-9]{0,})?[[.]([a-z0-9]{0,})]+((/[\\S&&[^,;\u4E00-\u9FA5]]+)+)?([.][a-z0-9]{0,}+|/?)";
-        //compare
-        Pattern pat = Pattern.compile(regex.trim());
-        Matcher mat = pat.matcher(urls.trim());
-        //determine if it matches
-        isurl = mat.matches();
-        if (isurl) {
-            isurl = true;
-        }
-        return isurl;
     }
 
     // ================ REQUEST Reader
