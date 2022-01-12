@@ -34,11 +34,11 @@ import java.util.Collection;
 
 public class JspritCottbusScenario {
 
-    final static String MATSIM_CONFIG = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
-    //final static String matsimConfigPath = "scenarios/cottbus/config.xml";
-    //final static String dvrpMode = "drt";
-    //final static String dvrpMode = "taxi";
-    final static String DVRP_MODE = "oneTaxi";
+    //final static String MATSIM_CONFIG = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
+    final static String MATSIM_CONFIG = "scenarios/cottbus/config.xml";
+    final static String DVRP_MODE = "drt";
+    //final static String DVRP_MODE = "taxi";
+    //final static String DVRP_MODE = "oneTaxi";
 
     final static int WEIGHT_INDEX = 0;
 

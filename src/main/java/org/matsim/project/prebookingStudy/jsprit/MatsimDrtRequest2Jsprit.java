@@ -160,7 +160,7 @@ public class MatsimDrtRequest2Jsprit {
             }
             for (int legIndex : legs) {
                 if (person.getSelectedPlan().getPlanElements().get(legIndex) instanceof Leg) {
-                    //the activity before taxi leg
+                    //the activity before dvrp leg
                     if (person.getSelectedPlan().getPlanElements().get(legIndex - 1) instanceof Activity) {
                         if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1)).getType().contains("interaction")) {
                             Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1);
@@ -169,10 +169,15 @@ public class MatsimDrtRequest2Jsprit {
                                 pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
                                 pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
                             } else {
-                                pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                                pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                                if(("dummy").equals(activity.getType())){
+                                    pickupLocationX = activity.getCoord().getX();
+                                    pickupLocationY = activity.getCoord().getY();
+                                } else {
+                                    pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                                    pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                                }
                             }
-
+                            pickupTime = activity.getEndTime().seconds();
                         } else {
                             throw new RuntimeException("Activity before is an 'interaction' activity.");
                         }
@@ -180,13 +185,13 @@ public class MatsimDrtRequest2Jsprit {
                         throw new RuntimeException("Plan element is not the activity before taxi leg.");
                     }
 
-                    //taxi leg
+/*                    //dvrp leg
                     Leg leg = (Leg) person.getSelectedPlan().getPlanElements().get(legIndex);
                     pickupTime = leg.getDepartureTime().seconds();
                     //deliveryTime = ((OptionalTime) leg.getAttributes().getAttribute("arr_time")).seconds();
-                    deliveryTime = leg.getDepartureTime().seconds()+leg.getTravelTime().seconds();
+                    //deliveryTime = leg.getDepartureTime().seconds()+leg.getTravelTime().seconds();*/
 
-                    //the activity after taxi leg
+                    //the activity after dvrp leg
                     if (person.getSelectedPlan().getPlanElements().get(legIndex + 1) instanceof Activity) {
                         if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1)).getType().contains("interaction")) {
                             Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1);
@@ -195,8 +200,13 @@ public class MatsimDrtRequest2Jsprit {
                                 deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
                                 deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
                             } else {
-                                deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                                deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                                if(("dummy").equals(activity.getType())){
+                                    deliveryLocationX = activity.getCoord().getX();
+                                    deliveryLocationY = activity.getCoord().getY();
+                                } else {
+                                    deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                                    deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                                }
                             }
 
                         } else {
@@ -211,11 +221,11 @@ public class MatsimDrtRequest2Jsprit {
 
                 //create request for jsprit
                 if ("useService".equals(feedType)) {
-                    vrpBuilder = createServices(requestCount, pickupLocationX, pickupLocationY, pickupTime, deliveryTime, deliveryLocationX, deliveryLocationY, vrpBuilder);
+                    vrpBuilder = createServices(requestCount, pickupLocationX, pickupLocationY, pickupTime, /*deliveryTime,*/ deliveryLocationX, deliveryLocationY, vrpBuilder);
                     requestCount++;
                 } else if("useShipment".equals(feedType)) {
                     //create Shipment
-                    Shipment shipment = createShipment(requestCount, pickupLocationX, pickupLocationY, pickupTime, deliveryTime, deliveryLocationX, deliveryLocationY);
+                    Shipment shipment = createShipment(requestCount, pickupLocationX, pickupLocationY, pickupTime, /*deliveryTime,*/ deliveryLocationX, deliveryLocationY);
                     vrpBuilder.addJob(shipment);
                     requestCount++;
                 } else {
@@ -230,7 +240,7 @@ public class MatsimDrtRequest2Jsprit {
         return vrpBuilder;
     }
 
-    private VehicleRoutingProblem.Builder createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY, VehicleRoutingProblem.Builder vrpBuilder) {
+    private VehicleRoutingProblem.Builder createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, /*double deliveryTime,*/ double deliveryLocationX, double deliveryLocationY, VehicleRoutingProblem.Builder vrpBuilder) {
         int DILIVERYTOLERANCETIME_OFFSET = 60*15;
 
         String requestId = Integer.toString(requestCount);
@@ -247,7 +257,7 @@ public class MatsimDrtRequest2Jsprit {
             .addSizeDimension(WEIGHT_INDEX, 1)
             .setLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
             .setServiceTime(60)
-            .setTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
+            //.setTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
             .build();
 
         vrpBuilder.addJob(pickup);
@@ -255,7 +265,7 @@ public class MatsimDrtRequest2Jsprit {
         return vrpBuilder;
     }
 
-    private Shipment createShipment(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, double deliveryTime, double deliveryLocationX, double deliveryLocationY) {
+    private Shipment createShipment(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, /*double deliveryTime,*/ double deliveryLocationX, double deliveryLocationY) {
 
         String shipmentId = Integer.toString(requestCount);
         /*
@@ -271,7 +281,8 @@ public class MatsimDrtRequest2Jsprit {
             .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
             //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
             //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-            .setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
+            //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
+            .setMaxTimeInVehicle(Double.MAX_VALUE)
             //.setPriority()
             .build();
     }
