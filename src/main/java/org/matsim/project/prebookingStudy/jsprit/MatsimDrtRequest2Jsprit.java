@@ -2,8 +2,6 @@ package org.matsim.project.prebookingStudy.jsprit;
 
 import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
-import com.graphhopper.jsprit.core.problem.job.Delivery;
-import com.graphhopper.jsprit.core.problem.job.Pickup;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
@@ -35,21 +33,20 @@ public class MatsimDrtRequest2Jsprit {
     final FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
     //For switching to the oneTaxi Scenario with prebooking (Can not read from the config directly, so must be specified)
     String dvrpMode;
-    int CAPACITY_INDEX;
-
-    final static int MAXIMAL_WAITINGTIME = 60*15;
-    final static int MINIMAL_WAITINGTIME = 60*0;
+    int capacityIndex;
+    int maximalWaitingtime;
 
     private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
 
     // ================ For test purpose
     public static void main(String[] args) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0, 60*15);
     }
 
-    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int WEIGHT_INDEX){
+    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex, int maximalWaitingtime){
         this.dvrpMode = dvrpMode;
-        this.CAPACITY_INDEX = WEIGHT_INDEX;
+        this.capacityIndex = capacityIndex;
+        this.maximalWaitingtime = maximalWaitingtime;
 
         if("drt".equals(dvrpMode)) {
             URL fleetSpecificationUrl = null;
@@ -217,11 +214,11 @@ public class MatsimDrtRequest2Jsprit {
                 Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount)
                         //.setName("myShipment")
                         .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
-                        .addSizeDimension(CAPACITY_INDEX,1)/*.addSizeDimension(1,50)*/
+                        .addSizeDimension(capacityIndex,1)/*.addSizeDimension(1,50)*/
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                         .setPickupServiceTime(60)
                         .setDeliveryServiceTime(60)
-                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
+                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maximalWaitingtime))
                         //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
                         //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
                         //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)

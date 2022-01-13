@@ -52,6 +52,15 @@ public class JspritCottbusScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--capacity-index", description = "index of capacity", defaultValue = "0")
     private static int capacityIndex;
 
+    @CommandLine.Option(names = "--maximal-waiting-time", description = "maximal waiting time of passenger", defaultValue = "900")
+    private static int maximalWaitingtime;
+
+    @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
+    private static int numberOfIterations;
+
+    @CommandLine.Option(names = "--solutionOutputPath", description = "path for saving output files (solution)", defaultValue = "output/problem-with-solution.xml")
+    private static Path solutionOutputPath;
+
     public static void main(String[] args) {
         new JspritCottbusScenario().execute(args);
     }
@@ -69,7 +78,7 @@ public class JspritCottbusScenario implements MATSimAppCommand {
             if (result) System.out.println("./output created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
 
 
@@ -101,7 +110,7 @@ public class JspritCottbusScenario implements MATSimAppCommand {
          * get the algorithm out-of-the-box.
          */
         VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
-        algorithm.setMaxIterations(100);
+        algorithm.setMaxIterations(numberOfIterations);
 
         /*
          * and search a solution
@@ -113,7 +122,7 @@ public class JspritCottbusScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        new VrpXMLWriter(problem, solutions).write("output/problem-with-solution.xml");
+        new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
