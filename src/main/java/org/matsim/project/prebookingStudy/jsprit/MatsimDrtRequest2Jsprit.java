@@ -112,8 +112,8 @@ public class MatsimDrtRequest2Jsprit {
         return vrpBuilder;
     }
 
-    // ================ REQUEST Reader
-    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder) {
+    // ================ REQUEST Reader V1
+    VehicleRoutingProblem.Builder matsimRequestReaderV1(VehicleRoutingProblem.Builder vrpBuilder) {
         double pickupTime;
         double deliveryTime;
         double pickupLocationX;
@@ -131,7 +131,7 @@ public class MatsimDrtRequest2Jsprit {
                         if (("taxi").equals(leg.getMode())) {
                             legs.add(ii);
                         }
-                    } else if(("taxi").equals(dvrpMode)|("drt").equals(dvrpMode)){
+                    } else if(("drt").equals(dvrpMode)){
                         if ((dvrpMode).equals(leg.getMode())) {
                             legs.add(ii);
                         }
@@ -224,6 +224,89 @@ public class MatsimDrtRequest2Jsprit {
                 requestCount++;
 
             }
+        }
+        //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
+
+        //return requests
+        return vrpBuilder;
+    }
+    // ================ REQUEST Reader V2
+    VehicleRoutingProblem.Builder matsimRequestReaderV2(VehicleRoutingProblem.Builder vrpBuilder) {
+        double pickupTime;
+        double deliveryTime;
+        double pickupLocationX;
+        double pickupLocationY;
+        double deliveryLocationX;
+        double deliveryLocationY;
+        for (Person person : scenario.getPopulation().getPersons().values()) {
+            int requestCount = 0;
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            for (TripStructureUtils.Trip trip : trips) {
+                if(trip.getLegsOnly().size()==1){
+                } else {
+                    throw new RuntimeException("Be careful: There exists a trip has more than one legs!");
+                }
+
+                //originActivity
+                {
+                    Activity originActivity = trip.getOriginActivity();
+                    Id<Link> activityLinkId = originActivity.getLinkId();
+                    if ("oneTaxi".equals(dvrpMode)) {
+                        pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
+                        pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                    } else {
+                        if (("dummy").equals(originActivity.getType())) {
+                            pickupLocationX = originActivity.getCoord().getX();
+                            pickupLocationY = originActivity.getCoord().getY();
+                        } else {
+                            pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                            pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                        }
+                    }
+                    pickupTime = originActivity.getEndTime().seconds();
+                }
+
+                //destinationActivity
+                {
+                    Activity destinationActivity = trip.getDestinationActivity();
+                    Id<Link> activityLinkId = destinationActivity.getLinkId();
+                    if("oneTaxi".equals(dvrpMode)) {
+                        deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
+                        deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                    } else {
+                        if(("dummy").equals(destinationActivity.getType())){
+                            deliveryLocationX = destinationActivity.getCoord().getX();
+                            deliveryLocationY = destinationActivity.getCoord().getY();
+                        } else {
+                            deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                            deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                        }
+                    }
+                }
+
+                //use Shipment to create request for jsprit
+                /*
+                 *
+                 */
+                Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount+"-"+person.getId())
+                        //.setName("myShipment")
+                        .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
+                        .addSizeDimension(capacityIndex,1)/*.addSizeDimension(1,50)*/
+                        //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                        .setPickupServiceTime(60)
+                        .setDeliveryServiceTime(60)
+                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maximalWaitingtime))
+                        //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
+                        //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
+                        //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
+                        .setMaxTimeInVehicle(Double.MAX_VALUE)
+                        //.setPriority()
+                        .build();
+                vrpBuilder.addJob(shipment);
+                requestCount++;
+
+            }
+
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
 

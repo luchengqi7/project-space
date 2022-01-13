@@ -99,7 +99,7 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReaderV2(vrpBuilder);
 
 
         // ================ default settings
