@@ -59,15 +59,6 @@ public class MatsimDrtRequest2Jsprit {
                 fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
             }
             new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
-        } else if ("taxi".equals(dvrpMode)) {
-/*            URL fleetSpecificationUrl = null;
-            Config config = ConfigUtils.loadConfig(matsimConfigPath, new MultiModeTaxiConfigGroup());
-            this.scenario = ScenarioUtils.loadScenario(config);
-            for (TaxiConfigGroup taxiCfg : ((MultiModeTaxiConfigGroup) config.getModule("multiModeTaxi")).getModalElements()) {
-                fleetSpecificationUrl = taxiCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
-            }
-            new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);*/
-            throw new RuntimeException("Please add taxi contrib in pom.xml");
         } else if ("oneTaxi".equals(dvrpMode)) {
             Config config = ConfigUtils.loadConfig(matsimConfig);
             this.scenario = ScenarioUtils.loadScenario(config);
@@ -124,7 +115,7 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ REQUEST Reader
-    VehicleRoutingProblem.Builder matsimRequestReader(String feedType, VehicleRoutingProblem.Builder vrpBuilder) {
+    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder) {
 /*        Config config = ConfigUtils.createConfig();
     Scenario scenario = ScenarioUtils.loadScenario(config);
     new PopulationReader(scenario).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_population.xml");*/
@@ -219,18 +210,26 @@ public class MatsimDrtRequest2Jsprit {
                     throw new RuntimeException("Plan element is not leg.");
                 }
 
-                //create request for jsprit
-                if ("useService".equals(feedType)) {
-                    vrpBuilder = createServices(requestCount, pickupLocationX, pickupLocationY, pickupTime, /*deliveryTime,*/ deliveryLocationX, deliveryLocationY, vrpBuilder);
-                    requestCount++;
-                } else if("useShipment".equals(feedType)) {
-                    //create Shipment
-                    Shipment shipment = createShipment(requestCount, pickupLocationX, pickupLocationY, pickupTime, /*deliveryTime,*/ deliveryLocationX, deliveryLocationY);
-                    vrpBuilder.addJob(shipment);
-                    requestCount++;
-                } else {
-                    throw new RuntimeException("feedType can be 'useService' or 'useShipment'.");
-                }
+                //use Shipment to create request for jsprit
+                /*
+                 *
+                 */
+                Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount)
+                        //.setName("myShipment")
+                        .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
+                        .addSizeDimension(CAPACITY_INDEX,1)/*.addSizeDimension(1,50)*/
+                        //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                        .setPickupServiceTime(60)
+                        .setDeliveryServiceTime(60)
+                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
+                        //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
+                        //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
+                        //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
+                        .setMaxTimeInVehicle(Double.MAX_VALUE)
+                        //.setPriority()
+                        .build();
+                vrpBuilder.addJob(shipment);
+                requestCount++;
 
             }
         }
@@ -238,53 +237,6 @@ public class MatsimDrtRequest2Jsprit {
 
         //return requests
         return vrpBuilder;
-    }
-
-    private VehicleRoutingProblem.Builder createServices(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, /*double deliveryTime,*/ double deliveryLocationX, double deliveryLocationY, VehicleRoutingProblem.Builder vrpBuilder) {
-        int DILIVERYTOLERANCETIME_OFFSET = 60*15;
-
-        String requestId = Integer.toString(requestCount);
-        /*
-         * build services at the required locations, each with a capacity-demand of 1.
-         */
-        Pickup pickup = Pickup.Builder.newInstance("pickup"+requestId)
-            .addSizeDimension(CAPACITY_INDEX, 1)
-            .setLocation(Location.newInstance(pickupLocationX, pickupLocationY))
-            .setServiceTime(60)
-            .setTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
-            .build();
-        Delivery delivery = Delivery.Builder.newInstance("delivery"+requestId)
-            .addSizeDimension(CAPACITY_INDEX, 1)
-            .setLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
-            .setServiceTime(60)
-            //.setTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
-            .build();
-
-        vrpBuilder.addJob(pickup);
-        vrpBuilder.addJob(delivery);
-        return vrpBuilder;
-    }
-
-    private Shipment createShipment(int requestCount, double pickupLocationX, double pickupLocationY, double pickupTime, /*double deliveryTime,*/ double deliveryLocationX, double deliveryLocationY) {
-
-        String shipmentId = Integer.toString(requestCount);
-        /*
-         *
-         */
-        return Shipment.Builder.newInstance("shipment"+shipmentId)
-            //.setName("myShipment")
-            .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
-            .addSizeDimension(CAPACITY_INDEX,1)/*.addSizeDimension(1,50)*/
-            //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
-            .setPickupServiceTime(60)
-            .setDeliveryServiceTime(60)
-            .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
-            //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
-            //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-            //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
-            .setMaxTimeInVehicle(Double.MAX_VALUE)
-            //.setPriority()
-            .build();
     }
 
 }
