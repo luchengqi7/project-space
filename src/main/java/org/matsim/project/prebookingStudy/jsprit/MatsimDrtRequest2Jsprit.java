@@ -4,22 +4,16 @@ import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Delivery;
 import com.graphhopper.jsprit.core.problem.job.Pickup;
-import com.graphhopper.jsprit.core.problem.job.Service;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
-import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
-import org.matsim.api.core.v01.population.Activity;
-import org.matsim.api.core.v01.population.Leg;
-import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.PlanElement;
+import org.matsim.api.core.v01.population.*;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
-import org.matsim.contrib.drt.run.MultiModeDrtModule;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetReader;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
@@ -31,18 +25,22 @@ import org.matsim.core.scenario.ScenarioUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.net.URL;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
 
 public class MatsimDrtRequest2Jsprit {
 
+    //Config config;
     Scenario scenario;
     final FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
+    //For switching to the oneTaxi Scenario with prebooking (Can not read from the config directly, so must be specified)
     String dvrpMode;
-    int WEIGHT_INDEX;
+    int CAPACITY_INDEX;
 
     final static int MAXIMAL_WAITINGTIME = 60*15;
     final static int MINIMAL_WAITINGTIME = 60*0;
+
+    private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
 
     // ================ For test purpose
     public static void main(String[] args) {
@@ -51,7 +49,7 @@ public class MatsimDrtRequest2Jsprit {
 
     MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int WEIGHT_INDEX){
         this.dvrpMode = dvrpMode;
-        this.WEIGHT_INDEX= WEIGHT_INDEX;
+        this.CAPACITY_INDEX = WEIGHT_INDEX;
 
         if("drt".equals(dvrpMode)) {
             URL fleetSpecificationUrl = null;
@@ -75,6 +73,7 @@ public class MatsimDrtRequest2Jsprit {
             this.scenario = ScenarioUtils.loadScenario(config);
             new FleetReader(dvrpFleetSpecification).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_vehicles.xml");
         }
+
     }
 
     // ================ Vehicle Reader
@@ -82,8 +81,10 @@ public class MatsimDrtRequest2Jsprit {
         int capacity = 0;
 
         if(dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count()==1){
-            Object[] dvrpFleetSpecificationArray = dvrpFleetSpecification.getVehicleSpecifications().values().toArray();
-            capacity = ((DvrpVehicleSpecification)(dvrpFleetSpecificationArray[0])).getCapacity();
+            for (DvrpVehicleSpecification dvrpVehicleSpecification : dvrpFleetSpecification.getVehicleSpecifications().values()) {
+                capacity = dvrpVehicleSpecification.getCapacity();
+                break;
+            }
         } else {
             throw new RuntimeException("Dvrp vehicles have different capacity/seats.");
         }
@@ -110,7 +111,6 @@ public class MatsimDrtRequest2Jsprit {
              */
             VehicleImpl.Builder vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicleSpecification.getId().toString());
             vehicleBuilder.setStartLocation(Location.newInstance(startLinkLocationX, startLinkLocationY));
-            //ToDo: Are EarliestStart and LatestArrival identical to MATSim dvrp service window?
             vehicleBuilder.setEarliestStart(dvrpVehicleSpecification.getServiceBeginTime());
             vehicleBuilder.setLatestArrival(dvrpVehicleSpecification.getServiceEndTime());
             vehicleBuilder.setType(vehicleType);
@@ -248,13 +248,13 @@ public class MatsimDrtRequest2Jsprit {
          * build services at the required locations, each with a capacity-demand of 1.
          */
         Pickup pickup = Pickup.Builder.newInstance("pickup"+requestId)
-            .addSizeDimension(WEIGHT_INDEX, 1)
+            .addSizeDimension(CAPACITY_INDEX, 1)
             .setLocation(Location.newInstance(pickupLocationX, pickupLocationY))
             .setServiceTime(60)
             .setTimeWindow(new TimeWindow(pickupTime, pickupTime + MAXIMAL_WAITINGTIME))
             .build();
         Delivery delivery = Delivery.Builder.newInstance("delivery"+requestId)
-            .addSizeDimension(WEIGHT_INDEX, 1)
+            .addSizeDimension(CAPACITY_INDEX, 1)
             .setLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
             .setServiceTime(60)
             //.setTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
@@ -274,7 +274,7 @@ public class MatsimDrtRequest2Jsprit {
         return Shipment.Builder.newInstance("shipment"+shipmentId)
             //.setName("myShipment")
             .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
-            .addSizeDimension(WEIGHT_INDEX,1)/*.addSizeDimension(1,50)*/
+            .addSizeDimension(CAPACITY_INDEX,1)/*.addSizeDimension(1,50)*/
             //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
             .setPickupServiceTime(60)
             .setDeliveryServiceTime(60)

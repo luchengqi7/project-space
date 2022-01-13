@@ -40,7 +40,7 @@ public class JspritCottbusScenario {
     //final static String DVRP_MODE = "taxi";
     //final static String DVRP_MODE = "oneTaxi";
 
-    final static int WEIGHT_INDEX = 0;
+    final static int CAPACITY_INDEX = 0;
 
     public static void main(String[] args) {
         /*
@@ -54,7 +54,7 @@ public class JspritCottbusScenario {
             if (result) System.out.println("./output created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(MATSIM_CONFIG, DVRP_MODE, WEIGHT_INDEX);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(MATSIM_CONFIG, DVRP_MODE, CAPACITY_INDEX);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
 
 
@@ -64,7 +64,7 @@ public class JspritCottbusScenario {
          * get a vehicle type-builder and build a type with the typeId "vehicleType" and one capacity dimension, i.e. weight, and capacity dimension value of 2
 		 */
         VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(DVRP_MODE + "-vehicle")
-            .addCapacityDimension(WEIGHT_INDEX, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
+            .addCapacityDimension(CAPACITY_INDEX, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
             .setMaxVelocity(30);
         VehicleType vehicleType = vehicleTypeBuilder.build();
         vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
@@ -90,7 +90,7 @@ public class JspritCottbusScenario {
          * get the algorithm out-of-the-box.
 		 */
         VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
-        //algorithm.setMaxIterations(100);
+        algorithm.setMaxIterations(100);
 
 		/*
          * and search a solution
