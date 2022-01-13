@@ -39,7 +39,7 @@ import java.util.Collection;
         name = "run",
         description = "run Jsprit Cottbus scenario"
 )
-public class JspritCottbusScenario implements MATSimAppCommand {
+public class RunJspritCottbusScenario implements MATSimAppCommand {
 
     //input path for oneTaxi: matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
@@ -62,7 +62,7 @@ public class JspritCottbusScenario implements MATSimAppCommand {
     private static Path solutionOutputPath;
 
     public static void main(String[] args) {
-        new JspritCottbusScenario().execute(args);
+        new RunJspritCottbusScenario().execute(args);
     }
 
     @Override

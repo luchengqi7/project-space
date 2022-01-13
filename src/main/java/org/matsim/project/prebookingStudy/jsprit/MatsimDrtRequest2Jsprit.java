@@ -18,6 +18,7 @@ import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 
 import java.util.ArrayList;
@@ -113,11 +114,6 @@ public class MatsimDrtRequest2Jsprit {
 
     // ================ REQUEST Reader
     VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder) {
-/*        Config config = ConfigUtils.createConfig();
-    Scenario scenario = ScenarioUtils.loadScenario(config);
-    new PopulationReader(scenario).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_population.xml");*/
-
-        int requestCount = 0;
         double pickupTime;
         double deliveryTime;
         double pickupLocationX;
@@ -125,10 +121,7 @@ public class MatsimDrtRequest2Jsprit {
         double deliveryLocationX;
         double deliveryLocationY;
         for (Person person : scenario.getPopulation().getPersons().values()) {
-/*            person.getSelectedPlan()
-            .getAttributes()
-            .putAttribute(PreplanningEngine.PREBOOKING_OFFSET_ATTRIBUTE_NAME, 900.);*/
-
+            int requestCount = 0;
             List<Integer> legs = new ArrayList<>();
             int ii = 0;
             for (PlanElement pe : person.getSelectedPlan().getPlanElements()) {
@@ -147,11 +140,13 @@ public class MatsimDrtRequest2Jsprit {
                 ii++;
             }
             for (int legIndex : legs) {
+                int activityBeforeLegIndex = legIndex - 1;
+                int activityAfterLegIndex = legIndex + 1;
                 if (person.getSelectedPlan().getPlanElements().get(legIndex) instanceof Leg) {
                     //the activity before dvrp leg
-                    if (person.getSelectedPlan().getPlanElements().get(legIndex - 1) instanceof Activity) {
-                        if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1)).getType().contains("interaction")) {
-                            Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex - 1);
+                    if (person.getSelectedPlan().getPlanElements().get(activityBeforeLegIndex) instanceof Activity) {
+                        if (!TripStructureUtils.isStageActivityType(((Activity) person.getSelectedPlan().getPlanElements().get(activityBeforeLegIndex)).getType())) {
+                            Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(activityBeforeLegIndex);
                             Id<Link> activityLinkId = activity.getLinkId();
                             if("oneTaxi".equals(dvrpMode)) {
                                 pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
@@ -167,7 +162,7 @@ public class MatsimDrtRequest2Jsprit {
                             }
                             pickupTime = activity.getEndTime().seconds();
                         } else {
-                            throw new RuntimeException("Activity before is an 'interaction' activity.");
+                            throw new RuntimeException("Activity before is an 'stage activity'.");
                         }
                     } else {
                         throw new RuntimeException("Plan element is not the activity before taxi leg.");
@@ -177,12 +172,12 @@ public class MatsimDrtRequest2Jsprit {
                     Leg leg = (Leg) person.getSelectedPlan().getPlanElements().get(legIndex);
                     pickupTime = leg.getDepartureTime().seconds();
                     //deliveryTime = ((OptionalTime) leg.getAttributes().getAttribute("arr_time")).seconds();
-                    //deliveryTime = leg.getDepartureTime().seconds()+leg.getTravelTime().seconds();*/
+                    deliveryTime = leg.getDepartureTime().seconds()+leg.getTravelTime().seconds();*/
 
                     //the activity after dvrp leg
-                    if (person.getSelectedPlan().getPlanElements().get(legIndex + 1) instanceof Activity) {
-                        if (!((Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1)).getType().contains("interaction")) {
-                            Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(legIndex + 1);
+                    if (person.getSelectedPlan().getPlanElements().get(activityAfterLegIndex) instanceof Activity) {
+                        if (!TripStructureUtils.isStageActivityType(((Activity) person.getSelectedPlan().getPlanElements().get(activityAfterLegIndex)).getType())) {
+                            Activity activity = (Activity) person.getSelectedPlan().getPlanElements().get(activityAfterLegIndex);
                             Id<Link> activityLinkId = activity.getLinkId();
                             if("oneTaxi".equals(dvrpMode)) {
                                 deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
@@ -211,7 +206,7 @@ public class MatsimDrtRequest2Jsprit {
                 /*
                  *
                  */
-                Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount)
+                Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount+"-"+person.getId())
                         //.setName("myShipment")
                         .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
                         .addSizeDimension(capacityIndex,1)/*.addSizeDimension(1,50)*/
