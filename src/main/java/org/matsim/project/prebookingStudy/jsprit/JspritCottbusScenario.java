@@ -28,24 +28,39 @@ import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
+import org.matsim.application.MATSimAppCommand;
+import picocli.CommandLine;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Collection;
 
-public class JspritCottbusScenario {
+@CommandLine.Command(
+        name = "run",
+        description = "run Jsprit Cottbus scenario"
+)
+public class JspritCottbusScenario implements MATSimAppCommand {
 
-    //final static String MATSIM_CONFIG = "/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml";
-    final static String MATSIM_CONFIG = "scenarios/cottbus/config.xml";
-    final static String DVRP_MODE = "drt";
-    //final static String DVRP_MODE = "taxi";
-    //final static String DVRP_MODE = "oneTaxi";
+    //input path for oneTaxi: matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml
+    @CommandLine.Option(names = "--config", description = "path to config file", required = true)
+    private static Path matsimConfig;
 
-    final static int CAPACITY_INDEX = 0;
+    //mode for oneTaxi: "oneTaxi"
+    @CommandLine.Option(names = "--mode", description = "dvrp mode", defaultValue = "drt")
+    private static String dvrpMode;
+
+    @CommandLine.Option(names = "--capacity-index", description = "index of capacity", defaultValue = "0")
+    private static int capacityIndex;
 
     public static void main(String[] args) {
+        new JspritCottbusScenario().execute(args);
+    }
+
+    @Override
+    public Integer call() throws Exception {
         /*
          * some preparation - create output folder
-		 */
+         */
         File dir = new File("output");
         // if the directory does not exist, create it
         if (!dir.exists()) {
@@ -54,22 +69,20 @@ public class JspritCottbusScenario {
             if (result) System.out.println("./output created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(MATSIM_CONFIG, DVRP_MODE, CAPACITY_INDEX);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
 
 
 
 
-		/*
+        /*
          * get a vehicle type-builder and build a type with the typeId "vehicleType" and one capacity dimension, i.e. weight, and capacity dimension value of 2
-		 */
-        VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(DVRP_MODE + "-vehicle")
-            .addCapacityDimension(CAPACITY_INDEX, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
-            .setMaxVelocity(30);
+         */
+        VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
+                .addCapacityDimension(capacityIndex, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
+                .setMaxVelocity(30);
         VehicleType vehicleType = vehicleTypeBuilder.build();
         vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
-
-
 
 
         //use Service to create requests
@@ -80,41 +93,41 @@ public class JspritCottbusScenario {
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder);
 
 
-
-
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
         //problem.getJobs();
 
-		/*
+        /*
          * get the algorithm out-of-the-box.
-		 */
+         */
         VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
         algorithm.setMaxIterations(100);
 
-		/*
+        /*
          * and search a solution
-		 */
+         */
         Collection<VehicleRoutingProblemSolution> solutions = algorithm.searchSolutions();
 
-		/*
+        /*
          * get the best
-		 */
+         */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
         new VrpXMLWriter(problem, solutions).write("output/problem-with-solution.xml");
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
-		/*
+        /*
          * plot
-		 */
+         */
         //new Plotter(problem,bestSolution).plot("output/plot.png","simple example");
 
         /*
         render problem and solution with GraphStream
          */
         new GraphStreamViewer(problem, bestSolution).labelWith(Label.ID).setRenderDelay(200).display();
+
+        return 0;
     }
 
 }
