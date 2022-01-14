@@ -1,10 +1,15 @@
-package org.matsim.drt;
+package org.matsim.run;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.matsim.testcases.MatsimTestUtils;
 
 public class RunDrtTest {
+    @Rule
+    public MatsimTestUtils utils = new MatsimTestUtils();
+
     @Test
-    public void testDrtDoorToDoor() {
+    public final void testDrtDoorToDoor() {
         //TODO here is a dummy test. Add a real test later
         System.out.println("Starting dummy test");
         double x = 1;
