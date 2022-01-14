@@ -9,7 +9,7 @@ public class RunDrtTest {
     public MatsimTestUtils utils = new MatsimTestUtils();
 
     @Test
-    public void testDrtDoorToDoor() {
+    public final void testDrtDoorToDoor() {
         //TODO here is a dummy test. Add a real test later
         System.out.println("Starting dummy test");
         double x = 1;
