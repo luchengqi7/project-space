@@ -1,4 +1,4 @@
-package org.matsim.drt;
+package org.matsim.run;
 
 import org.junit.Rule;
 import org.junit.Test;
