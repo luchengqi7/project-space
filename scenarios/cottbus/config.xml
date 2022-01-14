@@ -80,7 +80,7 @@
 	</module>
 
 	<module name="controler">
-		<param name="outputDirectory" value="/Users/luchengqi/Documents/MATSimScenarios/Cottbus/output/test" />
+		<param name="outputDirectory" value="output/scenarios/Cottbus" />
 		<param name="overwriteFiles" value="deleteDirectoryIfExists" />
 		<param name="firstIteration" value="0" />
 		<param name="lastIteration" value="20" />
