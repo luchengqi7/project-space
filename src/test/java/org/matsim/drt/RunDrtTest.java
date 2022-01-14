@@ -1,8 +1,13 @@
 package org.matsim.drt;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.matsim.testcases.MatsimTestUtils;
 
 public class RunDrtTest {
+    @Rule
+    public MatsimTestUtils utils = new MatsimTestUtils();
+
     @Test
     public void testDrtDoorToDoor() {
         //TODO here is a dummy test. Add a real test later
