@@ -6,6 +6,7 @@ import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
+import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -113,7 +114,7 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ REQUEST Reader
-    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder) {
+    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType) {
         double pickupTime;
         double deliveryTime;
         double pickupLocationX;
@@ -170,6 +171,12 @@ public class MatsimDrtRequest2Jsprit {
                 /*
                  *
                  */
+                double speed = vehicleType.getMaxVelocity();
+                double detourFactor = 1.3;
+                double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
+                double increment = 0.;
+                //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
+                double poolingFactor = 1.5;
                 Shipment shipment = Shipment.Builder.newInstance("shipment"+requestCount+"-"+person.getId())
                         //.setName("myShipment")
                         .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
@@ -179,9 +186,8 @@ public class MatsimDrtRequest2Jsprit {
                         .setDeliveryServiceTime(60)
                         .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maximalWaitingtime))
                         //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
-                        //ToDo: Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-                        //.setMaxTimeInVehicle(deliveryTime - pickupTime /*- 60 - 60*/ - MINIMAL_WAITINGTIME)
-                        .setMaxTimeInVehicle(Double.MAX_VALUE)
+                        //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
+                        .setMaxTimeInVehicle(poolingFactor * transportTime + increment)
                         //.setPriority()
                         .build();
                 vrpBuilder.addJob(shipment);
