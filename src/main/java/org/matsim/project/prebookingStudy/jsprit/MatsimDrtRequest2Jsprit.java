@@ -165,7 +165,7 @@ public class MatsimDrtRequest2Jsprit {
                             throw new RuntimeException("Activity before is an 'stage activity'.");
                         }
                     } else {
-                        throw new RuntimeException("Plan element is not the activity before taxi leg.");
+                        throw new RuntimeException("Plan element is not the activity before the dvrp leg.");
                     }
 
 /*                    //dvrp leg
@@ -196,7 +196,7 @@ public class MatsimDrtRequest2Jsprit {
                             throw new RuntimeException("Activity after is an 'interaction' activity.");
                         }
                     } else {
-                        throw new RuntimeException("Plan element is not the activity after taxi leg.");
+                        throw new RuntimeException("Plan element is not the activity after the dvrp leg.");
                     }
                 } else {
                     throw new RuntimeException("Plan element is not leg.");
