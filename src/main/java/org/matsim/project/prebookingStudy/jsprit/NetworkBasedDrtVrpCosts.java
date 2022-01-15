@@ -196,7 +196,7 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
             if (travelCostValue == null) {
                 travelCostValue = calculateTravelCostValue(fromLink, toLink, departureTime);
             }
-            return travelCostValue.getTravelCost();
+            return travelCostValue.getTravelDistance();
         }
         return router.
                 calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null).
