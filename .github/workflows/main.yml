@@ -1,33 +1,38 @@
-name: verify-push
 
-on:
-  push:
-  pull_request:
+name: build
+
+on: [ push, pull_request ]
 
 jobs:
   build:
+    #run if push or pull_requests from fork
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout git repo
-        uses: actions/checkout@v2
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - org.matsim.run.**
 
-      - name: Cache local Maven repository
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+          architecture: x64
+
+      - name: Cache Maven packages
         uses: actions/cache@v2
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-      - name: Setup Java
-        uses: actions/setup-java@v2
-        with:
-          java-version: 17
-          distribution: 'zulu'
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
 
-      - name: Maven verify
-        run: mvn verify --batch-mode -Dmaven.test.redirectTestOutputToFile -Dmatsim.preferLocalDtds=true --fail-at-end
+      - name: Test module
+        run:  mvn -Dtest=${{matrix.module}} test --batch-mode -Dmatsim.preferLocalDtds=true -Dmaven.javadoc.skip -e
 
     env:
-      MAVEN_OPTS: -Xmx2g
+      MAVEN_OPTS: -Xmx4G
