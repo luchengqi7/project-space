@@ -177,7 +177,7 @@ public class MatsimDrtRequest2Jsprit {
                 double increment = 0.;
                 //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
                 double poolingFactor = 1.5;
-                Shipment shipment = Shipment.Builder.newInstance(person.getId() + "-" + requestCount)
+                Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                         //.setName("myShipment")
                         .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
                         .addSizeDimension(capacityIndex,1)/*.addSizeDimension(1,50)*/

@@ -322,7 +322,7 @@ public class GraphStreamViewer {
                 "	stroke-width: 1.0;" +
                 "	text-font: couriernew;" +
                 " 	text-offset: 2,-5;" +
-                "	text-size: 8;" +
+                "	text-size: 24;" +
                 "}" +
                 "node.pickup {" +
                 " 	fill-color: #6CC644;" +
