@@ -17,8 +17,6 @@
  */
 package org.matsim.project.prebookingStudy.jsprit;
 
-import com.graphhopper.jsprit.analysis.toolbox.GraphStreamViewer;
-import com.graphhopper.jsprit.analysis.toolbox.GraphStreamViewer.Label;
 import com.graphhopper.jsprit.core.algorithm.VehicleRoutingAlgorithm;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
@@ -29,6 +27,8 @@ import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
+import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -58,8 +58,11 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
     private static int numberOfIterations;
 
-    @CommandLine.Option(names = "--solutionOutputPath", description = "path for saving output files (solution)", defaultValue = "output/problem-with-solution.xml")
+    @CommandLine.Option(names = "--solutionOutputPath", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
     private static Path solutionOutputPath;
+
+    @CommandLine.Option(names = "--statsOutputPath", description = "path for saving output file (stats)", defaultValue = "output/stats.csv")
+    private static Path statsOutputPath;
 
     public static void main(String[] args) {
         new RunJspritCottbusScenario().execute(args);
@@ -89,7 +92,13 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
          */
         VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
                 .addCapacityDimension(capacityIndex, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
-                .setMaxVelocity(30);
+                .setMaxVelocity(30)
+/*                .setFixedCost()
+                .setCostPerDistance()
+                .setCostPerTransportTime()
+                .setCostPerWaitingTime()*/
+                //.setCostPerServiceTime()
+                ;
         VehicleType vehicleType = vehicleTypeBuilder.build();
         vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
 
@@ -122,6 +131,8 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
+        StatisticUtils.printVerbose(problem, bestSolution, matsimConfig.toString(), statsOutputPath.toString());
+
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
@@ -134,7 +145,8 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
         /*
         render problem and solution with GraphStream
          */
-        new GraphStreamViewer(problem, bestSolution).labelWith(Label.ID).setRenderDelay(200).display();
+        GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
+        graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2).setRenderShipments(true).display();
 
         return 0;
     }
