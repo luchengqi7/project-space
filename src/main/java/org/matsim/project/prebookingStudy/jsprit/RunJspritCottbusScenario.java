@@ -146,7 +146,7 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
         render problem and solution with GraphStream
          */
         GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
-        graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2).setRenderShipments(true).display();
+        graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
 
         return 0;
     }
