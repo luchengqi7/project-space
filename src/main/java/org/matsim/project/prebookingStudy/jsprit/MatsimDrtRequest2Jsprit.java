@@ -194,9 +194,7 @@ public class MatsimDrtRequest2Jsprit {
                         .build();
                 vrpBuilder.addJob(shipment);
                 requestCount++;
-
             }
-
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
 
