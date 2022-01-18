@@ -6,10 +6,12 @@ import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
+import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
@@ -19,6 +21,7 @@ import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 
@@ -37,40 +40,35 @@ public class MatsimDrtRequest2Jsprit {
     String dvrpMode;
     int capacityIndex;
     int maximalWaitingtime;
+    Network network;
 
     private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
 
     // ================ For test purpose
     public static void main(String[] args) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0, 60*15);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0, 60 * 15);
     }
 
-    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex, int maximalWaitingtime){
+    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex, int maximalWaitingtime) {
         this.dvrpMode = dvrpMode;
         this.capacityIndex = capacityIndex;
         this.maximalWaitingtime = maximalWaitingtime;
 
-        if("drt".equals(dvrpMode)) {
-            URL fleetSpecificationUrl = null;
-            Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
-            this.scenario = ScenarioUtils.loadScenario(config);
-            for (DrtConfigGroup drtCfg : ((MultiModeDrtConfigGroup) config.getModule("multiModeDrt")).getModalElements()) {
-                fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
-            }
-            new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
-        } else if ("oneTaxi".equals(dvrpMode)) {
-            Config config = ConfigUtils.loadConfig(matsimConfig);
-            this.scenario = ScenarioUtils.loadScenario(config);
-            new FleetReader(dvrpFleetSpecification).readFile("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_vehicles.xml");
+        URL fleetSpecificationUrl = null;
+        Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
+        this.scenario = ScenarioUtils.loadScenario(config);
+        this.network = scenario.getNetwork();
+        for (DrtConfigGroup drtCfg : ((MultiModeDrtConfigGroup) config.getModule("multiModeDrt")).getModalElements()) {
+            fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
         }
-
+        new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
     }
 
     // ================ Vehicle Reader
-    int matsimVehicleCapacityReader(){
+    int matsimVehicleCapacityReader() {
         int capacity = 0;
 
-        if(dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count()==1){
+        if (dvrpFleetSpecification.getVehicleSpecifications().values().stream().map(DvrpVehicleSpecification::getCapacity).distinct().count() == 1) {
             for (DvrpVehicleSpecification dvrpVehicleSpecification : dvrpFleetSpecification.getVehicleSpecifications().values()) {
                 capacity = dvrpVehicleSpecification.getCapacity();
                 break;
@@ -82,14 +80,14 @@ public class MatsimDrtRequest2Jsprit {
         return capacity;
     }
 
-    VehicleRoutingProblem.Builder matsimVehicleReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType){
+    VehicleRoutingProblem.Builder matsimVehicleReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType) {
         int vehicleCount = 0;
 
-        for(DvrpVehicleSpecification dvrpVehicleSpecification: dvrpFleetSpecification.getVehicleSpecifications().values()) {
+        for (DvrpVehicleSpecification dvrpVehicleSpecification : dvrpFleetSpecification.getVehicleSpecifications().values()) {
             Id<Link> startLinkId = dvrpVehicleSpecification.getStartLinkId();
             double startLinkLocationX;
             double startLinkLocationY;
-            if("oneTaxi".equals(dvrpMode)) {
+            if ("oneTaxi".equals(dvrpMode)) {
                 startLinkLocationX = scenario.getNetwork().getLinks().get(startLinkId).getCoord().getX();
                 startLinkLocationY = scenario.getNetwork().getLinks().get(startLinkId).getCoord().getY();
             } else {
@@ -119,33 +117,35 @@ public class MatsimDrtRequest2Jsprit {
         double deliveryTime;
         double pickupLocationX;
         double pickupLocationY;
+        String pickupLocationId;
         double deliveryLocationX;
         double deliveryLocationY;
+        String deliveryLocationId;
+
         for (Person person : scenario.getPopulation().getPersons().values()) {
             int requestCount = 0;
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
             for (TripStructureUtils.Trip trip : trips) {
-                if(trip.getLegsOnly().size()==1){
-                } else {
-                    throw new RuntimeException("Be careful: There exists a trip has more than one legs!");
-                }
+                assert trip.getLegsOnly().size() == 1 : "Error: There exists a trip has more than one legs!";
 
                 //originActivity
                 {
                     Activity originActivity = trip.getOriginActivity();
                     Id<Link> activityLinkId = originActivity.getLinkId();
-                    if ("oneTaxi".equals(dvrpMode)) {
-                        pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
-                        pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                    if (originActivity.getCoord() != null) {
+                        pickupLocationX = originActivity.getCoord().getX();
+                        pickupLocationY = originActivity.getCoord().getY();
                     } else {
-                        if (("dummy").equals(originActivity.getType())) {
-                            pickupLocationX = originActivity.getCoord().getX();
-                            pickupLocationY = originActivity.getCoord().getY();
-                        } else {
-                            pickupLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                            pickupLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
-                        }
+                        pickupLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                        pickupLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
                     }
+
+                    if (activityLinkId != null) {
+                        pickupLocationId = activityLinkId.toString();
+                    } else {
+                        pickupLocationId = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getId().toString();
+                    }
+
                     pickupTime = originActivity.getEndTime().seconds();
                 }
 
@@ -153,17 +153,18 @@ public class MatsimDrtRequest2Jsprit {
                 {
                     Activity destinationActivity = trip.getDestinationActivity();
                     Id<Link> activityLinkId = destinationActivity.getLinkId();
-                    if("oneTaxi".equals(dvrpMode)) {
-                        deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getX();
-                        deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getCoord().getY();
+                    if (destinationActivity.getCoord() != null) {
+                        deliveryLocationX = destinationActivity.getCoord().getX();
+                        deliveryLocationY = destinationActivity.getCoord().getY();
                     } else {
-                        if(("dummy").equals(destinationActivity.getType())){
-                            deliveryLocationX = destinationActivity.getCoord().getX();
-                            deliveryLocationY = destinationActivity.getCoord().getY();
-                        } else {
-                            deliveryLocationX = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getX();
-                            deliveryLocationY = scenario.getNetwork().getLinks().get(activityLinkId).getToNode().getCoord().getY();
-                        }
+                        deliveryLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                        deliveryLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                    }
+
+                    if (activityLinkId != null) {
+                        deliveryLocationId = activityLinkId.toString();
+                    } else {
+                        deliveryLocationId = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getId().toString();
                     }
                 }
 
@@ -179,8 +180,9 @@ public class MatsimDrtRequest2Jsprit {
                 double poolingFactor = 1.5;
                 Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                         //.setName("myShipment")
-                        .setPickupLocation(Location.newInstance(pickupLocationX, pickupLocationY)).setDeliveryLocation(Location.newInstance(deliveryLocationX, deliveryLocationY))
-                        .addSizeDimension(capacityIndex,1)/*.addSizeDimension(1,50)*/
+                        .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
+                        .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
+                        .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                         .setPickupServiceTime(60)
                         .setDeliveryServiceTime(60)
@@ -192,9 +194,7 @@ public class MatsimDrtRequest2Jsprit {
                         .build();
                 vrpBuilder.addJob(shipment);
                 requestCount++;
-
             }
-
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
 
