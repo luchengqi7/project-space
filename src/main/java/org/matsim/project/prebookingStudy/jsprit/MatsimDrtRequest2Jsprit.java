@@ -58,7 +58,7 @@ public class MatsimDrtRequest2Jsprit {
         Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
         this.scenario = ScenarioUtils.loadScenario(config);
         this.network = scenario.getNetwork();
-        for (DrtConfigGroup drtCfg : ((MultiModeDrtConfigGroup) config.getModule("multiModeDrt")).getModalElements()) {
+        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
             fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
         }
         new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
@@ -143,6 +143,7 @@ public class MatsimDrtRequest2Jsprit {
                     if (activityLinkId != null) {
                         pickupLocationId = activityLinkId.toString();
                     } else {
+                        //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
                         pickupLocationId = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getId().toString();
                     }
 
@@ -164,6 +165,7 @@ public class MatsimDrtRequest2Jsprit {
                     if (activityLinkId != null) {
                         deliveryLocationId = activityLinkId.toString();
                     } else {
+                        //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
                         deliveryLocationId = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getId().toString();
                     }
                 }
