@@ -33,15 +33,15 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     private final Map<TravelCostKey, TravelCostValue> cacheMap;
 
     public static class Builder {
-        private final String networkPath;
+        private final Network network;
 
         private boolean enableCache = false;
         private int cacheSizeLimit = 10000;
         private int timeBinSize = 86400;
         private TravelTime travelTime = new FreeSpeedTravelTime();
 
-        public Builder(String networkPath) {
-            this.networkPath = networkPath;
+        public Builder(Network network) {
+            this.network = network;
         }
 
         public Builder enableCache(boolean enableCache) {
@@ -75,7 +75,7 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     }
 
     private NetworkBasedDrtVrpCosts(Builder builder) {
-        this.network = NetworkUtils.readNetwork(builder.networkPath);
+        this.network = builder.network;
         this.enableCache = builder.enableCache;
         this.timeBinSize = builder.timeBinSize;
         this.cacheMap = new LinkedHashMap<>(builder.cacheSizeLimit);

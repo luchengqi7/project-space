@@ -20,6 +20,7 @@ package org.matsim.project.prebookingStudy.jsprit;
 import com.graphhopper.jsprit.core.algorithm.VehicleRoutingAlgorithm;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
+import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
 import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
@@ -39,7 +40,7 @@ import java.util.Collection;
         name = "run",
         description = "run Jsprit Cottbus scenario"
 )
-public class RunJspritCottbusScenario implements MATSimAppCommand {
+public class RunJspritScenario implements MATSimAppCommand {
 
     //input path for oneTaxi: matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
@@ -65,7 +66,7 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
     private static Path statsOutputPath;
 
     public static void main(String[] args) {
-        new RunJspritCottbusScenario().execute(args);
+        new RunJspritScenario().execute(args);
     }
 
     @Override
@@ -83,6 +84,9 @@ public class RunJspritCottbusScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
+        NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network);
+        VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
+        vrpBuilder.setRoutingCost(transportCosts);
 
 
 
