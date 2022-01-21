@@ -71,6 +71,7 @@ public class StatisticUtils {
                         routeTravelDistanceMap.replaceAll((s, v) -> v + lastLegDistance);
                         routeTravelDistanceMap.put(jobId, 0.);
                     }
+                    lastStopLocation = act.getLocation();
                 } else if(("deliverShipment").equals(act.getName())) {
                     //time-related:
                     //ToDO: This travel time calculation also includes pickup&dropOff service time (60s)
@@ -87,8 +88,8 @@ public class StatisticUtils {
                     } else {
                         throw new RuntimeException("!routeTravelDistanceMap.containsKey(jobId)");
                     }
+                    lastStopLocation = act.getLocation();
                 }
-                lastStopLocation = act.getLocation();
             }
         }
         //print results

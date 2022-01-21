@@ -38,3 +38,8 @@ hs_err_pid*
 .idea/runConfigurations.xml
 .idea/vcs.xml
 .idea/uiDesigner.xml
+/.idea/libraries
+/.idea/modules.xml
+/project-space.iml
+/.idea/inspectionProfiles/Project_Default.xml
+/target

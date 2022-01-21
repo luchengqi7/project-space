@@ -98,7 +98,7 @@ public class MatsimDrtRequest2Jsprit {
              * get a vehicle-builder and build a vehicle located at (x,y) with type "vehicleType"
              */
             VehicleImpl.Builder vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicleSpecification.getId().toString());
-            vehicleBuilder.setStartLocation(Location.newInstance(startLinkLocationX, startLinkLocationY));
+            vehicleBuilder.setStartLocation(Location.Builder.newInstance().setId(scenario.getNetwork().getLinks().get(startLinkId).getId().toString()).setCoordinate(Coordinate.newInstance(startLinkLocationX, startLinkLocationY)).build());
             vehicleBuilder.setEarliestStart(dvrpVehicleSpecification.getServiceBeginTime());
             vehicleBuilder.setLatestArrival(dvrpVehicleSpecification.getServiceEndTime());
             vehicleBuilder.setType(vehicleType);
