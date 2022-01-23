@@ -122,6 +122,8 @@ public class MatsimDrtRequest2Jsprit {
         double deliveryLocationY;
         String deliveryLocationId;
 
+        int counter = 0;
+        int divisor = 1;
         for (Person person : scenario.getPopulation().getPersons().values()) {
             int requestCount = 0;
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
@@ -149,6 +151,11 @@ public class MatsimDrtRequest2Jsprit {
 
                     pickupTime = originActivity.getEndTime().seconds();
                 }
+                counter++;
+                if (counter % divisor == 0) {
+                    LOG.info(counter + " Pickups handled.");
+                    //divisor = divisor * 2;
+                }
 
                 //destinationActivity
                 {
@@ -168,6 +175,11 @@ public class MatsimDrtRequest2Jsprit {
                         //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
                         deliveryLocationId = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getId().toString();
                     }
+                }
+                //counter++;
+                if (counter % divisor == 0) {
+                    LOG.info(counter + " Dropoffs handled.");
+                    divisor = divisor * 2;
                 }
 
                 //use Shipment to create request for jsprit
