@@ -21,16 +21,16 @@ import java.util.Set;
         description = "reduce matsim scenario for Jsprit"
 )
 public class ScenarioReducerBasedOnDepartureTime implements MATSimAppCommand {
-    @CommandLine.Option(names = "--planInputPath", description = "path to input plan", defaultValue = "scenarios/vulkaneifel/drt-plans.xml.gz")
+    @CommandLine.Option(names = "--plan-input-path", description = "path to input plan", defaultValue = "scenarios/vulkaneifel/drt-plans.xml.gz")
     private static Path planInputPath;
 
-    @CommandLine.Option(names = "--testPlanOutputPath", description = "path for saving test plan", defaultValue = "../test/scenarios/vulkaneifel/drt-plans.xml.gz")
+    @CommandLine.Option(names = "--plan-output-path", description = "path for saving test plan", defaultValue = "../test/scenarios/vulkaneifel/drt-plans.xml.gz")
     private static Path testPlanOutputPath;
 
     @CommandLine.Option(names = "--filter-startTime", description = "start time for filtering the requests", defaultValue = "28800")
     private static int filterStartTime;
 
-    @CommandLine.Option(names = "--filter-endTime", description = "end time for filtering the requests", defaultValue = "32400")
+    @CommandLine.Option(names = "--filter-endTime", description = "end time for filtering the requests", defaultValue = "30600")
     private static int filterEndTime;
 
     public static void main(String[] args) {
