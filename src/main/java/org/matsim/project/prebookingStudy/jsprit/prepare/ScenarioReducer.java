@@ -24,11 +24,13 @@ import picocli.CommandLine;
 import java.nio.file.Path;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @CommandLine.Command(
         name = "run",
-        description = "run Jsprit Cottbus scenario"
+        description = "reduce matsim scenario for Jsprit"
 )
 public class ScenarioReducer implements MATSimAppCommand {
 
@@ -38,13 +40,13 @@ public class ScenarioReducer implements MATSimAppCommand {
     @CommandLine.Option(names = "--planInputPath", description = "path to input plan", defaultValue = "scenarios/cottbus/drt-test-plans.xml.gz")
     private static Path planInputPath;
 
-    @CommandLine.Option(names = "--testPlanOutputPath", description = "path for saving test plan", defaultValue = "../test/input/drt-test-plans.xml.gz")
+    @CommandLine.Option(names = "--testPlanOutputPath", description = "path for saving test plan", defaultValue = "../test/scenarios/vulkaneifel/drt-test-plans.xml.gz")
     private static Path testPlanOutputPath;
 
     @CommandLine.Option(names = "--dvrpVehicleInputPath", description = "path to input dvrp vehicle fleet", defaultValue = "scenarios/cottbus/drt-vehicles/500-4-seater-drt-vehicles.xml")
     private static Path dvrpVehicleInputPath;
 
-    @CommandLine.Option(names = "--testDvrpVehicleOutputPath", description = "path for saving test dvrp vehicle fleet", defaultValue = "../test/input/500-4-seater-drt-vehicles.xml.gz")
+    @CommandLine.Option(names = "--testDvrpVehicleOutputPath", description = "path for saving test dvrp vehicle fleet", defaultValue = "../test/scenarios/vulkaneifel/drt-vehicles/500-4-seater-drt-vehicles.xml.gz")
     private static Path testDvrpVehicleOutputPath;
 
     //BoundingBox:
@@ -89,8 +91,8 @@ public class ScenarioReducer implements MATSimAppCommand {
         });
     }
 
-    void scenarioReducer(Geometry boundingBox, Scenario scenario, String populationOutputFile, FleetSpecification dvrpFleetSpecification, String dvrpFleetOutputFile){
-        List<Person> personToRemoveList = new ArrayList<>();
+    private void scenarioReducer(Geometry boundingBox, Scenario scenario, String populationOutputFile, FleetSpecification dvrpFleetSpecification, String dvrpFleetOutputFile){
+        Set<Person> personToRemoveList = new HashSet<>();
         List<DvrpVehicleSpecification> vehicles = new ArrayList<>();
 
         //delete the persons whose activities are not all inside the boundingBox
