@@ -49,7 +49,7 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
             return this;
         }
 
-        public Builder cacheSizeLimit(int cacheSizeLimit) {
+        public Builder setCacheSizeLimit(int cacheSizeLimit) {
             this.cacheSizeLimit = cacheSizeLimit;
             return this;
         }

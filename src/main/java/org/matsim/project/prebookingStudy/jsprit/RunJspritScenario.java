@@ -69,6 +69,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
     private static boolean enableNetworkBasedCosts;
 
+    @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
+    private static int cacheSizeLimit;
+
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -92,7 +95,12 @@ public class RunJspritScenario implements MATSimAppCommand {
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
         if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network);
+            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
+                    .enableCache(true)
+                    .setCacheSizeLimit(cacheSizeLimit);
+            if(cacheSizeLimit!=10000){
+                LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
+            }
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
