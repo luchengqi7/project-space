@@ -73,6 +73,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
 
+    @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
+    private static int memoryObserverInterval;
+
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -82,7 +85,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        MemoryObserver.start(60);
+        MemoryObserver.start(memoryObserverInterval);
 
         /*
          * some preparation - create output folder
