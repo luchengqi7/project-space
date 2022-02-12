@@ -31,6 +31,7 @@ import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
+import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -81,6 +82,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        MemoryObserver.start(60);
+
         /*
          * some preparation - create output folder
          */
@@ -158,6 +161,8 @@ public class RunJspritScenario implements MATSimAppCommand {
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+
+        MemoryObserver.stop();
 
         /*
          * plot
