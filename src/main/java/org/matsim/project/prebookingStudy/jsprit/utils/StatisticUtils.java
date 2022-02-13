@@ -15,7 +15,6 @@ import java.util.*;
 //regarding printing csv
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
@@ -25,6 +24,9 @@ import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
 
 public class StatisticUtils {
+
+    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
+    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
 
     public static void printVerbose(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution, String matsimConfig, String tripsFilename) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
@@ -59,9 +61,13 @@ public class StatisticUtils {
                 double lastLegDistance = EuclideanDistanceCalculator.calculateDistance(lastStopLocation.getCoordinate(), act.getLocation().getCoordinate());
                 if(("pickupShipment").equals(act.getName())){
                     //time-related:
-                    double realWaitingTime = act.getArrTime() - shipments.get(jobId).getPickupTimeWindow().getStart();
+                    /*
+                     * calculatedRealWaitingTime does not include the serviceTime of pickup and delivery.
+                     */
+                    double calculatedRealWaitingTime = act.getArrTime() - shipments.get(jobId).getPickupTimeWindow().getStart();
+                    double realWaitingTime = calculatedRealWaitingTime < 0 ? 0 : calculatedRealWaitingTime;
                     waitingTimeMap.put(jobId, realWaitingTime);
-                    realPickupArrivalTimeMap.put(jobId, act.getArrTime());
+                    //realPickupArrivalTimeMap.put(jobId, act.getArrTime());
                     realPickupDepartureTimeMap.put(jobId,act.getEndTime());
 
                     //distance-related:
@@ -74,11 +80,18 @@ public class StatisticUtils {
                     lastStopLocation = act.getLocation();
                 } else if(("deliverShipment").equals(act.getName())) {
                     //time-related:
-                    //ToDO: This travel time calculation also includes pickup&dropOff service time (60s)
-                    double realTravelTime = waitingTimeMap.get(jobId) + act.getEndTime() - realPickupArrivalTimeMap.get(jobId);
-                    travelTimeMap.put(jobId, realTravelTime);
+                    /*
+                     * realInVehicleTime does not include the serviceTime of pickup and delivery.
+                     */
                     double realInVehicleTime = act.getArrTime() - realPickupDepartureTimeMap.get(jobId);
                     inVehicleTimeMap.put(jobId, realInVehicleTime);
+
+                    /*
+                     * realTravelTime includes only the service time of pickup which is consistent with MATSim.
+                     */
+                    double realTravelTime = waitingTimeMap.get(jobId) + PICKUP_SERVICE_TIME_IN_MATSIM + realInVehicleTime;
+                    travelTimeMap.put(jobId, realTravelTime);
+
 
                     //distance-related:
                     if(routeTravelDistanceMap.containsKey(jobId)){
