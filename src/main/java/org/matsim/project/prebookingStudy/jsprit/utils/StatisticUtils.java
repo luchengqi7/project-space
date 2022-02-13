@@ -99,7 +99,7 @@ public class StatisticUtils {
 
     public void write(Map<String,Shipment> shipments, String matsimConfig, String tripsFilename, Map<String, Double> waitingTimeMap, Map<String, Double> inVehicleTimeMap, Map<String, Double> travelTimeMap, Map<String, Double> travelDistanceMap) {
         final String[] tripsHeader = {"person", "request_id", "in-veh_time", "trav_time", "wait_time", "traveled_distance", "euclidean_distance",
-                /*"start_link",*/ "start_x", "start_y", /*"end_link",*/ "end_x", "end_y"};
+                "start_link", "start_x", "start_y", "end_link", "end_x", "end_y"};
         //ToDo: load config in Runner?
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
@@ -139,10 +139,10 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(/*(int) Math.round(distance)*/travelDistanceMap.get(shipmentId)));
                     tripRecord.add(Double.toString(euclideanDistance));
 
-                    //tripRecord.add(String.valueOf(fromLinkId));
+                    tripRecord.add(String.valueOf(shipment.getPickupLocation().getId()));
                     tripRecord.add(Double.toString(pickupLocation.getX()));
                     tripRecord.add(Double.toString(pickupLocation.getY()));
-                    //tripRecord.add(String.valueOf(toLinkId));
+                    tripRecord.add(String.valueOf(shipment.getDeliveryLocation().getId()));
                     tripRecord.add(Double.toString(deliveryLocation.getX()));
                     tripRecord.add(Double.toString(deliveryLocation.getY()));
                     if (tripsHeader.length != tripRecord.size()) {
