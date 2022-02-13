@@ -100,6 +100,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
+        StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
             NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
                     .enableCache(true)
@@ -110,6 +111,9 @@ public class RunJspritScenario implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
+            statisticUtils = new StatisticUtils(transportCosts);
+        } else {
+            statisticUtils = new StatisticUtils();
         }
 
 
@@ -159,7 +163,15 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        StatisticUtils.printVerbose(problem, bestSolution, matsimConfig.toString(), statsOutputPath.toString());
+        //print results to a csv file
+
+        if (enableNetworkBasedCosts) {
+            statisticUtils.printVerboseNetworkBased(problem, bestSolution);
+            statisticUtils.writeNetworkBased(matsimConfig.toString(), statsOutputPath.toString());
+        } else {
+            statisticUtils.printVerbose(problem, bestSolution);
+            statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
+        }
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
