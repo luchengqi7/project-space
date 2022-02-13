@@ -28,6 +28,13 @@ public class StatisticUtils {
     final static double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
     final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
 
+    final static Map<String, Double> waitingTimeMap = new HashMap<>();
+    final static Map<String, Double> inVehicleTimeMap = new HashMap<>();
+    final static Map<String, Double> travelTimeMap = new HashMap<>();
+    final static Map<String, Double> travelDistanceMap = new HashMap<>();
+    final static Map<String, Double> pickupTimeMap = new HashMap<>();
+    final static Map<String, Double> deliveryTimeMap = new HashMap<>();
+
     public static void printVerbose(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution, String matsimConfig, String tripsFilename) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
         list.sort(new com.graphhopper.jsprit.core.util.VehicleIndexComparator());
@@ -40,10 +47,6 @@ public class StatisticUtils {
             }
         }
 
-        Map<String, Double> waitingTimeMap = new HashMap<>();
-        Map<String, Double> inVehicleTimeMap = new HashMap<>();
-        Map<String, Double> travelTimeMap = new HashMap<>();
-        Map<String, Double> travelDistanceMap = new HashMap<>();
         for (VehicleRoute route : list) {
             Map<String, Double> realPickupArrivalTimeMap = new HashMap<>();
             Map<String, Double> realPickupDepartureTimeMap = new HashMap<>();
@@ -61,6 +64,9 @@ public class StatisticUtils {
                 double lastLegDistance = EuclideanDistanceCalculator.calculateDistance(lastStopLocation.getCoordinate(), act.getLocation().getCoordinate());
                 if(("pickupShipment").equals(act.getName())){
                     //time-related:
+                    double pickupTime = act.getArrTime();
+                    pickupTimeMap.put(jobId, pickupTime);
+
                     /*
                      * calculatedRealWaitingTime does not include the serviceTime of pickup and delivery.
                      */
@@ -69,6 +75,7 @@ public class StatisticUtils {
                     waitingTimeMap.put(jobId, realWaitingTime);
                     //realPickupArrivalTimeMap.put(jobId, act.getArrTime());
                     realPickupDepartureTimeMap.put(jobId,act.getEndTime());
+
 
                     //distance-related:
                     if(routeTravelDistanceMap.containsKey(jobId)){
@@ -80,11 +87,15 @@ public class StatisticUtils {
                     lastStopLocation = act.getLocation();
                 } else if(("deliverShipment").equals(act.getName())) {
                     //time-related:
+                    double deliveryTime = act.getArrTime();
+                    deliveryTimeMap.put(jobId, deliveryTime);
+
                     /*
                      * realInVehicleTime does not include the serviceTime of pickup and delivery.
                      */
                     double realInVehicleTime = act.getArrTime() - realPickupDepartureTimeMap.get(jobId);
                     inVehicleTimeMap.put(jobId, realInVehicleTime);
+
 
                     /*
                      * realTravelTime includes only the service time of pickup which is consistent with MATSim.
@@ -107,11 +118,11 @@ public class StatisticUtils {
         }
         //print results
         StatisticUtils statisticUtils = new StatisticUtils();
-        statisticUtils.write(shipments, matsimConfig, tripsFilename, waitingTimeMap, inVehicleTimeMap, travelTimeMap, travelDistanceMap);
+        statisticUtils.write(shipments, matsimConfig, tripsFilename);
     }
 
-    public void write(Map<String,Shipment> shipments, String matsimConfig, String tripsFilename, Map<String, Double> waitingTimeMap, Map<String, Double> inVehicleTimeMap, Map<String, Double> travelTimeMap, Map<String, Double> travelDistanceMap) {
-        final String[] tripsHeader = {"person", "request_id", "in-veh_time", "trav_time", "wait_time", "traveled_distance", "euclidean_distance",
+    public void write(Map<String, Shipment> shipments, String matsimConfig, String tripsFilename) {
+        final String[] tripsHeader = {"person", "request_id", "pickup_time", "deliver_time", "in-veh_time", "trav_time", "wait_time", "traveled_distance", "euclidean_distance",
                 "start_link", "start_x", "start_y", "end_link", "end_x", "end_y"};
         //ToDo: load config in Runner?
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
@@ -122,7 +133,7 @@ public class StatisticUtils {
 
         ) {
 
-            //ToDo: check the older of shipments <- .values()
+            //ToDo: check the order of shipments <- .values()
             for (Shipment shipment : shipments.values()) {
                 List<List<String>> tripRecords = new ArrayList<>();
                 for (int i = 0; i < 1; i++) {
@@ -146,6 +157,8 @@ public class StatisticUtils {
                     //add records
                     tripRecord.add(personId);
                     tripRecord.add(shipment.getId());
+                    tripRecord.add(Time.writeTime(pickupTimeMap.get(shipmentId)));
+                    tripRecord.add(Time.writeTime(deliveryTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(inVehicleTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(travelTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(waitingTimeMap.get(shipmentId)));
