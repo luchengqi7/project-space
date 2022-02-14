@@ -164,14 +164,8 @@ public class RunJspritScenario implements MATSimAppCommand {
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
         //print results to a csv file
-
-        if (enableNetworkBasedCosts) {
-            statisticUtils.printVerboseNetworkBased(problem, bestSolution);
-            statisticUtils.writeNetworkBased(matsimConfig.toString(), statsOutputPath.toString());
-        } else {
-            statisticUtils.printVerbose(problem, bestSolution);
-            statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
-        }
+        statisticUtils.printVerbose(problem, bestSolution);
+        statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
