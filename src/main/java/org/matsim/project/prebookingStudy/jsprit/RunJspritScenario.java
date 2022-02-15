@@ -31,6 +31,7 @@ import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
+import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -72,6 +73,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
 
+    @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
+    private static int memoryObserverInterval;
+
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -81,6 +85,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        MemoryObserver.start(memoryObserverInterval);
+
         /*
          * some preparation - create output folder
          */
@@ -94,6 +100,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
+        StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
             NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
                     .enableCache(true)
@@ -104,6 +111,9 @@ public class RunJspritScenario implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
+            statisticUtils = new StatisticUtils(transportCosts);
+        } else {
+            statisticUtils = new StatisticUtils();
         }
 
 
@@ -153,11 +163,15 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        StatisticUtils.printVerbose(problem, bestSolution, matsimConfig.toString(), statsOutputPath.toString());
+        //print results to a csv file
+        statisticUtils.printVerbose(problem, bestSolution);
+        statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+
+        MemoryObserver.stop();
 
         /*
          * plot
