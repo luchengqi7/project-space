@@ -211,7 +211,7 @@ public class MatsimDrtRequest2Jsprit {
             }
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
-        LOG.info(counter + " requests handled in total!");
+        LOG.info("Request # " + counter + " handled in total!");
 
         //return requests
         return vrpBuilder;
