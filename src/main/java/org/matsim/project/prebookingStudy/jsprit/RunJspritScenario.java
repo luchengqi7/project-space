@@ -64,7 +64,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
     private static Path solutionOutputPath;
 
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats)", defaultValue = "output/stats.csv")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats)", defaultValue = "output/")
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
@@ -165,7 +165,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         //print results to a csv file
         statisticUtils.printVerbose(problem, bestSolution);
-        statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 

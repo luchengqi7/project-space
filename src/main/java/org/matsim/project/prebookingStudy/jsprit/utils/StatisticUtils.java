@@ -11,6 +11,8 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 //regarding printing csv
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.log4j.Logger;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
@@ -155,9 +158,25 @@ public class StatisticUtils {
         }
     }
 
-    public void write(String matsimConfig, String tripsFilename) {
-        List<String> strList = new ArrayList<String>(){{add("person");add("request_id");add("pickup_time");add("deliver_time");add("in-veh_time");add("trav_time");add("wait_time");add("trav_distance");add("euclidean_distance");
-            add("start_link");add("start_x");add("start_y");add("end_link");add("end_x");add("end_y");}};
+    public void writeStats(String matsimConfig, String tripsFilename) {
+
+        List<String> strList = new ArrayList<String>() {{
+            add("person");
+            add("request_id");
+            add("pickup_time");
+            add("deliver_time");
+            add("in-veh_time");
+            add("trav_time");
+            add("wait_time");
+            add("trav_distance");
+            add("euclidean_distance");
+            add("start_link");
+            add("start_x");
+            add("start_y");
+            add("end_link");
+            add("end_x");
+            add("end_y");
+        }};
         if (enableNetworkBasedCosts) {
             strList.add("direct_trav_time");
             strList.add("direct_trav_distance");
@@ -167,7 +186,7 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -184,7 +203,7 @@ public class StatisticUtils {
 
                     //ToDo: @Chengqi, how to avoid this?
                     String personId = null;
-                    for (String retval: shipment.getId().split("#", 2)){
+                    for (String retval : shipment.getId().split("#", 2)) {
                         personId = retval;
                         break;
                     }
@@ -229,6 +248,112 @@ public class StatisticUtils {
 
             e.printStackTrace();
         }
+
+    }
+
+    public void writeCustomerStats(String matsimConfig, String tripsFilename) {
+
+        tripsFilename = tripsFilename + "_customer_stats.csv";
+        List<String> strList = new ArrayList<String>() {{
+            add("rides");
+            add("wait_average");
+            add("wait_max");
+            add("wait_p95");
+            add("wait_p75");
+            add("wait_median");
+            add("percentage_WT_below_10");
+            add("percentage_WT_below_15");
+            add("inVehicleTravelTime_mean");
+            add("distance_m_mean");
+            add("directDistance_m_mean");
+            add("totalTravelTime_mean");
+        }};
+
+        String[] tripsHeader = strList.toArray(new String[strList.size()]);
+        //ToDo: load config in Runner?
+        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
+
+        //ToDo: do not use BufferedWriter
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+                CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
+
+        ) {
+
+            DescriptiveStatistics waitStats = new DescriptiveStatistics();
+            DescriptiveStatistics rideStats = new DescriptiveStatistics();
+            DescriptiveStatistics distanceStats = new DescriptiveStatistics();
+            DescriptiveStatistics directDistanceStats = new DescriptiveStatistics();
+            DescriptiveStatistics traveltimes = new DescriptiveStatistics();
+
+/*                DecimalFormat format = new DecimalFormat();
+            format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
+            format.setMinimumIntegerDigits(1);
+            format.setMaximumFractionDigits(2);
+            format.setGroupingUsed(false);*/
+
+            //ToDo: change to steam style
+            for (Double value : waitingTimeMap.values()) {
+                waitStats.addValue(value.doubleValue());
+            }
+            for (Double value : inVehicleTimeMap.values()) {
+                rideStats.addValue(value.doubleValue());
+            }
+            for (Double value : travelDistanceMap.values()) {
+                distanceStats.addValue(value.doubleValue());
+            }
+            for (Double value : directTravelDistanceMap.values()) {
+                directDistanceStats.addValue(value.doubleValue());
+            }
+            for (Double value : travelTimeMap.values()) {
+                traveltimes.addValue(value.doubleValue());
+            }
+
+
+            //ToDo: check the order of shipments <- .values()
+            //for (Shipment shipment : shipments.values()) { //for iterations
+            List<List<String>> tripRecords = new ArrayList<>();
+            for (int i = 0; i < 1; i++) {
+                List<String> tripRecord = new ArrayList<>();
+                tripRecords.add(tripRecord);
+
+
+                //add records
+                tripRecord.add(Integer.toString(shipments.size()));
+                tripRecord.add(Double.toString(waitStats.getMean()));
+                tripRecord.add(Double.toString(waitStats.getMax()));
+                tripRecord.add(Double.toString(waitStats.getPercentile(95)));
+                tripRecord.add(Double.toString(waitStats.getPercentile(75)));
+                tripRecord.add(Double.toString(waitStats.getPercentile(50)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeBelow(600, waitStats)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeBelow(900, waitStats)));
+                tripRecord.add(Double.toString(rideStats.getMean()));
+                tripRecord.add(Double.toString(distanceStats.getMean()));
+                tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                tripRecord.add(Double.toString(traveltimes.getMean()));
+
+
+                if (tripsHeader.length != tripRecord.size()) {
+                    throw new RuntimeException("TRIPSHEADER.length != tripRecord.size()");
+                }
+            }
+
+            tripsCsvPrinter.printRecords(tripRecords);
+            //}
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+
+    }
+    public static double getPercentageWaitTimeBelow(int timeCriteria, DescriptiveStatistics stats) {
+        double[] waitingTimes = stats.getValues();
+
+        if (waitingTimes.length == 0) {
+            return Double.NaN; // to be consistent with DescriptiveStatistics
+        }
+
+        double count = (double)Arrays.stream(waitingTimes).filter(t -> t < timeCriteria).count();
+        return count * 100 / waitingTimes.length;
     }
 
 }
