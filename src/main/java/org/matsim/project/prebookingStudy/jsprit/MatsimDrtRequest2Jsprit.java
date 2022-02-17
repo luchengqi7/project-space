@@ -45,7 +45,8 @@ public class MatsimDrtRequest2Jsprit {
     //For switching to the oneTaxi Scenario with prebooking (Can not read from the config directly, so must be specified)
     String dvrpMode;
     int capacityIndex;
-    int maximalWaitingtime;
+    double maxWaitTime;
+    double maxTravelTimeAlpha;
     Network network;
     LeastCostPathCalculator router;
 
@@ -53,13 +54,12 @@ public class MatsimDrtRequest2Jsprit {
 
     // ================ For test purpose
     public static void main(String[] args) {
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0, 60 * 15);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit("/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml", "taxi", 0);
     }
 
-    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex, int maximalWaitingtime) {
+    MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex) {
         this.dvrpMode = dvrpMode;
         this.capacityIndex = capacityIndex;
-        this.maximalWaitingtime = maximalWaitingtime;
 
         URL fleetSpecificationUrl = null;
         Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
@@ -67,6 +67,8 @@ public class MatsimDrtRequest2Jsprit {
         this.network = scenario.getNetwork();
         for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
             fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
+            this.maxWaitTime = drtCfg.getMaxWaitTime();
+            this.maxTravelTimeAlpha = drtCfg.getMaxTravelTimeAlpha();
         }
         new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
 
@@ -198,15 +200,14 @@ public class MatsimDrtRequest2Jsprit {
                  *
                  */
                 double speed = vehicleType.getMaxVelocity();
-                double detourFactor = 1.3;
+                // double detourFactor = 1.3;
                 // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
                 // double increment = 0.;
                 //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
 
-                // double poolingFactor = 1.5;
                 double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
                 //ToDo: change maximalWaitingtime to beta from config file
-                double latestDeliveryTime = pickupTime + maximalWaitingtime + travelTime * detourFactor;
+                double latestDeliveryTime = pickupTime + maxWaitTime + travelTime * maxTravelTimeAlpha;
                 Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                         //.setName("myShipment")
                         .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
@@ -215,11 +216,11 @@ public class MatsimDrtRequest2Jsprit {
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                         .setPickupServiceTime(0)
                         .setDeliveryServiceTime(0)
-                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maximalWaitingtime))
+                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
                         //ToDo: remove travelTime?
                         .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
                         //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-                        //.setMaxTimeInVehicle(poolingFactor * transportTime + increment)
+                        //.setMaxTimeInVehicle(maxTravelTimeAlpha * transportTime + increment)
                         //.setPriority()
                         .build();
                 vrpBuilder.addJob(shipment);

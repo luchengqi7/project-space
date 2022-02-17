@@ -55,9 +55,6 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--capacity-index", description = "index of capacity", defaultValue = "0")
     private static int capacityIndex;
 
-    @CommandLine.Option(names = "--maximal-waiting-time", description = "maximal waiting time of passenger", defaultValue = "900")
-    private static int maximalWaitingtime;
-
     @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
     private static int numberOfIterations;
 
@@ -101,7 +98,7 @@ public class RunJspritScenario implements MATSimAppCommand {
             if (result) System.out.println("./output created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
