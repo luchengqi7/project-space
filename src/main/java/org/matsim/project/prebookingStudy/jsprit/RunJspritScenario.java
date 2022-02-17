@@ -76,6 +76,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
 
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    private static int maxVelocity;
+
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -124,7 +127,7 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
                 .addCapacityDimension(capacityIndex, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
-                .setMaxVelocity(30)
+                .setMaxVelocity(maxVelocity)
 /*                .setFixedCost()
                 .setCostPerDistance()
                 .setCostPerTransportTime()
