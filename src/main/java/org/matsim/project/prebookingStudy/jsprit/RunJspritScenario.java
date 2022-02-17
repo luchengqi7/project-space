@@ -142,7 +142,6 @@ public class RunJspritScenario implements MATSimAppCommand {
         //use Shipment to create requests
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType);
 
-
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
         //problem.getJobs();

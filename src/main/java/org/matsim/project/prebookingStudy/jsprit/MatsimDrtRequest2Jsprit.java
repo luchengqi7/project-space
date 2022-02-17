@@ -22,7 +22,12 @@ import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.router.LeastCostPathCalculatorModule;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
+import org.matsim.core.router.speedy.SpeedyALTFactory;
+import org.matsim.core.router.util.LeastCostPathCalculator;
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 
 import java.util.ArrayList;
@@ -30,6 +35,7 @@ import java.util.List;
 import java.net.URL;
 
 import org.apache.log4j.Logger;
+import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 
 public class MatsimDrtRequest2Jsprit {
 
@@ -41,6 +47,7 @@ public class MatsimDrtRequest2Jsprit {
     int capacityIndex;
     int maximalWaitingtime;
     Network network;
+    LeastCostPathCalculator router;
 
     private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
 
@@ -62,6 +69,10 @@ public class MatsimDrtRequest2Jsprit {
             fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
         }
         new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
+
+        TravelTime travelTime = new FreeSpeedTravelTime();
+        this.router = new SpeedyALTFactory().createPathCalculator
+                (network, new OnlyTimeDependentTravelDisutility(travelTime), travelTime);
     }
 
     // ================ Vehicle Reader
@@ -188,22 +199,27 @@ public class MatsimDrtRequest2Jsprit {
                  */
                 double speed = vehicleType.getMaxVelocity();
                 double detourFactor = 1.3;
-                double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
-                double increment = 0.;
+                // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
+                // double increment = 0.;
                 //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
-                double poolingFactor = 1.5;
+
+                // double poolingFactor = 1.5;
+                double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
+                //ToDo: change maximalWaitingtime to beta from config file
+                double latestDeliveryTime = pickupTime + maximalWaitingtime + travelTime * detourFactor;
                 Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                         //.setName("myShipment")
                         .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
                         .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
                         .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
-                        .setPickupServiceTime(60)
-                        .setDeliveryServiceTime(60)
+                        .setPickupServiceTime(0)
+                        .setDeliveryServiceTime(0)
                         .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maximalWaitingtime))
-                        //.setDeliveryTimeWindow(new TimeWindow(0, deliveryTime + DILIVERYTOLERANCETIME_OFFSET))
+                        //ToDo: remove travelTime?
+                        .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
                         //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-                        .setMaxTimeInVehicle(poolingFactor * transportTime + increment)
+                        //.setMaxTimeInVehicle(poolingFactor * transportTime + increment)
                         //.setPriority()
                         .build();
                 vrpBuilder.addJob(shipment);
