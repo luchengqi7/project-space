@@ -282,6 +282,9 @@ public class StatisticUtils {
             add("distance_m_mean");
             add("directDistance_m_mean");
             add("totalTravelTime_mean");
+
+            add("onboardDelayRatio_mean");
+            add("detourDistanceRatio_mean");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -300,6 +303,9 @@ public class StatisticUtils {
             DescriptiveStatistics directDistanceStats = new DescriptiveStatistics();
             DescriptiveStatistics traveltimes = new DescriptiveStatistics();
 
+            DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
+            DescriptiveStatistics detourDistanceRatioStats = new DescriptiveStatistics();
+
 /*                DecimalFormat format = new DecimalFormat();
             format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
             format.setMinimumIntegerDigits(1);
@@ -310,14 +316,24 @@ public class StatisticUtils {
             for (Double value : waitingTimeMap.values()) {
                 waitStats.addValue(value.doubleValue());
             }
-            for (Double value : inVehicleTimeMap.values()) {
-                rideStats.addValue(value.doubleValue());
+            for (Map.Entry<String, Double> entry : inVehicleTimeMap.entrySet()) {
+                double actualInVehicleTime = entry.getValue().doubleValue();
+                rideStats.addValue(actualInVehicleTime);
+
+                double estimatedDirectInVehicleTime = directTravelTimeMap.get(entry.getKey());
+                double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
+                onboardDelayRatioStats.addValue(onboardDelayRatio);
             }
             for (Double value : passengerTraveledDistanceMap.values()) {
                 distanceStats.addValue(value.doubleValue());
             }
-            for (Double value : directTravelDistanceMap.values()) {
-                directDistanceStats.addValue(value.doubleValue());
+            for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
+                double estimatedDirectTravelDistance = entry.getValue().doubleValue();
+                directDistanceStats.addValue(estimatedDirectTravelDistance);
+
+                double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
+                double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
+                detourDistanceRatioStats.addValue(detourDistanceRatio);
             }
             for (Double value : travelTimeMap.values()) {
                 traveltimes.addValue(value.doubleValue());
@@ -345,6 +361,9 @@ public class StatisticUtils {
                 tripRecord.add(Double.toString(distanceStats.getMean()));
                 tripRecord.add(Double.toString(directDistanceStats.getMean()));
                 tripRecord.add(Double.toString(traveltimes.getMean()));
+
+                tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
+                tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
 
 
                 if (tripsHeader.length != tripRecord.size()) {
@@ -375,18 +394,15 @@ public class StatisticUtils {
 
         tripsFilename = tripsFilename + "vehicle_stats.csv";
         List<String> strList = new ArrayList<String>() {{
-            add("rides");
-            add("wait_average");
-            add("wait_max");
-            add("wait_p95");
-            add("wait_p75");
-            add("wait_median");
-            add("percentage_WT_below_10");
-            add("percentage_WT_below_15");
-            add("inVehicleTravelTime_mean");
-            add("distance_m_mean");
-            add("directDistance_m_mean");
-            add("totalTravelTime_mean");
+            add("vehicles");
+            //add("totalDistance");
+            //add("totalEmptyDistance");
+            //add("emptyRatio");
+            add("totalPassengerDistanceTraveled");
+            //add("averageDrivenDistance");
+            //add("averageEmptyDistance");
+            add("averagePassengerDistanceTraveled");
+            //add("d_p/d_t");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -423,7 +439,7 @@ public class StatisticUtils {
             for (Double value : emptyDistanceMap.values()) {
                 empty.addValue(value.doubleValue());
             }
-            double d_p_d_t = passengerTraveledDistance.getSum() / driven.getSum();
+            //double d_p_d_t = passengerTraveledDistance.getSum() / driven.getSum();
 
 
             //ToDo: check the order of shipments <- .values()
@@ -436,14 +452,14 @@ public class StatisticUtils {
 
                 //add records
                 tripRecord.add(Integer.toString(problem.getVehicles().size()));
-                tripRecord.add(Double.toString(driven.getSum()));
-                tripRecord.add(Double.toString(empty.getSum()));
-                tripRecord.add(Double.toString(empty.getSum() / driven.getSum()));
+                //tripRecord.add(Double.toString(driven.getSum()));
+                //tripRecord.add(Double.toString(empty.getSum()));
+                //tripRecord.add(Double.toString(empty.getSum() / driven.getSum()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getSum()));
-                tripRecord.add(Double.toString(driven.getMean()));
-                tripRecord.add(Double.toString(empty.getMean()));
+                //tripRecord.add(Double.toString(driven.getMean()));
+                //tripRecord.add(Double.toString(empty.getMean()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
-                tripRecord.add(Double.toString(d_p_d_t));
+                //tripRecord.add(Double.toString(d_p_d_t));
 
 
                 if (tripsHeader.length != tripRecord.size()) {
