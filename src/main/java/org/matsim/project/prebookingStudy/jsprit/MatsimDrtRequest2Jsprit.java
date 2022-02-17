@@ -45,8 +45,9 @@ public class MatsimDrtRequest2Jsprit {
     //For switching to the oneTaxi Scenario with prebooking (Can not read from the config directly, so must be specified)
     String dvrpMode;
     int capacityIndex;
-    double maxWaitTime;
     double maxTravelTimeAlpha;
+    double maxTravelTimeBeta;
+    double maxWaitTime;
     Network network;
     LeastCostPathCalculator router;
 
@@ -67,8 +68,10 @@ public class MatsimDrtRequest2Jsprit {
         this.network = scenario.getNetwork();
         for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
             fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
-            this.maxWaitTime = drtCfg.getMaxWaitTime();
+
             this.maxTravelTimeAlpha = drtCfg.getMaxTravelTimeAlpha();
+            this.maxTravelTimeBeta = drtCfg.getMaxTravelTimeBeta();
+            this.maxWaitTime = drtCfg.getMaxWaitTime();
         }
         new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
 
@@ -202,12 +205,11 @@ public class MatsimDrtRequest2Jsprit {
                 double speed = vehicleType.getMaxVelocity();
                 // double detourFactor = 1.3;
                 // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
-                // double increment = 0.;
                 //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
 
                 double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
                 //ToDo: change maximalWaitingtime to beta from config file
-                double latestDeliveryTime = pickupTime + maxWaitTime + travelTime * maxTravelTimeAlpha;
+                double latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
                 Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                         //.setName("myShipment")
                         .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
@@ -219,8 +221,8 @@ public class MatsimDrtRequest2Jsprit {
                         .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
                         //ToDo: remove travelTime?
                         .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
-                        //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour facyor) * time travel!
-                        //.setMaxTimeInVehicle(maxTravelTimeAlpha * transportTime + increment)
+                        //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
+                        //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                         //.setPriority()
                         .build();
                 vrpBuilder.addJob(shipment);
