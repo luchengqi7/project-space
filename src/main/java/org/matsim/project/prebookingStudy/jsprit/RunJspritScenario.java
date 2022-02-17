@@ -64,7 +64,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
     private static Path solutionOutputPath;
 
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats)", defaultValue = "output/stats.csv")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output/")
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
@@ -75,6 +75,9 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
+
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    private static int maxVelocity;
 
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
@@ -124,7 +127,7 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
                 .addCapacityDimension(capacityIndex, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
-                .setMaxVelocity(30)
+                .setMaxVelocity(maxVelocity)
 /*                .setFixedCost()
                 .setCostPerDistance()
                 .setCostPerTransportTime()
@@ -164,7 +167,9 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         //print results to a csv file
         statisticUtils.printVerbose(problem, bestSolution);
-        statisticUtils.write(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
