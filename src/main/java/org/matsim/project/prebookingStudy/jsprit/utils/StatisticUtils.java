@@ -189,11 +189,12 @@ public class StatisticUtils {
             add("end_link");
             add("end_x");
             add("end_y");
+
+            if (enableNetworkBasedCosts) {
+                add("direct_trav_time");
+                add("direct_trav_distance");
+            }
         }};
-        if (enableNetworkBasedCosts) {
-            strList.add("direct_trav_time");
-            strList.add("direct_trav_distance");
-        }
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
         //ToDo: load config in Runner?
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
@@ -277,11 +278,15 @@ public class StatisticUtils {
             add("percentage_WT_below_15");
             add("inVehicleTravelTime_mean");
             add("distance_m_mean");
-            add("directDistance_m_mean");
+            if (enableNetworkBasedCosts) {
+                add("directDistance_m_mean");
+            }
             add("totalTravelTime_mean");
 
-            add("onboardDelayRatio_mean");
-            add("detourDistanceRatio_mean");
+            if (enableNetworkBasedCosts) {
+                add("onboardDelayRatio_mean");
+                add("detourDistanceRatio_mean");
+            }
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -317,20 +322,24 @@ public class StatisticUtils {
                 double actualInVehicleTime = entry.getValue().doubleValue();
                 rideStats.addValue(actualInVehicleTime);
 
-                double estimatedDirectInVehicleTime = directTravelTimeMap.get(entry.getKey());
-                double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
-                onboardDelayRatioStats.addValue(onboardDelayRatio);
+                if (enableNetworkBasedCosts) {
+                    double estimatedDirectInVehicleTime = directTravelTimeMap.get(entry.getKey());
+                    double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
+                    onboardDelayRatioStats.addValue(onboardDelayRatio);
+                }
             }
             for (Double value : passengerTraveledDistanceMap.values()) {
                 distanceStats.addValue(value.doubleValue());
             }
-            for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
-                double estimatedDirectTravelDistance = entry.getValue().doubleValue();
-                directDistanceStats.addValue(estimatedDirectTravelDistance);
+            if (enableNetworkBasedCosts) {
+                for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
+                    double estimatedDirectTravelDistance = entry.getValue().doubleValue();
+                    directDistanceStats.addValue(estimatedDirectTravelDistance);
 
-                double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
-                double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
-                detourDistanceRatioStats.addValue(detourDistanceRatio);
+                    double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
+                    double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
+                    detourDistanceRatioStats.addValue(detourDistanceRatio);
+                }
             }
             for (Double value : travelTimeMap.values()) {
                 traveltimes.addValue(value.doubleValue());
@@ -356,11 +365,15 @@ public class StatisticUtils {
                 tripRecord.add(Double.toString(getPercentageWaitTimeBelow(900, waitStats)));
                 tripRecord.add(Double.toString(rideStats.getMean()));
                 tripRecord.add(Double.toString(distanceStats.getMean()));
-                tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                }
                 tripRecord.add(Double.toString(traveltimes.getMean()));
 
-                tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
-                tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
+                    tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
+                }
 
 
                 if (tripsHeader.length != tripRecord.size()) {
