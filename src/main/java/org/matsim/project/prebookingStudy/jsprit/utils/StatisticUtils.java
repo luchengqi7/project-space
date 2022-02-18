@@ -27,8 +27,6 @@ import org.apache.log4j.Logger;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
-import org.matsim.project.prebookingStudy.jsprit.NetworkBasedDrtVrpCosts;
-import org.matsim.api.core.v01.network.Network;
 
 public class StatisticUtils {
 
@@ -201,7 +199,7 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "stats.csv"),
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "/output_trips.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -268,7 +266,6 @@ public class StatisticUtils {
 
     public void writeCustomerStats(String matsimConfig, String tripsFilename) {
 
-        tripsFilename = tripsFilename + "customer_stats.csv";
         List<String> strList = new ArrayList<String>() {{
             add("rides");
             add("wait_average");
@@ -292,7 +289,7 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "/customer_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -392,7 +389,6 @@ public class StatisticUtils {
 
     public void writeVehicleStats(String matsimConfig, String tripsFilename, VehicleRoutingProblem problem) {
 
-        tripsFilename = tripsFilename + "vehicle_stats.csv";
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
             //add("totalDistance");
@@ -410,7 +406,7 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "vehicle_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
