@@ -163,8 +163,8 @@ public class RunJspritScenario implements MATSimAppCommand {
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
         //print results to a csv file
-        statisticUtils.printVerbose(problem, bestSolution);
-        statisticUtils.writeStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.statsCollector(problem, bestSolution);
+        statisticUtils.writeOutputTrips(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 

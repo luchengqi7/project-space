@@ -59,7 +59,7 @@ public class StatisticUtils {
     }
 
 
-    public void printVerbose(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
+    public void statsCollector(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
         list.sort(new com.graphhopper.jsprit.core.util.VehicleIndexComparator());
         Map<String, Job> jobs = problem.getJobs();
@@ -171,7 +171,7 @@ public class StatisticUtils {
         }
     }
 
-    public void writeStats(String matsimConfig, String tripsFilename) {
+    public void writeOutputTrips(String matsimConfig, String tripsFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("person");
