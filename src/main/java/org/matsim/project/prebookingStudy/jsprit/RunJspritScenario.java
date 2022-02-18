@@ -61,7 +61,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
     private static Path solutionOutputPath;
 
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output/")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output")
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
