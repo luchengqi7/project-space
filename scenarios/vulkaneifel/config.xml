@@ -18,7 +18,7 @@
 			<param name="operationalScheme" value="door2door"/>
 
 			<!-- Bus stop duration. -->
-			<param name="stopDuration" value="0.0"/>
+			<param name="stopDuration" value="1.0"/>
 
 			<!-- An XML file specifying the vehicle fleet. The file format according to dvrp_vehicles_v1.dtd -->
 			<param name="vehiclesFile" value="drt-vehicles/500-8-seater-drt-vehicles.xml"/>
