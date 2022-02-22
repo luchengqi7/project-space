@@ -58,9 +58,9 @@
 
 		<!-- Used for estimation of travel times for VrpOptimizer by means of the exponential moving average. The weighting decrease, alpha, must be in (0,1]. We suggest small values of alpha, e.g. 0.05. The averaging starts from the initial travel time estimates. If not provided, the free-speed TTs is used as the initial estimates For more info see comments in: VrpTravelTimeEstimator, VrpTravelTimeModules, DvrpModule. -->
 		<param name="travelTimeEstimationAlpha" value="0.05" />
-        <parameterset type="travelTimeMatrix">
+<!--        <parameterset type="travelTimeMatrix">
             <param name="cellSize" value="500"/>
-        </parameterset>
+        </parameterset>-->
 	</module>
 
 	<module name="network">
