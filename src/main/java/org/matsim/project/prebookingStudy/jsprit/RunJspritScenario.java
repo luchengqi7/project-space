@@ -19,8 +19,12 @@ package org.matsim.project.prebookingStudy.jsprit;
 
 import com.graphhopper.jsprit.core.algorithm.VehicleRoutingAlgorithm;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
+import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
 import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
@@ -149,7 +153,12 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
          * get the algorithm out-of-the-box.
          */
-        VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
+        //VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
+        JobNeighborhoods jobNeighborhoods = new JobNeighborhoodsFactory().createNeighborhoods(problem, new AvgServiceAndShipmentDistance(problem.getTransportCosts()), (int) (problem.getJobs().values().size() * 0.5));
+        jobNeighborhoods.initialise();
+        double maxCosts = jobNeighborhoods.getMaxDistance();
+        SolutionCostCalculator objectiveFunction = new MatsimsolutionCostCalculatorFactory().getObjectiveFunction(problem, maxCosts);
+        VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         algorithm.setMaxIterations(numberOfIterations);
 
         /*
