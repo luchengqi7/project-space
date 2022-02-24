@@ -8,9 +8,9 @@ import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.BreakActivity;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 
-public class MatsimsolutionCostCalculatorFactory {
+public class MySolutionCostCalculatorFactory {
 
-    SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
+    static SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
