@@ -1,2 +1,2 @@
 # project-space
-First stage projects, thesis porjects, private projects, playgound and more
+First stage projects, thesis projects, private projects, playground and more
