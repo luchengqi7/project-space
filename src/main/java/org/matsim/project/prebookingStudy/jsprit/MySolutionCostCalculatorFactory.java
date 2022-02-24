@@ -10,7 +10,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 
 public class MySolutionCostCalculatorFactory {
 
-    static SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
+    public static SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
@@ -19,13 +19,14 @@ public class MySolutionCostCalculatorFactory {
                 double costs = 0.;
 
                 for (VehicleRoute route : solution.getRoutes()) {
-                    costs += route.getVehicle().getType().getVehicleCostParams().fix;
+                    //costs += route.getVehicle().getType().getVehicleCostParams().fix;
                     boolean hasBreak = false;
                     TourActivity prevAct = route.getStart();
                     for (TourActivity act : route.getActivities()) {
                         if (act instanceof BreakActivity) hasBreak = true;
                         costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
-                        costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                        //ToDo: consider ActivityCosts
+                        //costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
                         prevAct = act;
                     }
                     costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
@@ -36,7 +37,11 @@ public class MySolutionCostCalculatorFactory {
                                 costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * route.getVehicle().getType().getVehicleCostParams().perServiceTimeUnit);
                             }
                         }
+                        throw new RuntimeException("There exists Breaks.");
                     }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    throw new RuntimeException("There exists unassgndJobs.");
                 }
                 for(Job j : solution.getUnassignedJobs()){
                     costs += maxCosts * 2 * (11 - j.getPriority());
