@@ -13,7 +13,7 @@ public class MatsimsolutionCostCalculatorFactory {
     SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
         //if (objectiveFunction != null) return objectiveFunction;
 
-        SolutionCostCalculator solutionCostCalculator = new SolutionCostCalculator() {
+        return new SolutionCostCalculator() {
             @Override
             public double getCosts(VehicleRoutingProblemSolution solution) {
                 double costs = 0.;
@@ -44,6 +44,5 @@ public class MatsimsolutionCostCalculatorFactory {
                 return costs;
             }
         };
-        return solutionCostCalculator;
     }
 }
