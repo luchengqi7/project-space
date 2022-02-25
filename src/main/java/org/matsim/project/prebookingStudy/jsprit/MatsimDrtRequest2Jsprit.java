@@ -153,7 +153,7 @@ public class MatsimDrtRequest2Jsprit {
                 }
                 counter++;
                 if (counter % divisor == 0) {
-                    LOG.info(counter + " Pickups handled.");
+                    LOG.info("Pickup # " + counter + " handled.");
                     //divisor = divisor * 2;
                 }
 
@@ -178,7 +178,7 @@ public class MatsimDrtRequest2Jsprit {
                 }
                 //counter++;
                 if (counter % divisor == 0) {
-                    LOG.info(counter + " Dropoffs handled.");
+                    LOG.info("Dropoff # " + counter + " handled.");
                     divisor = divisor * 2;
                 }
 
@@ -211,6 +211,7 @@ public class MatsimDrtRequest2Jsprit {
             }
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
+        LOG.info("Request # " + counter + " handled in total!");
 
         //return requests
         return vrpBuilder;

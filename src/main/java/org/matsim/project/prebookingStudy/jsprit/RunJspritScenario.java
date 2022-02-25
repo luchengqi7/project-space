@@ -31,6 +31,7 @@ import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
+import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -63,7 +64,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
     private static Path solutionOutputPath;
 
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats)", defaultValue = "output/stats.csv")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output/")
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
@@ -71,6 +72,12 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
+
+    @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
+    private static int memoryObserverInterval;
+
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    private static int maxVelocity;
 
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
@@ -81,6 +88,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        MemoryObserver.start(memoryObserverInterval);
+
         /*
          * some preparation - create output folder
          */
@@ -94,6 +103,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
+        StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
             NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
                     .enableCache(true)
@@ -104,6 +114,9 @@ public class RunJspritScenario implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
+            statisticUtils = new StatisticUtils(transportCosts);
+        } else {
+            statisticUtils = new StatisticUtils();
         }
 
 
@@ -114,7 +127,7 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleTypeImpl.Builder vehicleTypeBuilder = VehicleTypeImpl.Builder.newInstance(dvrpMode + "-vehicle")
                 .addCapacityDimension(capacityIndex, matsimDrtRequest2Jsprit.matsimVehicleCapacityReader())
-                .setMaxVelocity(30)
+                .setMaxVelocity(maxVelocity)
 /*                .setFixedCost()
                 .setCostPerDistance()
                 .setCostPerTransportTime()
@@ -153,11 +166,17 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        StatisticUtils.printVerbose(problem, bestSolution, matsimConfig.toString(), statsOutputPath.toString());
+        //print results to a csv file
+        statisticUtils.printVerbose(problem, bestSolution);
+        statisticUtils.writeStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 
         new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+
+        MemoryObserver.stop();
 
         /*
          * plot
