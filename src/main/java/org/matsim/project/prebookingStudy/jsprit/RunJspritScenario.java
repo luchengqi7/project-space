@@ -80,6 +80,8 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
     private static int maxVelocity;
 
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -157,7 +159,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         JobNeighborhoods jobNeighborhoods = new JobNeighborhoodsFactory().createNeighborhoods(problem, new AvgServiceAndShipmentDistance(problem.getTransportCosts()), (int) (problem.getJobs().values().size() * 0.5));
         jobNeighborhoods.initialise();
         double maxCosts = jobNeighborhoods.getMaxDistance();
-        SolutionCostCalculator objectiveFunction = MySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts);
+        SolutionCostCalculator objectiveFunction = MySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         algorithm.setMaxIterations(numberOfIterations);
 
