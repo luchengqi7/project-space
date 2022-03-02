@@ -62,10 +62,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
     private static int numberOfIterations;
 
-    @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
-    private static Path solutionOutputPath;
-
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (problem-with-solution, output_trips, customer_stats, vehicle_stats)", required = true)
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "true")
@@ -96,12 +93,12 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
          * some preparation - create output folder
          */
-        File dir = new File("output");
+        File dir = new File(statsOutputPath.toString());
         // if the directory does not exist, create it
         if (!dir.exists()) {
-            System.out.println("creating directory ./output");
+            System.out.println("creating directory " + statsOutputPath.toString());
             boolean result = dir.mkdir();
-            if (result) System.out.println("./output created");
+            if (result) System.out.println(statsOutputPath.toString() + " created");
         }
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
@@ -179,7 +176,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 
-        new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
+        new VrpXMLWriter(problem, solutions).write(statsOutputPath.toString() + "problem-with-solution.xml");
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 

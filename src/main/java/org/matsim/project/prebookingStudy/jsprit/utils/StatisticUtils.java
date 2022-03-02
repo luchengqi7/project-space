@@ -171,7 +171,7 @@ public class StatisticUtils {
         }
     }
 
-    public void writeOutputTrips(String matsimConfig, String tripsFilename) {
+    public void writeOutputTrips(String matsimConfig, String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("person");
@@ -200,7 +200,8 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "/output_trips.csv"),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "output_trips.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -265,7 +266,7 @@ public class StatisticUtils {
 
     }
 
-    public void writeCustomerStats(String matsimConfig, String tripsFilename) {
+    public void writeCustomerStats(String matsimConfig, String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("rides");
@@ -294,7 +295,8 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "/customer_stats.csv"),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "customer_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -400,7 +402,7 @@ public class StatisticUtils {
         return count * 100 / waitingTimes.length;
     }
 
-    public void writeVehicleStats(String matsimConfig, String tripsFilename, VehicleRoutingProblem problem) {
+    public void writeVehicleStats(String matsimConfig, String outputFilename, VehicleRoutingProblem problem) {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
@@ -419,7 +421,8 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "/vehicle_stats.csv"),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "vehicle_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {

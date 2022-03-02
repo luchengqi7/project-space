@@ -25,6 +25,7 @@ import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.io.problem.VrpXMLReader;
 //import com.graphhopper.jsprit.util.Examples;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,10 +42,7 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-input-path", description = "path for feeding solution file", required = true)
     private static Path solutionInputPath;
 
-    @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", required = true)
-    private static Path solutionOutputPath;
-
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", required = true)
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (problem-with-solution, output_trips, customer_stats, vehicle_stats)", required = true)
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "true")
@@ -61,6 +59,18 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     }
 
     public Integer call() throws Exception {
+
+        /*
+         * some preparation - create output folder
+         */
+        File dir = new File(statsOutputPath.toString());
+        // if the directory does not exist, create it
+        if (!dir.exists()) {
+            System.out.println("creating directory " + statsOutputPath.toString());
+            boolean result = dir.mkdir();
+            if (result) System.out.println(statsOutputPath.toString() + " created");
+        }
+
 
         // Get scenario (network)
         Scenario scenario = ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString()));
@@ -135,7 +145,7 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
         statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 
-        new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
+        new VrpXMLWriter(problem, solutions).write(statsOutputPath.toString() + "problem-with-solution.xml");
         /*
          * print solution
          */
