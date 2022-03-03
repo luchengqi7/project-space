@@ -215,41 +215,13 @@ public class MySolutionCostCalculatorFactory {
         };
     }
 
-    private static SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
+    private SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
             @Override
             public double getCosts(VehicleRoutingProblemSolution solution) {
-                double costs = 0.;
-
-                for (VehicleRoute route : solution.getRoutes()) {
-                    //costs += route.getVehicle().getType().getVehicleCostParams().fix;
-                    boolean hasBreak = false;
-                    TourActivity prevAct = route.getStart();
-                    for (TourActivity act : route.getActivities()) {
-                        if (act instanceof BreakActivity) hasBreak = true;
-                        //costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
-                        //costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
-                        prevAct = act;
-                    }
-                    //costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
-                    if (route.getVehicle().getBreak() != null) {
-                        if (!hasBreak) {
-                            //break defined and required but not assigned penalty
-                            if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
-                                costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * route.getVehicle().getType().getVehicleCostParams().perServiceTimeUnit);
-                            }
-                        }
-                        throw new RuntimeException("There exists Breaks.");
-                    }
-                }
-                if (solution.getUnassignedJobs().size() != 0){
-                    throw new RuntimeException("There exists unassgndJobs.");
-                }
-                for(Job j : solution.getUnassignedJobs()){
-                    costs += maxCosts * 2 * (11 - j.getPriority());
-                }
+                double costs = MySolutionCostCalculatorFactory.this.getCosts(solution, maxCosts);
 
                 //add travel distance
                 statisticUtilsForOF.statsCollector(vrp, solution);
@@ -257,5 +229,38 @@ public class MySolutionCostCalculatorFactory {
                 return costs;
             }
         };
+    }
+
+    private static double getCosts(VehicleRoutingProblemSolution solution, double maxCosts) {
+        double costs = 0.;
+
+        for (VehicleRoute route : solution.getRoutes()) {
+            //costs += route.getVehicle().getType().getVehicleCostParams().fix;
+            boolean hasBreak = false;
+            TourActivity prevAct = route.getStart();
+            for (TourActivity act : route.getActivities()) {
+                if (act instanceof BreakActivity) hasBreak = true;
+                //costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                //costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                prevAct = act;
+            }
+            //costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+            if (route.getVehicle().getBreak() != null) {
+                if (!hasBreak) {
+                    //break defined and required but not assigned penalty
+                    if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
+                        costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * route.getVehicle().getType().getVehicleCostParams().perServiceTimeUnit);
+                    }
+                }
+                throw new RuntimeException("There exists Breaks.");
+            }
+        }
+        if (solution.getUnassignedJobs().size() != 0){
+            throw new RuntimeException("There exists unassgndJobs.");
+        }
+        for(Job j : solution.getUnassignedJobs()){
+            costs += maxCosts * 2 * (11 - j.getPriority());
+        }
+        return costs;
     }
 }
