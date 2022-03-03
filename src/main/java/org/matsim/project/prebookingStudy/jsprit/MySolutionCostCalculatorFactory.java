@@ -215,13 +215,13 @@ public class MySolutionCostCalculatorFactory {
         };
     }
 
-    private SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
+    private static SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
             @Override
             public double getCosts(VehicleRoutingProblemSolution solution) {
-                double costs = MySolutionCostCalculatorFactory.this.getCosts(solution, maxCosts);
+                double costs = MySolutionCostCalculatorFactory.getCosts(solution, maxCosts);
 
                 //add travel distance
                 statisticUtilsForOF.statsCollector(vrp, solution);
