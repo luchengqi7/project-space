@@ -30,25 +30,25 @@ import org.matsim.core.utils.misc.Time;
 
 public class StatisticCollectorForOF {
 
-    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
-    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
+    final double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
+    final double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
 
     VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
 
-    final static Map<String,Shipment> shipments = new HashMap<>();
-    final static Map<String, Double> waitingTimeMap = new HashMap<>();
-    final static Map<String, Double> inVehicleTimeMap = new HashMap<>();
-    final static Map<String, Double> travelTimeMap = new HashMap<>();
-    final static Map<String, Double> passengerTraveledDistanceMap = new HashMap<>();
-    final static Map<String, Double> pickupTimeMap = new HashMap<>();
-    final static Map<String, Double> deliveryTimeMap = new HashMap<>();
-    final static Map<String, Double> directTravelTimeMap = new HashMap<>();
-    final static Map<String, Double> directTravelDistanceMap = new HashMap<>();
+    final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String, Double> waitingTimeMap = new HashMap<>();
+    final Map<String, Double> inVehicleTimeMap = new HashMap<>();
+    final Map<String, Double> travelTimeMap = new HashMap<>();
+    final Map<String, Double> passengerTraveledDistanceMap = new HashMap<>();
+    final Map<String, Double> pickupTimeMap = new HashMap<>();
+    final Map<String, Double> deliveryTimeMap = new HashMap<>();
+    final Map<String, Double> directTravelTimeMap = new HashMap<>();
+    final Map<String, Double> directTravelDistanceMap = new HashMap<>();
 
-    final static Map<String, Double> drivenDistanceMap = new HashMap<>();
-    final static Map<String, Double> occupiedDistanceMap = new HashMap<>();
-    final static Map<String, Double> emptyDistanceMap = new HashMap<>();
+    final Map<String, Double> drivenDistanceMap = new HashMap<>();
+    final Map<String, Double> occupiedDistanceMap = new HashMap<>();
+    final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
     public Map<String, Double> getTravelTimeMap() {
         return travelTimeMap;
