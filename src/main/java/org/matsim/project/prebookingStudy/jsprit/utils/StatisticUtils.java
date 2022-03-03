@@ -50,13 +50,6 @@ public class StatisticUtils {
     final static Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final static Map<String, Double> emptyDistanceMap = new HashMap<>();
 
-    public Map<String, Double> getTravelTimeMap() {
-        return travelTimeMap;
-    }
-    public Map<String, Double> getPassengerTraveledDistanceMap() {
-        return passengerTraveledDistanceMap;
-    }
-
     public StatisticUtils(VehicleRoutingTransportCosts transportCosts) {
             this.transportCosts = transportCosts;
             this.enableNetworkBasedCosts = true;

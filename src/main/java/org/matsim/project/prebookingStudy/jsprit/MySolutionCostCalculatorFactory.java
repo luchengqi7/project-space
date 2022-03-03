@@ -12,7 +12,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
+import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForOF;
 
 import java.nio.file.Path;
 
@@ -22,26 +22,26 @@ public class MySolutionCostCalculatorFactory {
 
     public static SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
-        StatisticUtils statisticUtilsForOF;
+        StatisticCollectorForOF statisticCollectorForOF;
         if (enableNetworkBasedCosts) {
             NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString())).getNetwork())
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
-            statisticUtilsForOF = new StatisticUtils(transportCosts);
+            statisticCollectorForOF = new StatisticCollectorForOF(transportCosts);
         } else {
-            statisticUtilsForOF = new StatisticUtils();
+            statisticCollectorForOF = new StatisticCollectorForOF();
         }
 
         switch (objectiveFunctionType) {
             case JspritDefaultObjectiveFunction:
                 return getJspritDefaultObjectiveFunction(vrp, maxCosts);
             case TTObjectiveFunction:
-                return getTTObjectiveFunction(vrp, maxCosts, statisticUtilsForOF);
+                return getTTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TDObjectiveFunction:
-                return getTDObjectiveFunction(vrp, maxCosts, statisticUtilsForOF);
+                return getTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TTTDObjectiveFunction:
-                return getTTTDObjectiveFunction(vrp, maxCosts, statisticUtilsForOF);
+                return getTTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -123,7 +123,7 @@ public class MySolutionCostCalculatorFactory {
         };
     }
 
-    private static SolutionCostCalculator getTTObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
+    private static SolutionCostCalculator getTTObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
@@ -161,14 +161,14 @@ public class MySolutionCostCalculatorFactory {
 
                 //add travel time
                 //ToDo: The used cost here is the travel time rather than TravelDisutility.
-                statisticUtilsForOF.statsCollector(vrp, solution);
-                costs += statisticUtilsForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
     }
 
-    private static SolutionCostCalculator getTTTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
+    private static SolutionCostCalculator getTTTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
@@ -206,16 +206,16 @@ public class MySolutionCostCalculatorFactory {
 
                 //add travel time
                 //ToDo: The used cost here is the travel time rather than TravelDisutility.
-                statisticUtilsForOF.statsCollector(vrp, solution);
-                costs += statisticUtilsForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add travel distance
-                costs += statisticUtilsForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
     }
 
-    private static SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticUtils statisticUtilsForOF) {
+    private static SolutionCostCalculator getTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
         //if (objectiveFunction != null) return objectiveFunction;
 
         return new SolutionCostCalculator() {
@@ -224,8 +224,8 @@ public class MySolutionCostCalculatorFactory {
                 double costs = MySolutionCostCalculatorFactory.getCosts(solution, maxCosts);
 
                 //add travel distance
-                statisticUtilsForOF.statsCollector(vrp, solution);
-                costs += statisticUtilsForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
