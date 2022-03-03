@@ -61,6 +61,7 @@ public class MySolutionCostCalculatorFactory {
                     TourActivity prevAct = route.getStart();
                     for (TourActivity act : route.getActivities()) {
                         if (act instanceof BreakActivity) hasBreak = true;
+                        //ToDo: The used cost here is the TravelDisutility rather than travel time.
                         costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
                         costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
                         prevAct = act;
@@ -160,7 +161,6 @@ public class MySolutionCostCalculatorFactory {
                 }
 
                 //add travel time
-                //ToDo: The used cost here is the travel time rather than TravelDisutility.
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
@@ -205,7 +205,6 @@ public class MySolutionCostCalculatorFactory {
                 }
 
                 //add travel time
-                //ToDo: The used cost here is the travel time rather than TravelDisutility.
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add travel distance
