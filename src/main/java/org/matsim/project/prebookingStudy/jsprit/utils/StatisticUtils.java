@@ -53,6 +53,9 @@ public class StatisticUtils {
     public Map<String, Double> getTravelTimeMap() {
         return travelTimeMap;
     }
+    public Map<String, Double> getPassengerTraveledDistanceMap() {
+        return passengerTraveledDistanceMap;
+    }
 
     public StatisticUtils(VehicleRoutingTransportCosts transportCosts) {
             this.transportCosts = transportCosts;
