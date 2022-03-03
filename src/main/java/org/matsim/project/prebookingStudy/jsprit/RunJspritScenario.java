@@ -158,6 +158,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         double maxCosts = jobNeighborhoods.getMaxDistance();
         SolutionCostCalculator objectiveFunction = MySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
+        LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
 
         /*
