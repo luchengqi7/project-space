@@ -20,7 +20,7 @@ public class MySolutionCostCalculatorFactory {
 
     public enum ObjectiveFunctionType {JspritDefaultObjectiveFunction, TTObjectiveFunction, TDObjectiveFunction, TTTDObjectiveFunction}
 
-    public static SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
+    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
         StatisticCollectorForOF statisticCollectorForOF;
         if (enableNetworkBasedCosts) {
