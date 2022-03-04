@@ -18,7 +18,7 @@ import java.nio.file.Path;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefaultObjectiveFunction, TTObjectiveFunction, TDObjectiveFunction, TTTDObjectiveFunction}
+    public enum ObjectiveFunctionType {JspritDefaultObjectiveFunction, TTObjectiveFunction, TDObjectiveFunction, WTObjectiveFunction, TTTDObjectiveFunction, TTWTObjectiveFunction, TTWTTDObjectiveFunction}
 
     public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
@@ -40,8 +40,14 @@ public class MySolutionCostCalculatorFactory {
                 return getTTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TDObjectiveFunction:
                 return getTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case WTObjectiveFunction:
+                return getWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TTTDObjectiveFunction:
                 return getTTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case TTWTObjectiveFunction:
+                return getTTWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case TTWTTDObjectiveFunction:
+                return getTTWTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -132,8 +138,8 @@ public class MySolutionCostCalculatorFactory {
             public double getCosts(VehicleRoutingProblemSolution solution) {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
-                //add travel time
                 statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
                 costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
@@ -148,8 +154,8 @@ public class MySolutionCostCalculatorFactory {
             public double getCosts(VehicleRoutingProblemSolution solution) {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
-                //add travel time
                 statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
                 costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add travel distance
                 costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
@@ -166,8 +172,62 @@ public class MySolutionCostCalculatorFactory {
             public double getCosts(VehicleRoutingProblemSolution solution) {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
-                //add travel distance
                 statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel distance
+                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getWTObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add waiting time
+                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getTTWTObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
+                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add waiting time
+                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getTTWTTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
+                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add waiting time
+                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add travel distance
                 costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }

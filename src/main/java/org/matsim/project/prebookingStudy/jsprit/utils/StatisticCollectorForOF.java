@@ -56,6 +56,9 @@ public class StatisticCollectorForOF {
     public Map<String, Double> getPassengerTraveledDistanceMap() {
         return passengerTraveledDistanceMap;
     }
+    public Map<String, Double> getWaitingTimeMap() {
+        return waitingTimeMap;
+    }
 
     public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts) {
         this.transportCosts = transportCosts;
