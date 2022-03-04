@@ -44,3 +44,7 @@ hs_err_pid*
 /project-space.iml
 /.idea/inspectionProfiles/Project_Default.xml
 /target
+
+# "local run" related file and folders
+/scenarios/vulkaneifel/config-test.xml
+/output_jsprit
