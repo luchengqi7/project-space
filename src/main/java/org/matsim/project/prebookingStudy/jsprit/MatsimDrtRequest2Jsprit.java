@@ -39,6 +39,9 @@ import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 
 public class MatsimDrtRequest2Jsprit {
 
+    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 0.;
+    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 0.;
+
     //Config config;
     Scenario scenario;
     final FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
@@ -216,8 +219,8 @@ public class MatsimDrtRequest2Jsprit {
                         .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
                         .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
-                        .setPickupServiceTime(0)
-                        .setDeliveryServiceTime(0)
+                        .setPickupServiceTime(PICKUP_SERVICE_TIME_IN_MATSIM)
+                        .setDeliveryServiceTime(DELIVERY_SERVICE_TIME_IN_MATSIM)
                         .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
                         //ToDo: remove travelTime?
                         .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
