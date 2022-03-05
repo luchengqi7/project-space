@@ -39,8 +39,8 @@ import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 
 public class MatsimDrtRequest2Jsprit {
 
-    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 0.;
-    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 0.;
+    public final static double PICKUP_SERVICE_TIME_IN_MATSIM = 0.;
+    public final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 0.;
 
     //Config config;
     Scenario scenario;
