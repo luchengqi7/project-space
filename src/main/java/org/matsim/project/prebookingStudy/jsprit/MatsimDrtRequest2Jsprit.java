@@ -33,6 +33,7 @@ import org.matsim.core.scenario.ScenarioUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.net.URL;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
@@ -51,8 +52,12 @@ public class MatsimDrtRequest2Jsprit {
     double maxTravelTimeAlpha;
     double maxTravelTimeBeta;
     double maxWaitTime;
-    Network network;
+    private final Network network;
     LeastCostPathCalculator router;
+
+    public Network getNetwork() {
+        return network;
+    }
 
     private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
 

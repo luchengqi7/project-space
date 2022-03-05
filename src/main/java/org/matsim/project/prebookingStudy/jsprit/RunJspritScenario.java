@@ -105,7 +105,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
+            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             if(cacheSizeLimit!=10000){
