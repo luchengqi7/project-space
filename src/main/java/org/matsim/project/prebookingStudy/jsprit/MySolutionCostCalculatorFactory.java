@@ -18,7 +18,7 @@ import java.nio.file.Path;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefaultObjectiveFunction, TTObjectiveFunction, TDObjectiveFunction, WTObjectiveFunction, TTTDObjectiveFunction, TTWTObjectiveFunction, TTWTTDObjectiveFunction}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD}
 
     public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
@@ -34,19 +34,19 @@ public class MySolutionCostCalculatorFactory {
         }
 
         switch (objectiveFunctionType) {
-            case JspritDefaultObjectiveFunction:
+            case JspritDefault:
                 return getJspritDefaultObjectiveFunction(vrp, maxCosts);
-            case TTObjectiveFunction:
+            case TT:
                 return getTTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case TDObjectiveFunction:
+            case TD:
                 return getTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case WTObjectiveFunction:
+            case WT:
                 return getWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case TTTDObjectiveFunction:
+            case TTTD:
                 return getTTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case TTWTObjectiveFunction:
+            case TTWT:
                 return getTTWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case TTWTTDObjectiveFunction:
+            case TTWTTD:
                 return getTTWTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
