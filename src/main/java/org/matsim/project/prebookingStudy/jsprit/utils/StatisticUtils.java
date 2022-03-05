@@ -30,8 +30,8 @@ import org.matsim.core.utils.misc.Time;
 
 public class StatisticUtils {
 
-    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
-    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
+    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 0.;
+    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 0.;
 
     VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
