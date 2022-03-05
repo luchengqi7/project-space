@@ -8,7 +8,6 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 import org.matsim.project.prebookingStudy.jsprit.NetworkBasedDrtVrpCosts;
 import picocli.CommandLine;
 
@@ -87,9 +86,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(transportCosts, MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM, MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM);
+            statisticUtils = new StatisticUtils(transportCosts);
         } else {
-            statisticUtils = new StatisticUtils(MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM, MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM);
+            statisticUtils = new StatisticUtils();
         }
 
         /*

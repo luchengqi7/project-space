@@ -27,13 +27,15 @@ import org.apache.log4j.Logger;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
+import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
+    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
+    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
+
     VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
-    final double PICKUP_SERVICE_TIME_IN_MATSIM;
-    final double DELIVERY_SERVICE_TIME_IN_MATSIM;
 
     final static Map<String,Shipment> shipments = new HashMap<>();
     final static Map<String, Double> waitingTimeMap = new HashMap<>();
@@ -49,16 +51,12 @@ public class StatisticUtils {
     final static Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final static Map<String, Double> emptyDistanceMap = new HashMap<>();
 
-    public StatisticUtils(VehicleRoutingTransportCosts transportCosts, double pickupServiceTimeInMatsim, double deliveryServiceTimeInMatsim) {
+    public StatisticUtils(VehicleRoutingTransportCosts transportCosts) {
             this.transportCosts = transportCosts;
             this.enableNetworkBasedCosts = true;
-            this.PICKUP_SERVICE_TIME_IN_MATSIM = pickupServiceTimeInMatsim;
-            this.DELIVERY_SERVICE_TIME_IN_MATSIM = deliveryServiceTimeInMatsim;
     }
-    public StatisticUtils(double pickupServiceTimeInMatsim, double deliveryServiceTimeInMatsim) {
+    public StatisticUtils() {
         this.enableNetworkBasedCosts = false;
-        this.PICKUP_SERVICE_TIME_IN_MATSIM = pickupServiceTimeInMatsim;
-        this.DELIVERY_SERVICE_TIME_IN_MATSIM = deliveryServiceTimeInMatsim;
     }
 
 

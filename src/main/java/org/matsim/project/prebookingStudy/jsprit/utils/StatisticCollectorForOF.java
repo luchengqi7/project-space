@@ -27,11 +27,12 @@ import org.apache.log4j.Logger;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
+import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticCollectorForOF {
 
-    final double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
-    final double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
+    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
+    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
 
     VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
