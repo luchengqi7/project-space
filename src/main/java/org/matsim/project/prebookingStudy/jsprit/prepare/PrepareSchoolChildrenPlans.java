@@ -191,6 +191,7 @@ public class PrepareSchoolChildrenPlans implements MATSimAppCommand {
     }
 
     private void modifyEducationActivity(Activity identifiedEducationActivity, Map<String, List<Coord>> schoolData, int age) {
+        identifiedEducationActivity.setEndTime(46800);  //13:00:00 This value doesn't really matter. Just set them to the same value in order to remove some strange values from raw data
         Coord originalCoord = identifiedEducationActivity.getCoord();
         Coord diffusedCoord = diffuseCoord(originalCoord);
 
