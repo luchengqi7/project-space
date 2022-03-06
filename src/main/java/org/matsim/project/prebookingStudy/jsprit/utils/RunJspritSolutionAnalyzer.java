@@ -3,8 +3,11 @@ package org.matsim.project.prebookingStudy.jsprit.utils;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
 import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
+import com.graphhopper.jsprit.core.algorithm.state.StateManager;
+import com.graphhopper.jsprit.core.problem.constraint.ConstraintManager;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
 import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
+import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
@@ -45,11 +48,11 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private static Path matsimConfig;
 
-    @CommandLine.Option(names = "--solution-input-path", description = "path for feeding solution file", required = true)
-    private static Path solutionInputPath;
-
     @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
     private static int numberOfIterations;
+
+    @CommandLine.Option(names = "--solution-input-path", description = "path for feeding solution file", required = true)
+    private static Path solutionInputPath;
 
     @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (problem-with-solution, output_trips, customer_stats, vehicle_stats)", required = true)
     private static Path statsOutputPath;
@@ -158,14 +161,23 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
         double maxCosts = jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
         SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+
+        StateManager stateManager = new StateManager(problem);
+        ConstraintManager constraintManager = new ConstraintManager(problem, stateManager);
+
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem)
                 .setObjectiveFunction(objectiveFunction)
+                .setStateAndConstraintManager(stateManager, constraintManager)
                 // to make sure the initial solution is the best ever solution
                 .setProperty(Jsprit.Strategy.WORST_REGRET, "0.")
                 .setProperty(Jsprit.Strategy.CLUSTER_REGRET, "0.")
                 .buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
+
+        //update the route times before adding it as an initial solution
+        for (VehicleRoute vehicleRoute : initSolution.getRoutes())
+            stateManager.reCalculateStates(vehicleRoute);
 
         //add (cost of) initSolution
         double cost = algorithm.getObjectiveFunction().getCosts(initSolution);
