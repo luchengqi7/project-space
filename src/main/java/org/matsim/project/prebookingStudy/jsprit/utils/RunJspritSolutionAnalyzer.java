@@ -1,6 +1,11 @@
 package org.matsim.project.prebookingStudy.jsprit.utils;
 
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
+import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
+import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
@@ -8,6 +13,7 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.project.prebookingStudy.jsprit.MySolutionCostCalculatorFactory;
 import org.matsim.project.prebookingStudy.jsprit.NetworkBasedDrtVrpCosts;
 import picocli.CommandLine;
 
@@ -42,6 +48,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--solution-input-path", description = "path for feeding solution file", required = true)
     private static Path solutionInputPath;
 
+    @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
+    private static int numberOfIterations;
+
     @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (problem-with-solution, output_trips, customer_stats, vehicle_stats)", required = true)
     private static Path statsOutputPath;
 
@@ -51,6 +60,8 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
 
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
     private static final Logger LOG = Logger.getLogger(RunJspritSolutionAnalyzer.class);
 
@@ -134,10 +145,38 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
         Collection<VehicleRoutingProblemSolution> solutions = vra.searchSolutions();*/
 
         /*
+         * Retrieve initial (best) solution.
+         */
+        VehicleRoutingProblemSolution initSolution = new SelectBest().selectSolution(solutions);
+
+        /*
+         * get the algorithm out-of-the-box.
+         */
+        //VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
+        JobNeighborhoods jobNeighborhoods = new JobNeighborhoodsFactory().createNeighborhoods(problem, new AvgServiceAndShipmentDistance(problem.getTransportCosts()), (int) (problem.getJobs().values().size() * 0.5));
+        jobNeighborhoods.initialise();
+        double maxCosts = jobNeighborhoods.getMaxDistance();
+        MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+        VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem)
+                .setObjectiveFunction(objectiveFunction)
+                // to make sure the initial solution is the best ever solution
+                .setProperty(Jsprit.Strategy.WORST_REGRET, "0.")
+                .setProperty(Jsprit.Strategy.CLUSTER_REGRET, "0.")
+                .buildAlgorithm();
+        LOG.info("The objective function used is " + objectiveFunctionType.toString());
+        algorithm.setMaxIterations(numberOfIterations);
+
+        //add (cost of) initSolution
+        double cost = algorithm.getObjectiveFunction().getCosts(initSolution);
+        System.out.println("initial solution cost = " + cost);
+        initSolution.setCost(cost);
+        algorithm.addInitialSolution(initSolution);
+
+        /*
          * Retrieve best solution.
          */
-        VehicleRoutingProblemSolution bestSolution = new SelectBest().selectSolution(solutions);
-
+        VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(algorithm.searchSolutions());
 
         //print results to a csv file
         statisticUtils.statsCollector(problem, bestSolution);
