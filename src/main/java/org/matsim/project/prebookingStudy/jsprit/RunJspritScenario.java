@@ -80,6 +80,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
+    @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
+    private static boolean enableGraphStreamViewer;
+
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
     public static void main(String[] args) {
@@ -193,8 +196,10 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
         render problem and solution with GraphStream
          */
-        GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
-        graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
+        if(enableGraphStreamViewer) {
+            GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
+            graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
+        }
 
         return 0;
     }
