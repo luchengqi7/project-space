@@ -19,8 +19,12 @@ package org.matsim.project.prebookingStudy.jsprit;
 
 import com.graphhopper.jsprit.core.algorithm.VehicleRoutingAlgorithm;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
+import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
+import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
 import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
@@ -55,16 +59,10 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--capacity-index", description = "index of capacity", defaultValue = "0")
     private static int capacityIndex;
 
-    @CommandLine.Option(names = "--maximal-waiting-time", description = "maximal waiting time of passenger", defaultValue = "900")
-    private static int maximalWaitingtime;
-
     @CommandLine.Option(names = "--nr-iter", description = "number of iterations", defaultValue = "100")
     private static int numberOfIterations;
 
-    @CommandLine.Option(names = "--solution-output-path", description = "path for saving output file (solution)", defaultValue = "output/problem-with-solution.xml")
-    private static Path solutionOutputPath;
-
-    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (stats, customer_stats, vehicle_stats)", defaultValue = "output/")
+    @CommandLine.Option(names = "--stats-output-path", description = "path for saving output file (problem-with-solution, output_trips, customer_stats, vehicle_stats)", required = true)
     private static Path statsOutputPath;
 
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
@@ -79,6 +77,11 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
     private static int maxVelocity;
 
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
+
+    @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
+    private static boolean enableGraphStreamViewer;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -93,19 +96,19 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
          * some preparation - create output folder
          */
-        File dir = new File("output");
+        File dir = new File(statsOutputPath.toString());
         // if the directory does not exist, create it
         if (!dir.exists()) {
-            System.out.println("creating directory ./output");
+            System.out.println("creating directory " + statsOutputPath.toString());
             boolean result = dir.mkdir();
-            if (result) System.out.println("./output created");
+            if (result) System.out.println(statsOutputPath.toString() + " created");
         }
 
-        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex, maximalWaitingtime);
+        MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.network)
+            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             if(cacheSizeLimit!=10000){
@@ -145,7 +148,6 @@ public class RunJspritScenario implements MATSimAppCommand {
         //use Shipment to create requests
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType);
 
-
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
         //problem.getJobs();
@@ -153,7 +155,14 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
          * get the algorithm out-of-the-box.
          */
-        VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
+        //VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
+        JobNeighborhoods jobNeighborhoods = new JobNeighborhoodsFactory().createNeighborhoods(problem, new AvgServiceAndShipmentDistance(problem.getTransportCosts()), (int) (problem.getJobs().values().size() * 0.5));
+        jobNeighborhoods.initialise();
+        double maxCosts = jobNeighborhoods.getMaxDistance();
+        MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+        VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
+        LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
 
         /*
@@ -167,12 +176,13 @@ public class RunJspritScenario implements MATSimAppCommand {
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
         //print results to a csv file
-        statisticUtils.printVerbose(problem, bestSolution);
-        statisticUtils.writeStats(matsimConfig.toString(), statsOutputPath.toString());
+        statisticUtils.statsCollector(problem, bestSolution);
+        statisticUtils.writeOutputTrips(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
         statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
 
-        new VrpXMLWriter(problem, solutions).write(solutionOutputPath.toString());
+        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
+        new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
@@ -186,8 +196,10 @@ public class RunJspritScenario implements MATSimAppCommand {
         /*
         render problem and solution with GraphStream
          */
-        GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
-        graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
+        if(enableGraphStreamViewer) {
+            GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
+            graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
+        }
 
         return 0;
     }

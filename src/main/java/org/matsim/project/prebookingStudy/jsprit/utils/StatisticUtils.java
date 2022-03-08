@@ -27,30 +27,29 @@ import org.apache.log4j.Logger;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
-import org.matsim.project.prebookingStudy.jsprit.NetworkBasedDrtVrpCosts;
-import org.matsim.api.core.v01.network.Network;
+import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
-    final static double PICKUP_SERVICE_TIME_IN_MATSIM = 60.;
-    final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 60.;
+    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
+    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
 
     VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
 
-    final static Map<String,Shipment> shipments = new HashMap<>();
-    final static Map<String, Double> waitingTimeMap = new HashMap<>();
-    final static Map<String, Double> inVehicleTimeMap = new HashMap<>();
-    final static Map<String, Double> travelTimeMap = new HashMap<>();
-    final static Map<String, Double> passengerTraveledDistanceMap = new HashMap<>();
-    final static Map<String, Double> pickupTimeMap = new HashMap<>();
-    final static Map<String, Double> deliveryTimeMap = new HashMap<>();
-    final static Map<String, Double> directTravelTimeMap = new HashMap<>();
-    final static Map<String, Double> directTravelDistanceMap = new HashMap<>();
+    final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String, Double> waitingTimeMap = new HashMap<>();
+    final Map<String, Double> inVehicleTimeMap = new HashMap<>();
+    final Map<String, Double> travelTimeMap = new HashMap<>();
+    final Map<String, Double> passengerTraveledDistanceMap = new HashMap<>();
+    final Map<String, Double> pickupTimeMap = new HashMap<>();
+    final Map<String, Double> deliveryTimeMap = new HashMap<>();
+    final Map<String, Double> directTravelTimeMap = new HashMap<>();
+    final Map<String, Double> directTravelDistanceMap = new HashMap<>();
 
-    final static Map<String, Double> drivenDistanceMap = new HashMap<>();
-    final static Map<String, Double> occupiedDistanceMap = new HashMap<>();
-    final static Map<String, Double> emptyDistanceMap = new HashMap<>();
+    final Map<String, Double> drivenDistanceMap = new HashMap<>();
+    final Map<String, Double> occupiedDistanceMap = new HashMap<>();
+    final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
     public StatisticUtils(VehicleRoutingTransportCosts transportCosts) {
             this.transportCosts = transportCosts;
@@ -61,7 +60,7 @@ public class StatisticUtils {
     }
 
 
-    public void printVerbose(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
+    public void statsCollector(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
         list.sort(new com.graphhopper.jsprit.core.util.VehicleIndexComparator());
         Map<String, Job> jobs = problem.getJobs();
@@ -173,7 +172,7 @@ public class StatisticUtils {
         }
     }
 
-    public void writeStats(String matsimConfig, String tripsFilename) {
+    public void writeOutputTrips(String matsimConfig, String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("person");
@@ -191,17 +190,19 @@ public class StatisticUtils {
             add("end_link");
             add("end_x");
             add("end_y");
+
+            if (enableNetworkBasedCosts) {
+                add("direct_trav_time");
+                add("direct_trav_distance");
+            }
         }};
-        if (enableNetworkBasedCosts) {
-            strList.add("direct_trav_time");
-            strList.add("direct_trav_distance");
-        }
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
         //ToDo: load config in Runner?
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename + "stats.csv"),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "output_trips.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -266,9 +267,8 @@ public class StatisticUtils {
 
     }
 
-    public void writeCustomerStats(String matsimConfig, String tripsFilename) {
+    public void writeCustomerStats(String matsimConfig, String outputFilename) {
 
-        tripsFilename = tripsFilename + "customer_stats.csv";
         List<String> strList = new ArrayList<String>() {{
             add("rides");
             add("wait_average");
@@ -280,11 +280,15 @@ public class StatisticUtils {
             add("percentage_WT_below_15");
             add("inVehicleTravelTime_mean");
             add("distance_m_mean");
-            add("directDistance_m_mean");
+            if (enableNetworkBasedCosts) {
+                add("directDistance_m_mean");
+            }
             add("totalTravelTime_mean");
 
-            add("onboardDelayRatio_mean");
-            add("detourDistanceRatio_mean");
+            if (enableNetworkBasedCosts) {
+                add("onboardDelayRatio_mean");
+                add("detourDistanceRatio_mean");
+            }
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -292,7 +296,8 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "customer_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
@@ -320,20 +325,24 @@ public class StatisticUtils {
                 double actualInVehicleTime = entry.getValue().doubleValue();
                 rideStats.addValue(actualInVehicleTime);
 
-                double estimatedDirectInVehicleTime = directTravelTimeMap.get(entry.getKey());
-                double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
-                onboardDelayRatioStats.addValue(onboardDelayRatio);
+                if (enableNetworkBasedCosts) {
+                    double estimatedDirectInVehicleTime = directTravelTimeMap.get(entry.getKey());
+                    double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
+                    onboardDelayRatioStats.addValue(onboardDelayRatio);
+                }
             }
             for (Double value : passengerTraveledDistanceMap.values()) {
                 distanceStats.addValue(value.doubleValue());
             }
-            for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
-                double estimatedDirectTravelDistance = entry.getValue().doubleValue();
-                directDistanceStats.addValue(estimatedDirectTravelDistance);
+            if (enableNetworkBasedCosts) {
+                for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
+                    double estimatedDirectTravelDistance = entry.getValue().doubleValue();
+                    directDistanceStats.addValue(estimatedDirectTravelDistance);
 
-                double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
-                double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
-                detourDistanceRatioStats.addValue(detourDistanceRatio);
+                    double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
+                    double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
+                    detourDistanceRatioStats.addValue(detourDistanceRatio);
+                }
             }
             for (Double value : travelTimeMap.values()) {
                 traveltimes.addValue(value.doubleValue());
@@ -359,11 +368,15 @@ public class StatisticUtils {
                 tripRecord.add(Double.toString(getPercentageWaitTimeBelow(900, waitStats)));
                 tripRecord.add(Double.toString(rideStats.getMean()));
                 tripRecord.add(Double.toString(distanceStats.getMean()));
-                tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                }
                 tripRecord.add(Double.toString(traveltimes.getMean()));
 
-                tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
-                tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
+                    tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
+                }
 
 
                 if (tripsHeader.length != tripRecord.size()) {
@@ -390,9 +403,8 @@ public class StatisticUtils {
         return count * 100 / waitingTimes.length;
     }
 
-    public void writeVehicleStats(String matsimConfig, String tripsFilename, VehicleRoutingProblem problem) {
+    public void writeVehicleStats(String matsimConfig, String outputFilename, VehicleRoutingProblem problem) {
 
-        tripsFilename = tripsFilename + "vehicle_stats.csv";
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
             //add("totalDistance");
@@ -410,7 +422,8 @@ public class StatisticUtils {
         String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
-        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(tripsFilename),
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "vehicle_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
 
         ) {
