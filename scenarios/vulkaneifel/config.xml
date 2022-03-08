@@ -18,7 +18,7 @@
 			<param name="operationalScheme" value="door2door"/>
 
 			<!-- Bus stop duration. -->
-			<param name="stopDuration" value="1.0"/>
+			<param name="stopDuration" value="60.0"/>
 
 			<!-- An XML file specifying the vehicle fleet. The file format according to dvrp_vehicles_v1.dtd -->
 			<param name="vehiclesFile" value="drt-vehicles/500-8-seater-drt-vehicles.xml"/>
@@ -60,9 +60,9 @@
 
 		<!-- Used for estimation of travel times for VrpOptimizer by means of the exponential moving average. The weighting decrease, alpha, must be in (0,1]. We suggest small values of alpha, e.g. 0.05. The averaging starts from the initial travel time estimates. If not provided, the free-speed TTs is used as the initial estimates For more info see comments in: VrpTravelTimeEstimator, VrpTravelTimeModules, DvrpModule. -->
 		<param name="travelTimeEstimationAlpha" value="0.05" />
-<!--        <parameterset type="travelTimeMatrix">
+        <parameterset type="travelTimeMatrix">
             <param name="cellSize" value="500"/>
-        </parameterset>-->
+        </parameterset>
 	</module>
 
 	<module name="network">
