@@ -7,7 +7,6 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.util.Coordinate;
-import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -22,7 +21,6 @@ import org.matsim.contrib.dvrp.fleet.FleetSpecificationImpl;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.router.LeastCostPathCalculatorModule;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
@@ -30,18 +28,13 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.net.URL;
-import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 
 public class MatsimDrtRequest2Jsprit {
-
-    public final static double PICKUP_SERVICE_TIME_IN_MATSIM = 0.;
-    public final static double DELIVERY_SERVICE_TIME_IN_MATSIM = 0.;
 
     //Config config;
     Scenario scenario;
@@ -52,9 +45,13 @@ public class MatsimDrtRequest2Jsprit {
     double maxTravelTimeAlpha;
     double maxTravelTimeBeta;
     double maxWaitTime;
+    double serviceTimeInMatsim;
     private final Network network;
     LeastCostPathCalculator router;
 
+    public double getServiceTimeInMatsim() {
+        return serviceTimeInMatsim;
+    }
     public Network getNetwork() {
         return network;
     }
@@ -80,6 +77,8 @@ public class MatsimDrtRequest2Jsprit {
             this.maxTravelTimeAlpha = drtCfg.getMaxTravelTimeAlpha();
             this.maxTravelTimeBeta = drtCfg.getMaxTravelTimeBeta();
             this.maxWaitTime = drtCfg.getMaxWaitTime();
+
+            this.serviceTimeInMatsim = drtCfg.getStopDuration();
         }
         new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
 
@@ -224,8 +223,8 @@ public class MatsimDrtRequest2Jsprit {
                         .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
                         .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
                         //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
-                        .setPickupServiceTime(PICKUP_SERVICE_TIME_IN_MATSIM)
-                        .setDeliveryServiceTime(DELIVERY_SERVICE_TIME_IN_MATSIM)
+                        .setPickupServiceTime(serviceTimeInMatsim)
+                        .setDeliveryServiceTime(serviceTimeInMatsim)
                         .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
                         //ToDo: remove travelTime?
                         .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))

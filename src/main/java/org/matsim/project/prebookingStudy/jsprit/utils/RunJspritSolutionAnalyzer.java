@@ -66,6 +66,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
+    @CommandLine.Option(names = "--stop-duration", description = "set stop duration that is accessible in MATSim config!", required = true)
+    private static int stopDuration;
+
     private static final Logger LOG = Logger.getLogger(RunJspritSolutionAnalyzer.class);
 
     public static void main(String[] args) {
@@ -100,9 +103,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(transportCosts);
+            statisticUtils = new StatisticUtils(transportCosts, stopDuration);
         } else {
-            statisticUtils = new StatisticUtils();
+            statisticUtils = new StatisticUtils(stopDuration);
         }
 
         /*

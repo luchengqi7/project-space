@@ -31,11 +31,9 @@ import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticCollectorForOF {
 
-    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
-    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
-
-    VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
+    VehicleRoutingTransportCosts transportCosts;
+    double SERVICE_TIME_IN_MATSIM;
 
     final Map<String,Shipment> shipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
@@ -61,12 +59,14 @@ public class StatisticCollectorForOF {
         return waitingTimeMap;
     }
 
-    public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts) {
-        this.transportCosts = transportCosts;
+    public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
         this.enableNetworkBasedCosts = true;
+        this.transportCosts = transportCosts;
+        this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
-    public StatisticCollectorForOF() {
+    public StatisticCollectorForOF(double ServiceTimeInMatsim) {
         this.enableNetworkBasedCosts = false;
+        this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
 
 
@@ -152,7 +152,7 @@ public class StatisticCollectorForOF {
                         /*
                          * realTravelTime includes only the service time of pickup which is consistent with MATSim.
                          */
-                        double realTravelTime = waitingTimeMap.get(jobId) + PICKUP_SERVICE_TIME_IN_MATSIM + realInVehicleTime;
+                        double realTravelTime = waitingTimeMap.get(jobId) + SERVICE_TIME_IN_MATSIM + realInVehicleTime;
                         travelTimeMap.put(jobId, realTravelTime);
 
 
