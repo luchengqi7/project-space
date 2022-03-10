@@ -32,6 +32,7 @@ import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
+    final Config config;
     final String separator;
     final boolean enableNetworkBasedCosts;
     VehicleRoutingTransportCosts transportCosts;
@@ -52,17 +53,23 @@ public class StatisticUtils {
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
     public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
+        this.config = config;
         this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = true;
         this.transportCosts = transportCosts;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
     public StatisticUtils(Config config, double ServiceTimeInMatsim) {
+        this.config = config;
         this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = false;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
 
+    public void writeConfig(String outputFilename){
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        ConfigUtils.writeConfig(config, outputFilename + "output_config.xml");
+    }
 
     public void statsCollector(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
@@ -176,7 +183,7 @@ public class StatisticUtils {
         }
     }
 
-    public void writeOutputTrips(String matsimConfig, String outputFilename) {
+    public void writeOutputTrips(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("person");
@@ -269,7 +276,7 @@ public class StatisticUtils {
 
     }
 
-    public void writeCustomerStats(String matsimConfig, String outputFilename) {
+    public void writeCustomerStats(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("rides");
@@ -403,7 +410,7 @@ public class StatisticUtils {
         return count * 100 / waitingTimes.length;
     }
 
-    public void writeVehicleStats(String matsimConfig, String outputFilename, VehicleRoutingProblem problem) {
+    public void writeVehicleStats(String outputFilename, VehicleRoutingProblem problem) {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");

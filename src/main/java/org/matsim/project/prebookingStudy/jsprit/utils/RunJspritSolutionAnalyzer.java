@@ -198,9 +198,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
 
         //print results to a csv file
         statisticUtils.statsCollector(problem, bestSolution);
-        statisticUtils.writeOutputTrips(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
+        statisticUtils.writeOutputTrips(statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(statsOutputPath.toString());
+        statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem);
 
         String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
