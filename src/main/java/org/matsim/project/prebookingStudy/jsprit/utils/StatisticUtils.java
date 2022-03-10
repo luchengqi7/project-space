@@ -24,6 +24,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.log4j.Logger;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
@@ -50,14 +51,14 @@ public class StatisticUtils {
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
-    public StatisticUtils(String matsimConfig, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
-        this.separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
+    public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
+        this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = true;
         this.transportCosts = transportCosts;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
-    public StatisticUtils(String matsimConfig, double ServiceTimeInMatsim) {
-        this.separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
+    public StatisticUtils(Config config, double ServiceTimeInMatsim) {
+        this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = false;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }

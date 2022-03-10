@@ -117,9 +117,9 @@ public class RunJspritScenario implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(matsimConfig.toString(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
         } else {
-            statisticUtils = new StatisticUtils(matsimConfig.toString(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
         }
 
 

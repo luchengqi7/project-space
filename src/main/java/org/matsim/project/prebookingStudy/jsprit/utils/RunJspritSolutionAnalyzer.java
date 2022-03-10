@@ -13,6 +13,8 @@ import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -90,7 +92,8 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
 
 
         // Get scenario (network)
-        Scenario scenario = ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString()));
+        Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
+        Scenario scenario = ScenarioUtils.loadScenario(config);
 
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
@@ -103,9 +106,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(matsimConfig.toString(), transportCosts, stopDuration);
+            statisticUtils = new StatisticUtils(config, transportCosts, stopDuration);
         } else {
-            statisticUtils = new StatisticUtils(matsimConfig.toString(), stopDuration);
+            statisticUtils = new StatisticUtils(config, stopDuration);
         }
 
         /*

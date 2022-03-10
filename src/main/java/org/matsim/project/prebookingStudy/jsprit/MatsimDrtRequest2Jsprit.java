@@ -36,7 +36,7 @@ import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 
 public class MatsimDrtRequest2Jsprit {
 
-    //Config config;
+    Config config;
     Scenario scenario;
     final FleetSpecification dvrpFleetSpecification = new FleetSpecificationImpl();
     //For switching to the oneTaxi Scenario with prebooking (Can not read from the config directly, so must be specified)
@@ -47,8 +47,11 @@ public class MatsimDrtRequest2Jsprit {
     double maxWaitTime;
     double serviceTimeInMatsim;
     private final Network network;
-    LeastCostPathCalculator router;
+    final LeastCostPathCalculator router;
 
+    public Config getConfig() {
+        return config;
+    }
     public double getServiceTimeInMatsim() {
         return serviceTimeInMatsim;
     }
@@ -68,7 +71,7 @@ public class MatsimDrtRequest2Jsprit {
         this.capacityIndex = capacityIndex;
 
         URL fleetSpecificationUrl = null;
-        Config config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
+        config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
         this.scenario = ScenarioUtils.loadScenario(config);
         this.network = scenario.getNetwork();
         for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
