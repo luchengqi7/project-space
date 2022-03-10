@@ -410,7 +410,7 @@ public class StatisticUtils {
         return count * 100 / waitingTimes.length;
     }
 
-    public void writeVehicleStats(String outputFilename, VehicleRoutingProblem problem) {
+    public void writeVehicleStats(String outputFilename, VehicleRoutingProblem problem, VehicleRoutingProblemSolution bestSolution) {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
@@ -422,6 +422,8 @@ public class StatisticUtils {
             //add("averageEmptyDistance");
             add("averagePassengerDistanceTraveled");
             //add("d_p/d_t");
+
+            add("usedVehicleNumber");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -478,6 +480,8 @@ public class StatisticUtils {
                 //tripRecord.add(Double.toString(empty.getMean()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
                 //tripRecord.add(Double.toString(d_p_d_t));
+
+                tripRecord.add(Integer.toString(bestSolution.getRoutes().size()));
 
 
                 if (tripsHeader.length != tripRecord.size()) {
