@@ -31,9 +31,10 @@ import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
+    final String separator;
     final boolean enableNetworkBasedCosts;
     VehicleRoutingTransportCosts transportCosts;
-    double SERVICE_TIME_IN_MATSIM;
+    final double SERVICE_TIME_IN_MATSIM;
 
     final Map<String,Shipment> shipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
@@ -49,12 +50,14 @@ public class StatisticUtils {
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
-    public StatisticUtils(VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
+    public StatisticUtils(String matsimConfig, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
+        this.separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = true;
         this.transportCosts = transportCosts;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
-    public StatisticUtils(double ServiceTimeInMatsim) {
+    public StatisticUtils(String matsimConfig, double ServiceTimeInMatsim) {
+        this.separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = false;
         this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
     }
@@ -197,8 +200,6 @@ public class StatisticUtils {
             }
         }};
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -292,8 +293,6 @@ public class StatisticUtils {
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -418,8 +417,6 @@ public class StatisticUtils {
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";

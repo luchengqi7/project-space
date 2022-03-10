@@ -103,9 +103,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(transportCosts, stopDuration);
+            statisticUtils = new StatisticUtils(matsimConfig.toString(), transportCosts, stopDuration);
         } else {
-            statisticUtils = new StatisticUtils(stopDuration);
+            statisticUtils = new StatisticUtils(matsimConfig.toString(), stopDuration);
         }
 
         /*

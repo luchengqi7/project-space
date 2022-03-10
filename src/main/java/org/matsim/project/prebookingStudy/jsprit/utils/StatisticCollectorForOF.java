@@ -33,7 +33,7 @@ public class StatisticCollectorForOF {
 
     final boolean enableNetworkBasedCosts;
     VehicleRoutingTransportCosts transportCosts;
-    double SERVICE_TIME_IN_MATSIM;
+    final double SERVICE_TIME_IN_MATSIM;
 
     final Map<String,Shipment> shipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
