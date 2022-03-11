@@ -11,8 +11,6 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 //regarding printing csv
@@ -23,12 +21,10 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.log4j.Logger;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
-import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
@@ -36,7 +32,7 @@ public class StatisticUtils {
     final String separator;
     final boolean enableNetworkBasedCosts;
     VehicleRoutingTransportCosts transportCosts;
-    final double SERVICE_TIME_IN_MATSIM;
+    final double serviceTimeInMatsim;
 
     final Map<String,Shipment> shipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
@@ -57,13 +53,13 @@ public class StatisticUtils {
         this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = true;
         this.transportCosts = transportCosts;
-        this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
     public StatisticUtils(Config config, double ServiceTimeInMatsim) {
         this.config = config;
         this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = false;
-        this.SERVICE_TIME_IN_MATSIM = ServiceTimeInMatsim;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
 
     public void writeConfig(String outputFilename){
@@ -153,7 +149,7 @@ public class StatisticUtils {
                         /*
                          * realTravelTime includes only the service time of pickup which is consistent with MATSim.
                          */
-                        double realTravelTime = waitingTimeMap.get(jobId) + SERVICE_TIME_IN_MATSIM + realInVehicleTime;
+                        double realTravelTime = waitingTimeMap.get(jobId) + serviceTimeInMatsim + realInVehicleTime;
                         travelTimeMap.put(jobId, realTravelTime);
 
 
