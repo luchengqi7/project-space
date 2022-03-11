@@ -74,7 +74,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
 
-    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity (m/s) for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
     private static int maxVelocity;
 
     @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
