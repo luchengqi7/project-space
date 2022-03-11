@@ -77,7 +77,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity (m/s) for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
     private static int maxVelocity;
 
-    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefault")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
