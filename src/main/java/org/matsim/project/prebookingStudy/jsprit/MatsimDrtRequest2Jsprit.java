@@ -7,6 +7,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.util.Coordinate;
+import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -139,7 +140,7 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ REQUEST Reader
-    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType, boolean isSchoolTraffic) {
+    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType, boolean enableNetworkBasedCosts, boolean isSchoolTraffic) {
 
         double pickupTime;
         double deliveryTime;
@@ -212,19 +213,25 @@ public class MatsimDrtRequest2Jsprit {
                     divisor = divisor * 2;
                 }
 
+                double travelTime;
+                double speed = vehicleType.getMaxVelocity();
+                if(enableNetworkBasedCosts) {
+                    travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
+                } else {
+                    travelTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) / speed;
+                }
+                double latestDeliveryTime;
                 if(isSchoolTraffic) {
                     //use Shipment to create request for jsprit
                     /*
                      *
                      */
-                    double speed = vehicleType.getMaxVelocity();
                     // double detourFactor = 1.3;
                     // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
                     //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
 
-                    double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
                     //ToDo: change maximalWaitingtime to beta from config file
-                    double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(destinationActivityType);
+                    latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(destinationActivityType);
                     double timeBetweenPickUpAndLatestDelivery = 1.5 * travelTime + 15 * 60;
                     Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                             //.setName("myShipment")
@@ -242,20 +249,17 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
-                    requestCount++;
                 } else {
                     //use Shipment to create request for jsprit
                     /*
                      *
                      */
-                    double speed = vehicleType.getMaxVelocity();
                     // double detourFactor = 1.3;
                     // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
                     //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
 
-                    double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
                     //ToDo: change maximalWaitingtime to beta from config file
-                    double latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
+                    latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
                     Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
@@ -272,8 +276,8 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
-                    requestCount++;
                 }
+                requestCount++;
             }
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
