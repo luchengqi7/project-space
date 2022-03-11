@@ -243,7 +243,7 @@ public class MatsimDrtRequest2Jsprit {
                             .setDeliveryServiceTime(serviceTimeInMatsim)
                             .setPickupTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery, latestDeliveryTime))
                             //ToDo: remove travelTime?
-                            .setDeliveryTimeWindow(new TimeWindow(latestDeliveryTime - 1800, latestDeliveryTime))
+                            .setDeliveryTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
                             //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                             //.setPriority()
