@@ -178,18 +178,19 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        //print results to a csv file
+        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+
+        statisticUtils.writeConfig(statsOutputPath.toString());
+
+        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
+        new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
+
+        //print results to csv files
         statisticUtils.statsCollector(problem, bestSolution);
         statisticUtils.writeOutputTrips(statsOutputPath.toString());
         statisticUtils.writeCustomerStats(statsOutputPath.toString());
         statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem, bestSolution);
 
-        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
-        new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
-
-        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
-
-        statisticUtils.writeConfig(statsOutputPath.toString());
 
         MemoryObserver.stop();
 

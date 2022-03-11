@@ -65,7 +65,7 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
 
-    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefault")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
     @CommandLine.Option(names = "--stop-duration", description = "set stop duration that is accessible in MATSim config!", required = true)
@@ -196,14 +196,14 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(algorithm.searchSolutions());
 
-        //print results to a csv file
+        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
+        new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
+
+        //print results to csv files
         statisticUtils.statsCollector(problem, bestSolution);
         statisticUtils.writeOutputTrips(statsOutputPath.toString());
         statisticUtils.writeCustomerStats(statsOutputPath.toString());
         statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem, bestSolution);
-
-        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
-        new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
         /*
          * print solution
          */
