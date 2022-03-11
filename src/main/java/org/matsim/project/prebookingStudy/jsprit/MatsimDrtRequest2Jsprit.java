@@ -33,6 +33,7 @@ import java.net.URL;
 
 import org.apache.log4j.Logger;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
+import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 
 public class MatsimDrtRequest2Jsprit {
 
@@ -247,7 +248,7 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ REQUEST Reader for School Traffic
-    VehicleRoutingProblem.Builder matsimSchoolTrafficRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType) {
+    VehicleRoutingProblem.Builder matsimSchoolTrafficRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType, boolean isSchoolTraffic) {
         double pickupTime;
         double deliveryTime;
         double pickupLocationX;
@@ -293,9 +294,11 @@ public class MatsimDrtRequest2Jsprit {
                 }
 
                 //destinationActivity
+                String destinationActivityType;
                 {
                     Activity destinationActivity = trip.getDestinationActivity();
                     Id<Link> activityLinkId = destinationActivity.getLinkId();
+                    destinationActivityType = destinationActivity.getType();
                     if (destinationActivity.getCoord() != null) {
                         deliveryLocationX = destinationActivity.getCoord().getX();
                         deliveryLocationY = destinationActivity.getCoord().getY();
@@ -317,35 +320,68 @@ public class MatsimDrtRequest2Jsprit {
                     divisor = divisor * 2;
                 }
 
-                //use Shipment to create request for jsprit
-                /*
-                 *
-                 */
-                double speed = vehicleType.getMaxVelocity();
-                // double detourFactor = 1.3;
-                // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
-                //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
+                if(isSchoolTraffic) {
+                    //use Shipment to create request for jsprit
+                    /*
+                     *
+                     */
+                    double speed = vehicleType.getMaxVelocity();
+                    // double detourFactor = 1.3;
+                    // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
+                    //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
 
-                double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
-                //ToDo: change maximalWaitingtime to beta from config file
-                double latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
-                Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
-                        //.setName("myShipment")
-                        .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
-                        .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
-                        .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
-                        //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
-                        .setPickupServiceTime(serviceTimeInMatsim)
-                        .setDeliveryServiceTime(serviceTimeInMatsim)
-                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
-                        //ToDo: remove travelTime?
-                        .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
-                        //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
-                        //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
-                        //.setPriority()
-                        .build();
-                vrpBuilder.addJob(shipment);
-                requestCount++;
+                    double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
+                    //ToDo: change maximalWaitingtime to beta from config file
+                    double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(destinationActivityType);
+                    double timeBetweenPickUpAndLatestDelivery = 1.5 * travelTime + 15 * 60;
+                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                            //.setName("myShipment")
+                            .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
+                            .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
+                            .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
+                            //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                            .setPickupServiceTime(serviceTimeInMatsim)
+                            .setDeliveryServiceTime(serviceTimeInMatsim)
+                            .setPickupTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery, latestDeliveryTime))
+                            //ToDo: remove travelTime?
+                            .setDeliveryTimeWindow(new TimeWindow(latestDeliveryTime - 1800, latestDeliveryTime))
+                            //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
+                            //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
+                            //.setPriority()
+                            .build();
+                    vrpBuilder.addJob(shipment);
+                    requestCount++;
+                } else {
+                    //use Shipment to create request for jsprit
+                    /*
+                     *
+                     */
+                    double speed = vehicleType.getMaxVelocity();
+                    // double detourFactor = 1.3;
+                    // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
+                    //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
+
+                    double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
+                    //ToDo: change maximalWaitingtime to beta from config file
+                    double latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
+                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                            //.setName("myShipment")
+                            .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
+                            .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
+                            .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
+                            //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                            .setPickupServiceTime(serviceTimeInMatsim)
+                            .setDeliveryServiceTime(serviceTimeInMatsim)
+                            .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
+                            //ToDo: remove travelTime?
+                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
+                            //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
+                            //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
+                            //.setPriority()
+                            .build();
+                    vrpBuilder.addJob(shipment);
+                    requestCount++;
+                }
             }
         }
         //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
