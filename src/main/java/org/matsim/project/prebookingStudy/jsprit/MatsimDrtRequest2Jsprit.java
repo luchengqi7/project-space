@@ -246,4 +246,113 @@ public class MatsimDrtRequest2Jsprit {
         return vrpBuilder;
     }
 
+    // ================ REQUEST Reader for School Traffic
+    VehicleRoutingProblem.Builder matsimSchoolTrafficRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType) {
+        double pickupTime;
+        double deliveryTime;
+        double pickupLocationX;
+        double pickupLocationY;
+        String pickupLocationId;
+        double deliveryLocationX;
+        double deliveryLocationY;
+        String deliveryLocationId;
+
+        int counter = 0;
+        int divisor = 1;
+        for (Person person : scenario.getPopulation().getPersons().values()) {
+            int requestCount = 0;
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            for (TripStructureUtils.Trip trip : trips) {
+                assert trip.getLegsOnly().size() == 1 : "Error: There exists a trip has more than one legs!";
+
+                //originActivity
+                {
+                    Activity originActivity = trip.getOriginActivity();
+                    Id<Link> activityLinkId = originActivity.getLinkId();
+                    if (originActivity.getCoord() != null) {
+                        pickupLocationX = originActivity.getCoord().getX();
+                        pickupLocationY = originActivity.getCoord().getY();
+                    } else {
+                        pickupLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                        pickupLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                    }
+
+                    if (activityLinkId != null) {
+                        pickupLocationId = activityLinkId.toString();
+                    } else {
+                        //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
+                        pickupLocationId = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getId().toString();
+                    }
+
+                    pickupTime = originActivity.getEndTime().seconds();
+                }
+                counter++;
+                if (counter % divisor == 0) {
+                    LOG.info("Pickup # " + counter + " handled.");
+                    //divisor = divisor * 2;
+                }
+
+                //destinationActivity
+                {
+                    Activity destinationActivity = trip.getDestinationActivity();
+                    Id<Link> activityLinkId = destinationActivity.getLinkId();
+                    if (destinationActivity.getCoord() != null) {
+                        deliveryLocationX = destinationActivity.getCoord().getX();
+                        deliveryLocationY = destinationActivity.getCoord().getY();
+                    } else {
+                        deliveryLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
+                        deliveryLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
+                    }
+
+                    if (activityLinkId != null) {
+                        deliveryLocationId = activityLinkId.toString();
+                    } else {
+                        //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
+                        deliveryLocationId = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getId().toString();
+                    }
+                }
+                //counter++;
+                if (counter % divisor == 0) {
+                    LOG.info("Dropoff # " + counter + " handled.");
+                    divisor = divisor * 2;
+                }
+
+                //use Shipment to create request for jsprit
+                /*
+                 *
+                 */
+                double speed = vehicleType.getMaxVelocity();
+                // double detourFactor = 1.3;
+                // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
+                //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
+
+                double travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
+                //ToDo: change maximalWaitingtime to beta from config file
+                double latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
+                Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                        //.setName("myShipment")
+                        .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
+                        .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
+                        .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
+                        //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                        .setPickupServiceTime(serviceTimeInMatsim)
+                        .setDeliveryServiceTime(serviceTimeInMatsim)
+                        .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
+                        //ToDo: remove travelTime?
+                        .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
+                        //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
+                        //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
+                        //.setPriority()
+                        .build();
+                vrpBuilder.addJob(shipment);
+                requestCount++;
+            }
+        }
+        //PopulationUtils.writePopulation(scenario.getPopulation(), utils.getOutputDirectory() + "/../pop.xml");
+        LOG.info("Request # " + counter + " handled in total!");
+
+        //return requests
+        return vrpBuilder;
+    }
+
 }
