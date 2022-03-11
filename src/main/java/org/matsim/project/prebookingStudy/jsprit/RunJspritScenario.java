@@ -83,6 +83,9 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
     private static boolean enableGraphStreamViewer;
 
+    @CommandLine.Option(names = "--school-traffic", description = "if input plan is specific for school traffic", defaultValue = "false")
+    private static boolean isSchoolTraffic;
+
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
     public static void main(String[] args) {
@@ -146,7 +149,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, isSchoolTraffic);
 
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
