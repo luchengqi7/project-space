@@ -24,6 +24,8 @@ public class StatisticCollectorForOF {
     final double serviceTimeInMatsim;
 
     final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String,Job> unAssignedShipments = new HashMap<>();
+    final Map<String,Shipment> assignedShipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
     final Map<String, Double> inVehicleTimeMap = new HashMap<>();
     final Map<String, Double> travelTimeMap = new HashMap<>();
@@ -67,6 +69,14 @@ public class StatisticCollectorForOF {
             if (j instanceof Shipment) {
                 Shipment jShipment = (Shipment) j;
                 shipments.put(jShipment.getId(),jShipment);
+            }
+        }
+        for (Job unassignedJob : solution.getUnassignedJobs()) {
+            unAssignedShipments.put(unassignedJob.getId(), unassignedJob);
+        }
+        for (Map.Entry<String, Shipment> shipmentEntry : shipments.entrySet()) {
+            if (!unAssignedShipments.containsKey(shipmentEntry.getKey())){
+                assignedShipments.put(shipmentEntry.getKey(), shipmentEntry.getValue());
             }
         }
 
@@ -161,7 +171,7 @@ public class StatisticCollectorForOF {
         }
 
         if (enableNetworkBasedCosts) {
-            for (Shipment shipment : shipments.values()) {
+            for (Shipment shipment : assignedShipments.values()) {
                 double directTravelDistance = transportCosts.getDistance(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null);
                 directTravelDistanceMap.put(shipment.getId(), directTravelDistance);
                 double directTravelTime = transportCosts.getTransportTime(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null, null);

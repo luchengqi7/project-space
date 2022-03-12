@@ -35,6 +35,8 @@ public class StatisticUtils {
     final double serviceTimeInMatsim;
 
     final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String,Job> unAssignedShipments = new HashMap<>();
+    final Map<String,Shipment> assignedShipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
     final Map<String, Double> inVehicleTimeMap = new HashMap<>();
     final Map<String, Double> travelTimeMap = new HashMap<>();
@@ -76,6 +78,14 @@ public class StatisticUtils {
             if (j instanceof Shipment) {
                 Shipment jShipment = (Shipment) j;
                 shipments.put(jShipment.getId(),jShipment);
+            }
+        }
+        for (Job unassignedJob : solution.getUnassignedJobs()) {
+            unAssignedShipments.put(unassignedJob.getId(), unassignedJob);
+        }
+        for (Map.Entry<String, Shipment> shipmentEntry : shipments.entrySet()) {
+            if (!unAssignedShipments.containsKey(shipmentEntry.getKey())){
+                assignedShipments.put(shipmentEntry.getKey(), shipmentEntry.getValue());
             }
         }
 
@@ -170,7 +180,7 @@ public class StatisticUtils {
         }
 
         if (enableNetworkBasedCosts) {
-            for (Shipment shipment : shipments.values()) {
+            for (Shipment shipment : assignedShipments.values()) {
                 double directTravelDistance = transportCosts.getDistance(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null);
                 directTravelDistanceMap.put(shipment.getId(), directTravelDistance);
                 double directTravelTime = transportCosts.getTransportTime(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null, null);
@@ -212,8 +222,8 @@ public class StatisticUtils {
 
         ) {
 
-            //ToDo: check the order of shipments <- .values()
-            for (Shipment shipment : shipments.values()) {
+            //ToDo: check the order of assignedShipments <- .values()
+            for (Shipment shipment : assignedShipments.values()) {
                 List<List<String>> tripRecords = new ArrayList<>();
                 for (int i = 0; i < 1; i++) {
                     List<String> tripRecord = new ArrayList<>();
@@ -264,7 +274,7 @@ public class StatisticUtils {
 
                 tripsCsvPrinter.printRecords(tripRecords);
             }
-            System.out.println("shipment number: " + shipments.size());
+            System.out.println("shipment number: " + assignedShipments.size());
         } catch (IOException e) {
 
             e.printStackTrace();
@@ -352,8 +362,8 @@ public class StatisticUtils {
             }
 
 
-            //ToDo: check the order of shipments <- .values()
-            //for (Shipment shipment : shipments.values()) { //for iterations
+            //ToDo: check the order of assignedShipments <- .values()
+            //for (Shipment shipment : assignedShipments.values()) { //for iterations
             List<List<String>> tripRecords = new ArrayList<>();
             for (int i = 0; i < 1; i++) {
                 List<String> tripRecord = new ArrayList<>();
@@ -458,8 +468,8 @@ public class StatisticUtils {
             //double d_p_d_t = passengerTraveledDistance.getSum() / driven.getSum();
 
 
-            //ToDo: check the order of shipments <- .values()
-            //for (Shipment shipment : shipments.values()) { //for iterations
+            //ToDo: check the order of assignedShipments <- .values()
+            //for (Shipment shipment : assignedShipments.values()) { //for iterations
             List<List<String>> tripRecords = new ArrayList<>();
             for (int i = 0; i < 1; i++) {
                 List<String> tripRecord = new ArrayList<>();
