@@ -66,7 +66,7 @@ public class StatisticUtils {
 
     public void writeConfig(String outputFilename){
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
-        ConfigUtils.writeMinimalConfig(config, outputFilename + "output_config.xml");
+        ConfigUtils.writeConfig(config, outputFilename + "output_config.xml");
     }
 
     public void statsCollector(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
