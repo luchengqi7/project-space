@@ -22,12 +22,12 @@ import java.nio.file.Path;
 		name = "run",
 		description = "run drt pre-booking study"
 )
-public class RunPrebookingStudy implements MATSimAppCommand {
+public class RunMATSimBenchmark implements MATSimAppCommand {
 	@CommandLine.Option(names = "--config", description = "path to config file", required = true)
 	private Path configPath;
 
 	public static void main(String[] args) {
-		new RunPrebookingStudy().execute(args);
+		new RunMATSimBenchmark().execute(args);
 	}
 
 	@Override
