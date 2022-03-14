@@ -18,10 +18,13 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForOF;
 
 import java.nio.file.Path;
+import org.apache.log4j.Logger;
 
 public class MySolutionCostCalculatorFactory {
 
     public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD}
+
+    private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
     public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
@@ -88,7 +91,13 @@ public class MySolutionCostCalculatorFactory {
                                 costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * route.getVehicle().getType().getVehicleCostParams().perServiceTimeUnit);
                             }
                         }
+                        //throw new RuntimeException("There exists Breaks.");
+                        LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
                     }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    //throw new RuntimeException("There exists unassgndJobs.");
+                    LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
                     costs += maxCosts * 2 * (11 - j.getPriority());
@@ -263,11 +272,13 @@ public class MySolutionCostCalculatorFactory {
                         costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * route.getVehicle().getType().getVehicleCostParams().perServiceTimeUnit);
                     }
                 }
-                throw new RuntimeException("There exists Breaks.");
+                //throw new RuntimeException("There exists Breaks.");
+                LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
             }
         }
         if (solution.getUnassignedJobs().size() != 0){
-            throw new RuntimeException("There exists unassgndJobs.");
+            //throw new RuntimeException("There exists unassgndJobs.");
+            LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
         }
         for(Job j : solution.getUnassignedJobs()){
             costs += maxCosts * 2 * (11 - j.getPriority());
