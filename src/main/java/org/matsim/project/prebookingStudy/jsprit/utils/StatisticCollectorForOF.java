@@ -8,36 +8,24 @@ import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
 import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
-import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 //regarding printing csv
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.log4j.Logger;
-import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.utils.io.IOUtils;
-import org.matsim.core.utils.misc.Time;
-import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticCollectorForOF {
 
-    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
-    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
-
-    VehicleRoutingTransportCosts transportCosts;
     final boolean enableNetworkBasedCosts;
+    VehicleRoutingTransportCosts transportCosts;
+    final double serviceTimeInMatsim;
 
     final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String,Job> unAssignedShipments = new HashMap<>();
+    final Map<String,Shipment> assignedShipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
     final Map<String, Double> inVehicleTimeMap = new HashMap<>();
     final Map<String, Double> travelTimeMap = new HashMap<>();
@@ -61,12 +49,14 @@ public class StatisticCollectorForOF {
         return waitingTimeMap;
     }
 
-    public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts) {
-        this.transportCosts = transportCosts;
+    public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
         this.enableNetworkBasedCosts = true;
+        this.transportCosts = transportCosts;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
-    public StatisticCollectorForOF() {
+    public StatisticCollectorForOF(double ServiceTimeInMatsim) {
         this.enableNetworkBasedCosts = false;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
 
 
@@ -79,6 +69,14 @@ public class StatisticCollectorForOF {
             if (j instanceof Shipment) {
                 Shipment jShipment = (Shipment) j;
                 shipments.put(jShipment.getId(),jShipment);
+            }
+        }
+        for (Job unassignedJob : solution.getUnassignedJobs()) {
+            unAssignedShipments.put(unassignedJob.getId(), unassignedJob);
+        }
+        for (Map.Entry<String, Shipment> shipmentEntry : shipments.entrySet()) {
+            if (!unAssignedShipments.containsKey(shipmentEntry.getKey())){
+                assignedShipments.put(shipmentEntry.getKey(), shipmentEntry.getValue());
             }
         }
 
@@ -152,7 +150,7 @@ public class StatisticCollectorForOF {
                         /*
                          * realTravelTime includes only the service time of pickup which is consistent with MATSim.
                          */
-                        double realTravelTime = waitingTimeMap.get(jobId) + PICKUP_SERVICE_TIME_IN_MATSIM + realInVehicleTime;
+                        double realTravelTime = waitingTimeMap.get(jobId) + serviceTimeInMatsim + realInVehicleTime;
                         travelTimeMap.put(jobId, realTravelTime);
 
 
@@ -173,7 +171,7 @@ public class StatisticCollectorForOF {
         }
 
         if (enableNetworkBasedCosts) {
-            for (Shipment shipment : shipments.values()) {
+            for (Shipment shipment : assignedShipments.values()) {
                 double directTravelDistance = transportCosts.getDistance(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null);
                 directTravelDistanceMap.put(shipment.getId(), directTravelDistance);
                 double directTravelTime = transportCosts.getTransportTime(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null, null);

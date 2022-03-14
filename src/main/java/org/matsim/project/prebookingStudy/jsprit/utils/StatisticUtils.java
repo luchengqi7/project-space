@@ -11,8 +11,6 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 //regarding printing csv
@@ -23,21 +21,22 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.log4j.Logger;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.misc.Time;
-import org.matsim.project.prebookingStudy.jsprit.MatsimDrtRequest2Jsprit;
 
 public class StatisticUtils {
 
-    final double PICKUP_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.PICKUP_SERVICE_TIME_IN_MATSIM;
-    final double DELIVERY_SERVICE_TIME_IN_MATSIM = MatsimDrtRequest2Jsprit.DELIVERY_SERVICE_TIME_IN_MATSIM;
-
-    VehicleRoutingTransportCosts transportCosts;
+    final Config config;
+    final String separator;
     final boolean enableNetworkBasedCosts;
+    VehicleRoutingTransportCosts transportCosts;
+    final double serviceTimeInMatsim;
 
     final Map<String,Shipment> shipments = new HashMap<>();
+    final Map<String,Job> unAssignedShipments = new HashMap<>();
+    final Map<String,Shipment> assignedShipments = new HashMap<>();
     final Map<String, Double> waitingTimeMap = new HashMap<>();
     final Map<String, Double> inVehicleTimeMap = new HashMap<>();
     final Map<String, Double> travelTimeMap = new HashMap<>();
@@ -51,14 +50,24 @@ public class StatisticUtils {
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
-    public StatisticUtils(VehicleRoutingTransportCosts transportCosts) {
-            this.transportCosts = transportCosts;
-            this.enableNetworkBasedCosts = true;
+    public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
+        this.config = config;
+        this.separator = config.global().getDefaultDelimiter();
+        this.enableNetworkBasedCosts = true;
+        this.transportCosts = transportCosts;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
-    public StatisticUtils() {
+    public StatisticUtils(Config config, double ServiceTimeInMatsim) {
+        this.config = config;
+        this.separator = config.global().getDefaultDelimiter();
         this.enableNetworkBasedCosts = false;
+        this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
 
+    public void writeConfig(String outputFilename){
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        ConfigUtils.writeConfig(config, outputFilename + "output_config.xml");
+    }
 
     public void statsCollector(VehicleRoutingProblem problem, VehicleRoutingProblemSolution solution) {
         List<VehicleRoute> list = new ArrayList<>(solution.getRoutes());
@@ -69,6 +78,14 @@ public class StatisticUtils {
             if (j instanceof Shipment) {
                 Shipment jShipment = (Shipment) j;
                 shipments.put(jShipment.getId(),jShipment);
+            }
+        }
+        for (Job unassignedJob : solution.getUnassignedJobs()) {
+            unAssignedShipments.put(unassignedJob.getId(), unassignedJob);
+        }
+        for (Map.Entry<String, Shipment> shipmentEntry : shipments.entrySet()) {
+            if (!unAssignedShipments.containsKey(shipmentEntry.getKey())){
+                assignedShipments.put(shipmentEntry.getKey(), shipmentEntry.getValue());
             }
         }
 
@@ -142,7 +159,7 @@ public class StatisticUtils {
                         /*
                          * realTravelTime includes only the service time of pickup which is consistent with MATSim.
                          */
-                        double realTravelTime = waitingTimeMap.get(jobId) + PICKUP_SERVICE_TIME_IN_MATSIM + realInVehicleTime;
+                        double realTravelTime = waitingTimeMap.get(jobId) + serviceTimeInMatsim + realInVehicleTime;
                         travelTimeMap.put(jobId, realTravelTime);
 
 
@@ -163,7 +180,7 @@ public class StatisticUtils {
         }
 
         if (enableNetworkBasedCosts) {
-            for (Shipment shipment : shipments.values()) {
+            for (Shipment shipment : assignedShipments.values()) {
                 double directTravelDistance = transportCosts.getDistance(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null);
                 directTravelDistanceMap.put(shipment.getId(), directTravelDistance);
                 double directTravelTime = transportCosts.getTransportTime(shipment.getPickupLocation(), shipment.getDeliveryLocation(), pickupTimeMap.get(shipment.getId()), null, null);
@@ -172,7 +189,7 @@ public class StatisticUtils {
         }
     }
 
-    public void writeOutputTrips(String matsimConfig, String outputFilename) {
+    public void writeOutputTrips(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("person");
@@ -197,8 +214,6 @@ public class StatisticUtils {
             }
         }};
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -207,8 +222,8 @@ public class StatisticUtils {
 
         ) {
 
-            //ToDo: check the order of shipments <- .values()
-            for (Shipment shipment : shipments.values()) {
+            //ToDo: check the order of assignedShipments <- .values()
+            for (Shipment shipment : assignedShipments.values()) {
                 List<List<String>> tripRecords = new ArrayList<>();
                 for (int i = 0; i < 1; i++) {
                     List<String> tripRecord = new ArrayList<>();
@@ -259,7 +274,7 @@ public class StatisticUtils {
 
                 tripsCsvPrinter.printRecords(tripRecords);
             }
-            System.out.println("shipment number: " + shipments.size());
+            System.out.println("shipment number: " + assignedShipments.size());
         } catch (IOException e) {
 
             e.printStackTrace();
@@ -267,7 +282,7 @@ public class StatisticUtils {
 
     }
 
-    public void writeCustomerStats(String matsimConfig, String outputFilename) {
+    public void writeCustomerStats(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("rides");
@@ -292,8 +307,6 @@ public class StatisticUtils {
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -349,8 +362,8 @@ public class StatisticUtils {
             }
 
 
-            //ToDo: check the order of shipments <- .values()
-            //for (Shipment shipment : shipments.values()) { //for iterations
+            //ToDo: check the order of assignedShipments <- .values()
+            //for (Shipment shipment : assignedShipments.values()) { //for iterations
             List<List<String>> tripRecords = new ArrayList<>();
             for (int i = 0; i < 1; i++) {
                 List<String> tripRecord = new ArrayList<>();
@@ -403,7 +416,7 @@ public class StatisticUtils {
         return count * 100 / waitingTimes.length;
     }
 
-    public void writeVehicleStats(String matsimConfig, String outputFilename, VehicleRoutingProblem problem) {
+    public void writeVehicleStats(String outputFilename, VehicleRoutingProblem problem, VehicleRoutingProblemSolution bestSolution) {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
@@ -415,11 +428,11 @@ public class StatisticUtils {
             //add("averageEmptyDistance");
             add("averagePassengerDistanceTraveled");
             //add("d_p/d_t");
+
+            add("usedVehicleNumber");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
-        //ToDo: load config in Runner?
-        String separator = ConfigUtils.loadConfig(matsimConfig).global().getDefaultDelimiter();
 
         //ToDo: do not use BufferedWriter
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -455,8 +468,8 @@ public class StatisticUtils {
             //double d_p_d_t = passengerTraveledDistance.getSum() / driven.getSum();
 
 
-            //ToDo: check the order of shipments <- .values()
-            //for (Shipment shipment : shipments.values()) { //for iterations
+            //ToDo: check the order of assignedShipments <- .values()
+            //for (Shipment shipment : assignedShipments.values()) { //for iterations
             List<List<String>> tripRecords = new ArrayList<>();
             for (int i = 0; i < 1; i++) {
                 List<String> tripRecord = new ArrayList<>();
@@ -473,6 +486,8 @@ public class StatisticUtils {
                 //tripRecord.add(Double.toString(empty.getMean()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
                 //tripRecord.add(Double.toString(d_p_d_t));
+
+                tripRecord.add(Integer.toString(bestSolution.getRoutes().size()));
 
 
                 if (tripsHeader.length != tripRecord.size()) {

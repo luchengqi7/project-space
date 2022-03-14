@@ -13,6 +13,8 @@ import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -63,8 +65,11 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
     private static int cacheSizeLimit;
 
-    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefault")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
+
+    @CommandLine.Option(names = "--stop-duration", description = "set stop duration that is accessible in MATSim config!", required = true)
+    private static int stopDuration;
 
     private static final Logger LOG = Logger.getLogger(RunJspritSolutionAnalyzer.class);
 
@@ -87,7 +92,8 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
 
 
         // Get scenario (network)
-        Scenario scenario = ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString()));
+        Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
+        Scenario scenario = ScenarioUtils.loadScenario(config);
 
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
@@ -100,9 +106,9 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(transportCosts);
+            statisticUtils = new StatisticUtils(config, transportCosts, stopDuration);
         } else {
-            statisticUtils = new StatisticUtils();
+            statisticUtils = new StatisticUtils(config, stopDuration);
         }
 
         /*
@@ -190,14 +196,14 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(algorithm.searchSolutions());
 
-        //print results to a csv file
-        statisticUtils.statsCollector(problem, bestSolution);
-        statisticUtils.writeOutputTrips(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
-
         String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
+
+        //print results to csv files
+        statisticUtils.statsCollector(problem, bestSolution);
+        statisticUtils.writeOutputTrips(statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(statsOutputPath.toString());
+        statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem, bestSolution);
         /*
          * print solution
          */

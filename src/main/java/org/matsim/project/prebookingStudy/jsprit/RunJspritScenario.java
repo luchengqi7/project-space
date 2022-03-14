@@ -74,14 +74,17 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
 
-    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity (m/s) for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
     private static int maxVelocity;
 
-    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefaultObjectiveFunction")
+    @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefault")
     private MySolutionCostCalculatorFactory.ObjectiveFunctionType objectiveFunctionType;
 
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
     private static boolean enableGraphStreamViewer;
+
+    @CommandLine.Option(names = "--school-traffic", description = "if input plan is specific for school traffic", defaultValue = "false")
+    private static boolean isSchoolTraffic;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -117,9 +120,9 @@ public class RunJspritScenario implements MATSimAppCommand {
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             vrpBuilder.setRoutingCost(transportCosts);
             LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(transportCosts);
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
         } else {
-            statisticUtils = new StatisticUtils();
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
         }
 
 
@@ -146,7 +149,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, isSchoolTraffic);
 
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
@@ -175,16 +178,19 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
-        //print results to a csv file
-        statisticUtils.statsCollector(problem, bestSolution);
-        statisticUtils.writeOutputTrips(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeCustomerStats(matsimConfig.toString(), statsOutputPath.toString());
-        statisticUtils.writeVehicleStats(matsimConfig.toString(), statsOutputPath.toString(), problem);
+        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+
+        statisticUtils.writeConfig(statsOutputPath.toString());
 
         String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
-        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+        //print results to csv files
+        statisticUtils.statsCollector(problem, bestSolution);
+        statisticUtils.writeOutputTrips(statsOutputPath.toString());
+        statisticUtils.writeCustomerStats(statsOutputPath.toString());
+        statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem, bestSolution);
+
 
         MemoryObserver.stop();
 

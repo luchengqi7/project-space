@@ -9,6 +9,9 @@ import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.BreakActivity;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 
+import org.matsim.contrib.drt.run.DrtConfigGroup;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -22,15 +25,20 @@ public class MySolutionCostCalculatorFactory {
 
     public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
+        double serviceTimeInMatsim = 0;
+        Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
+        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
+            serviceTimeInMatsim = drtCfg.getStopDuration();
+        }
         StatisticCollectorForOF statisticCollectorForOF;
         if (enableNetworkBasedCosts) {
             NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString())).getNetwork())
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
-            statisticCollectorForOF = new StatisticCollectorForOF(transportCosts);
+            statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
         } else {
-            statisticCollectorForOF = new StatisticCollectorForOF();
+            statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
         }
 
         switch (objectiveFunctionType) {
