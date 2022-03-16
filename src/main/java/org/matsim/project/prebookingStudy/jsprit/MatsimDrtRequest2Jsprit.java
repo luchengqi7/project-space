@@ -218,7 +218,7 @@ public class MatsimDrtRequest2Jsprit {
                 if(enableNetworkBasedCosts) {
                     travelTime = router.calcLeastCostPath(network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(), network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null, null).travelTime;
                 } else {
-                    travelTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) / speed;
+                    travelTime = EuclideanDistanceCalculator.calculateDistance(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build().getCoordinate(), Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build().getCoordinate()) / speed;
                 }
                 double latestDeliveryTime;
                 if(isSchoolTraffic) {
