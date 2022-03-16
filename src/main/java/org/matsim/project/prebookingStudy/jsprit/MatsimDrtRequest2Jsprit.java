@@ -232,7 +232,7 @@ public class MatsimDrtRequest2Jsprit {
 
                     //ToDo: change maximalWaitingtime to beta from config file
                     latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(destinationActivityType);
-                    double timeBetweenPickUpAndLatestDelivery = 1.5 * travelTime + 15 * 60;
+                    double timeBetweenPickUpAndLatestDelivery = maxTravelTimeAlpha * travelTime + maxTravelTimeBeta;
                     Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
