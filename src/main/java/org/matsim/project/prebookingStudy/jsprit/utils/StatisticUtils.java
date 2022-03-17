@@ -315,6 +315,15 @@ public class StatisticUtils {
                 add("onboardDelayRatio_mean");
                 add("detourDistanceRatio_mean");
             }
+
+            //add KPIs mainly for school children
+            add("early-arrival_average");
+            add("early-arrival_max");
+            add("early-arrival_p95");
+            add("early-arrival_p75");
+            add("early-arrival_median");
+            add("percentage_early-arrival_above_15");
+            add("percentage_early-arrival_above_30");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -335,13 +344,15 @@ public class StatisticUtils {
             DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
             DescriptiveStatistics detourDistanceRatioStats = new DescriptiveStatistics();
 
+            DescriptiveStatistics timeOffsetStats = new DescriptiveStatistics();
+
 /*                DecimalFormat format = new DecimalFormat();
             format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
             format.setMinimumIntegerDigits(1);
             format.setMaximumFractionDigits(2);
             format.setGroupingUsed(false);*/
 
-            //ToDo: change to steam style
+            //ToDo: change to steam style?
             for (Double value : waitingTimeMap.values()) {
                 waitStats.addValue(value.doubleValue());
             }
@@ -370,6 +381,10 @@ public class StatisticUtils {
             }
             for (Double value : travelTimeMap.values()) {
                 traveltimes.addValue(value.doubleValue());
+            }
+            for (Map.Entry<String, Double> entry : deliveryTimeMap.entrySet()) {
+                double timeOffset = desiredDeliveryTimeMap.get(entry.getKey()) - entry.getValue();
+                timeOffsetStats.addValue(timeOffset);
             }
 
 
@@ -402,6 +417,14 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
 
+                tripRecord.add(Double.toString(timeOffsetStats.getMean()));
+                tripRecord.add(Double.toString(timeOffsetStats.getMax()));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(95)));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(75)));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(50)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeAbove(900, timeOffsetStats)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeAbove(1800, timeOffsetStats)));
+
 
                 if (tripsHeader.length != tripRecord.size()) {
                     throw new RuntimeException("TRIPSHEADER.length != tripRecord.size()");
@@ -424,6 +447,16 @@ public class StatisticUtils {
         }
 
         double count = (double)Arrays.stream(waitingTimes).filter(t -> t < timeCriteria).count();
+        return count * 100 / waitingTimes.length;
+    }
+    public static double getPercentageWaitTimeAbove(int timeCriteria, DescriptiveStatistics stats) {
+        double[] waitingTimes = stats.getValues();
+
+        if (waitingTimes.length == 0) {
+            return Double.NaN; // to be consistent with DescriptiveStatistics
+        }
+
+        double count = (double)Arrays.stream(waitingTimes).filter(t -> t > timeCriteria).count();
         return count * 100 / waitingTimes.length;
     }
 
