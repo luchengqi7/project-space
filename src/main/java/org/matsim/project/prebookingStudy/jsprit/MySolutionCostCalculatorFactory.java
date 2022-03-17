@@ -18,11 +18,13 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForOF;
 
 import java.nio.file.Path;
+import java.util.Map;
+
 import org.apache.log4j.Logger;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrival_TD}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -63,6 +65,11 @@ public class MySolutionCostCalculatorFactory {
                 return getTTWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TTWTTD:
                 return getTTWTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            //school children related
+            case OnTimeArrival:
+                return getOnTimeArrivalObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case OnTimeArrival_TD:
+                return getOnTimeArrivalPlusTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -248,6 +255,50 @@ public class MySolutionCostCalculatorFactory {
                 costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add waiting time
                 costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add travel distance
+                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getOnTimeArrivalObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                double factor = 20.;
+                //add penalty for early/late arrival
+                //ToDo: maybe 15 minutes earlier is better than on-time arrival?
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getDeliveryTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += factor * timeOffset;
+                }
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getOnTimeArrivalPlusTDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                double factor = 20.;
+                //add penalty for early/late arrival
+                //ToDo: maybe 15 minutes earlier is better than on-time arrival?
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getDeliveryTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += factor * timeOffset;
+                }
                 //add travel distance
                 costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;

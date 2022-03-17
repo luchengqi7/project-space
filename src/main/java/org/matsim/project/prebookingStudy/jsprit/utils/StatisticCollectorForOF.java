@@ -48,6 +48,12 @@ public class StatisticCollectorForOF {
     public Map<String, Double> getWaitingTimeMap() {
         return waitingTimeMap;
     }
+    public Map<String, Double> getPickupTimeMap() {
+        return pickupTimeMap;
+    }
+    public Map<String, Double> getDeliveryTimeMap() {
+        return deliveryTimeMap;
+    }
 
     Map<String, Double> desiredPickupTimeMap = new HashMap<>();
     Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
@@ -56,6 +62,12 @@ public class StatisticCollectorForOF {
     }
     public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
         this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
+    }
+    public Map<String, Double> getDesiredPickupTimeMap() {
+        return desiredPickupTimeMap;
+    }
+    public Map<String, Double> getDesiredDeliveryTimeMap() {
+        return desiredDeliveryTimeMap;
     }
 
 
