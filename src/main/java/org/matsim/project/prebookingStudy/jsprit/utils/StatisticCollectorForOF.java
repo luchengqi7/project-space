@@ -49,6 +49,16 @@ public class StatisticCollectorForOF {
         return waitingTimeMap;
     }
 
+    Map<String, Double> desiredPickupTimeMap = new HashMap<>();
+    Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
+    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
+        this.desiredPickupTimeMap = desiredPickupTimeMap;
+    }
+    public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
+        this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
+    }
+
+
     public StatisticCollectorForOF(VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
         this.enableNetworkBasedCosts = true;
         this.transportCosts = transportCosts;

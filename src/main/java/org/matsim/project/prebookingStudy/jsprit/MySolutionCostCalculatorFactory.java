@@ -26,22 +26,26 @@ public class MySolutionCostCalculatorFactory {
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
-    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Path matsimConfig, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
+    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
         //prepare to calculate the KPIs
         double serviceTimeInMatsim = 0;
-        Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
-        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
+        //Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
+        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(matsimDrtRequest2Jsprit.getConfig()).getModalElements()) {
             serviceTimeInMatsim = drtCfg.getStopDuration();
         }
         StatisticCollectorForOF statisticCollectorForOF;
         if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(ScenarioUtils.loadScenario(ConfigUtils.loadConfig(matsimConfig.toString())).getNetwork())
+            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
+            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
         } else {
             statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
+            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
         }
 
         switch (objectiveFunctionType) {

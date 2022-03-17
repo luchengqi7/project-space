@@ -71,7 +71,7 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
     @CommandLine.Option(names = "--stop-duration", description = "set stop duration that is accessible in MATSim config!", required = true)
     private static int stopDuration;
 
-    private static final Logger LOG = Logger.getLogger(RunJspritSolutionAnalyzer.class);
+    //private static final Logger LOG = Logger.getLogger(RunJspritSolutionAnalyzer.class);
 
     public static void main(String[] args) {
         new RunJspritSolutionAnalyzer().execute(args);
@@ -101,11 +101,11 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
                     .enableCache(true)
                     .setCacheSizeLimit(cacheSizeLimit);
             if(cacheSizeLimit!=10000){
-                LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
+                //LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
             }
             VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
             //vrpBuilder.setRoutingCost(transportCosts);
-            LOG.info("network-based costs enabled!");
+            //LOG.info("network-based costs enabled!");
             statisticUtils = new StatisticUtils(config, transportCosts, stopDuration);
         } else {
             statisticUtils = new StatisticUtils(config, stopDuration);
@@ -166,19 +166,19 @@ public class RunJspritSolutionAnalyzer implements MATSimAppCommand {
         jobNeighborhoods.initialise();
         double maxCosts = jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
-        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+        //SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
 
         StateManager stateManager = new StateManager(problem);
         ConstraintManager constraintManager = new ConstraintManager(problem, stateManager);
 
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem)
-                .setObjectiveFunction(objectiveFunction)
+                //.setObjectiveFunction(objectiveFunction)
                 .setStateAndConstraintManager(stateManager, constraintManager)
                 // to make sure the initial solution is the best ever solution
                 .setProperty(Jsprit.Strategy.WORST_REGRET, "0.")
                 .setProperty(Jsprit.Strategy.CLUSTER_REGRET, "0.")
                 .buildAlgorithm();
-        LOG.info("The objective function used is " + objectiveFunctionType.toString());
+        //LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
 
         //update the route times before adding it as an initial solution

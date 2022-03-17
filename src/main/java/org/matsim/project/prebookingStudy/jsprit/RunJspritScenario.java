@@ -158,6 +158,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         //use Shipment to create requests
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
+        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
 
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
@@ -171,7 +173,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         jobNeighborhoods.initialise();
         double maxCosts = jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
-        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, enableNetworkBasedCosts, cacheSizeLimit);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);

@@ -29,8 +29,10 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.net.URL;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
@@ -50,6 +52,8 @@ public class MatsimDrtRequest2Jsprit {
     double serviceTimeInMatsim;
     private final Network network;
     final LeastCostPathCalculator router;
+    final Map<String, Double> desiredPickupTimeMap = new HashMap<>();
+    final Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
 
     public Config getConfig() {
         return config;
@@ -59,6 +63,12 @@ public class MatsimDrtRequest2Jsprit {
     }
     public Network getNetwork() {
         return network;
+    }
+    public Map<String, Double> getDesiredPickupTimeMap() {
+        return desiredPickupTimeMap;
+    }
+    public Map<String, Double> getDesiredDeliveryTimeMap() {
+        return desiredDeliveryTimeMap;
     }
 
     private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
@@ -206,6 +216,8 @@ public class MatsimDrtRequest2Jsprit {
                         //ToDo: use TransportModeNetworkFilter or filter in NetworkUtils to filter the links for drt(/car)
                         deliveryLocationId = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getId().toString();
                     }
+
+                    deliveryTime = destinationActivity.getStartTime().seconds();
                 }
                 //counter++;
                 if (counter % divisor == 0) {
@@ -213,6 +225,7 @@ public class MatsimDrtRequest2Jsprit {
                     divisor = divisor * 2;
                 }
 
+                String requestId = person.getId() + "#" + requestCount;
                 double travelTime;
                 double speed = vehicleType.getMaxVelocity();
                 if(enableNetworkBasedCosts) {
@@ -226,7 +239,7 @@ public class MatsimDrtRequest2Jsprit {
                      * use Shipment to create request for jsprit
                      */
                     latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
-                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                    Shipment shipment = Shipment.Builder.newInstance(requestId)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
                             .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
@@ -242,13 +255,17 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
+
+                    //save the desiredPickupTime and desiredDeliveryTime into maps
+                    desiredPickupTimeMap.put(requestId, pickupTime);
+                    desiredDeliveryTimeMap.put(requestId, deliveryTime);
                 } else if(schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.SchoolType)) {
                     /*
                      * use Shipment to create request for jsprit
                      */
                     latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(schoolStartTimeScheme, destinationActivityType);
                     double timeBetweenPickUpAndLatestDelivery = maxTravelTimeAlpha * travelTime + maxTravelTimeBeta;
-                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                    Shipment shipment = Shipment.Builder.newInstance(requestId)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
                             .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
@@ -264,12 +281,16 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
+
+                    //save the desiredPickupTime and desiredDeliveryTime into maps
+                    desiredPickupTimeMap.put(requestId, latestDeliveryTime - timeBetweenPickUpAndLatestDelivery);
+                    desiredDeliveryTimeMap.put(requestId, latestDeliveryTime);
                 } else if(schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.Eight)) {
                     /*
                      * use Shipment to create request for jsprit
                      */
                     latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(schoolStartTimeScheme, destinationActivityType);
-                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                    Shipment shipment = Shipment.Builder.newInstance(requestId)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
                             .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
@@ -285,6 +306,10 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
+
+                    //save the desiredPickupTime and desiredDeliveryTime into maps
+                    desiredPickupTimeMap.put(requestId, pickupTime);
+                    desiredDeliveryTimeMap.put(requestId, latestDeliveryTime);
                 }
                 requestCount++;
             }

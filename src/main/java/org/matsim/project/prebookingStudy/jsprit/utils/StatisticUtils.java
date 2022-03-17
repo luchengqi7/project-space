@@ -50,6 +50,16 @@ public class StatisticUtils {
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
+    Map<String, Double> desiredPickupTimeMap = new HashMap<>();
+    Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
+    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
+        this.desiredPickupTimeMap = desiredPickupTimeMap;
+    }
+    public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
+        this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
+    }
+
+
     public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
         this.config = config;
         this.separator = config.global().getDefaultDelimiter();
@@ -63,6 +73,7 @@ public class StatisticUtils {
         this.enableNetworkBasedCosts = false;
         this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
+
 
     public void writeConfig(String outputFilename){
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
