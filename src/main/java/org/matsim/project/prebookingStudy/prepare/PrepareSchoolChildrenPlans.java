@@ -1,4 +1,4 @@
-package org.matsim.project.prebookingStudy.jsprit.prepare;
+package org.matsim.project.prebookingStudy.prepare;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -120,6 +120,7 @@ public class PrepareSchoolChildrenPlans implements MATSimAppCommand {
                         if (pE instanceof Activity) {
                             // According to manual check, those are all feasible activities for education
                             if (((Activity) pE).getType().startsWith("educ_") || ((Activity) pE).getType().equals("errands") || ((Activity) pE).getType().equals("visit")) {
+//                            if (((Activity) pE).getType().startsWith("educ_")) {
                                 if (((Activity) pE).getStartTime().orElse(86400) <= schoolTripTimeWindowTo &&
                                         ((Activity) pE).getStartTime().orElse(0) >= schoolTripTimeWindowFrom)
                                     identifiedEducationActivity = (Activity) pE;
@@ -213,6 +214,9 @@ public class PrepareSchoolChildrenPlans implements MATSimAppCommand {
                 schoolCoord = potentialSchoolCoord;
             }
         }
+        if (minDistance >= 1500) {
+            System.err.println("Warning: distance adjustment over 1500m : " + minDistance);
+        }
         identifiedEducationActivity.setCoord(schoolCoord);
     }
 
@@ -221,7 +225,7 @@ public class PrepareSchoolChildrenPlans implements MATSimAppCommand {
         schoolData.put(EDUC_PRIMARY, new ArrayList<>());
         schoolData.put(EDUC_SECONDARY, new ArrayList<>());
         schoolData.put(EDUC_TERTIARY, new ArrayList<>());
-        schoolData.put(UNKNOWN, new ArrayList<>()); // all school facilities are included here
+        schoolData.put(UNKNOWN, new ArrayList<>()); // For unknown activity types (age between 12 - 18 --> map to Secondary or Tertiary)
 
         for (ActivityFacility facility : activityFacilities.getFacilities().values()) {
             String schoolName = facility.getAttributes().getAttribute(PrepareSchoolFacility.SCHOOL_NAME).toString();
@@ -230,7 +234,7 @@ public class PrepareSchoolChildrenPlans implements MATSimAppCommand {
                 schoolData.get(EDUC_PRIMARY).add(facility.getCoord());
                 facilityAssigned = true;
             } else {
-                schoolData.get(UNKNOWN).add(facility.getCoord());  // will be used for children with age 11 - 18, with other activity type
+                schoolData.get(UNKNOWN).add(facility.getCoord());  // will be used for children with age 12 - 18, with unknown activity type
             }
 
             if (schoolName.contains("Real") || schoolName.contains("Gym")) {
