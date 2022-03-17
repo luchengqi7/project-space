@@ -140,7 +140,7 @@ public class MatsimDrtRequest2Jsprit {
     }
 
     // ================ REQUEST Reader
-    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType, boolean enableNetworkBasedCosts, boolean isSchoolTraffic) {
+    VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType, boolean enableNetworkBasedCosts, SchoolTrafficUtils.SchoolStartTimeScheme schoolStartTimeScheme) {
 
         double pickupTime;
         double deliveryTime;
@@ -221,17 +221,32 @@ public class MatsimDrtRequest2Jsprit {
                     travelTime = EuclideanDistanceCalculator.calculateDistance(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build().getCoordinate(), Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build().getCoordinate()) / speed;
                 }
                 double latestDeliveryTime;
-                if(isSchoolTraffic) {
-                    //use Shipment to create request for jsprit
+                if(schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.Disabled)) {
                     /*
-                     *
+                     * use Shipment to create request for jsprit
                      */
-                    // double detourFactor = 1.3;
-                    // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
-                    //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
-
-                    //ToDo: change maximalWaitingtime to beta from config file
-                    latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(destinationActivityType);
+                    latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
+                    Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
+                            //.setName("myShipment")
+                            .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
+                            .setDeliveryLocation(Location.Builder.newInstance().setId(deliveryLocationId).setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY)).build())
+                            .addSizeDimension(capacityIndex, 1)/*.addSizeDimension(1,50)*/
+                            //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
+                            .setPickupServiceTime(serviceTimeInMatsim)
+                            .setDeliveryServiceTime(serviceTimeInMatsim)
+                            .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
+                            //ToDo: remove travelTime?
+                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
+                            //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
+                            //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
+                            //.setPriority()
+                            .build();
+                    vrpBuilder.addJob(shipment);
+                } else if(schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.SchoolType)) {
+                    /*
+                     * use Shipment to create request for jsprit
+                     */
+                    latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(schoolStartTimeScheme, destinationActivityType);
                     double timeBetweenPickUpAndLatestDelivery = maxTravelTimeAlpha * travelTime + maxTravelTimeBeta;
                     Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                             //.setName("myShipment")
@@ -249,17 +264,11 @@ public class MatsimDrtRequest2Jsprit {
                             //.setPriority()
                             .build();
                     vrpBuilder.addJob(shipment);
-                } else {
-                    //use Shipment to create request for jsprit
+                } else if(schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.Eight)) {
                     /*
-                     *
+                     * use Shipment to create request for jsprit
                      */
-                    // double detourFactor = 1.3;
-                    // double transportTime = EuclideanDistanceCalculator.calculateDistance(Location.newInstance(pickupLocationX, pickupLocationY).getCoordinate(), Location.newInstance(deliveryLocationX, deliveryLocationY).getCoordinate()) * detourFactor / speed;
-                    //ToDo: this parameter need to be calibrated? Or as a tunable parameter?
-
-                    //ToDo: change maximalWaitingtime to beta from config file
-                    latestDeliveryTime = pickupTime + maxTravelTimeBeta + travelTime * maxTravelTimeAlpha;
+                    latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(schoolStartTimeScheme, destinationActivityType);
                     Shipment shipment = Shipment.Builder.newInstance(person.getId() + "#" + requestCount)
                             //.setName("myShipment")
                             .setPickupLocation(Location.Builder.newInstance().setId(pickupLocationId).setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY)).build())
@@ -270,7 +279,7 @@ public class MatsimDrtRequest2Jsprit {
                             .setDeliveryServiceTime(serviceTimeInMatsim)
                             .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
                             //ToDo: remove travelTime?
-                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
+                            .setDeliveryTimeWindow(new TimeWindow(pickupTime, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
                             //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                             //.setPriority()

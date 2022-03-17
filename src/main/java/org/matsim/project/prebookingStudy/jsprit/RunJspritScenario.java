@@ -35,6 +35,7 @@ import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
+import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
 import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
@@ -84,8 +85,8 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
     private static boolean enableGraphStreamViewer;
 
-    @CommandLine.Option(names = "--school-traffic", description = "if input plan is specific for school traffic", defaultValue = "false")
-    private static boolean isSchoolTraffic;
+    @CommandLine.Option(names = "--school-traffic", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "Disabled")
+    private SchoolTrafficUtils.SchoolStartTimeScheme schoolStartTimeScheme;
 
     @CommandLine.Option(names = "--run-test", description = "if running the test for jsprit", defaultValue = "false")
     private static boolean isRunningTest;
@@ -156,7 +157,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, isSchoolTraffic);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
 
         // ================ default settings
         VehicleRoutingProblem problem = vrpBuilder.build();
