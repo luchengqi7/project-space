@@ -9,6 +9,6 @@ public class FreeSpeedTravelTimeWithRoundingUp implements TravelTime {
     @Override
     public double getLinkTravelTime(Link link, double time, Person person, Vehicle vehicle) {
         double freeSpeedTravelTime = link.getLength() / link.getFreespeed(time);
-        return Math.ceil(freeSpeedTravelTime);
+        return Math.floor(freeSpeedTravelTime) + 1;
     }
 }

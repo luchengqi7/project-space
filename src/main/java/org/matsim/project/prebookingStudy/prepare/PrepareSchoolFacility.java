@@ -1,4 +1,4 @@
-package org.matsim.project.prebookingStudy.jsprit.prepare;
+package org.matsim.project.prebookingStudy.prepare;
 
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.locationtech.jts.geom.Geometry;
@@ -23,6 +23,7 @@ public class PrepareSchoolFacility {
     static final String SCHOOL_NAME = "school name";
 
     public static void main(String[] args) throws IOException {
+        // Attention: There are 3 missing schools from the Shape Files. Some manual modification of the facility is required.
         Network network = NetworkUtils.readNetwork("/Users/luchengqi/Documents/MATSimScenarios/Vulkaneifel/drt-prebooking-study/network.xml.gz");
         Path schoolShp = Path.of("/Users/luchengqi/Documents/MATSimScenarios/Vulkaneifel/drt-prebooking-study/shp/landuse/vulkaneifel-amenity-school.shp");
         String serviceAreaShpPath = "/Users/luchengqi/Documents/MATSimScenarios/Vulkaneifel/drt-prebooking-study/shp/ServiceArea/vulkaneifel.shp";

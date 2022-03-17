@@ -41,7 +41,7 @@ import static org.matsim.application.ApplicationUtils.globFile;
         description = "Analyze DRT service quality"
 )
 public class DrtServiceQualityAnalysis implements MATSimAppCommand {
-    @CommandLine.Option(names = "--directory", description = "path to network file", required = true)
+    @CommandLine.Option(names = "--directory", description = "path to output directory", required = true)
     private Path directory;
 
     public static void main(String[] args) {
@@ -90,12 +90,13 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
             List<Double> waitingTimes = new ArrayList<>();
             List<Double> onboardDelayRatios = new ArrayList<>();
             List<Double> detourDistanceRatios = new ArrayList<>();
+            List<Double> arrivalTimes = new ArrayList<>();
 
             CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputTripsPath.toString()), CSVFormat.TDF);
             List<String> titleRow = Arrays.asList
                     ("departure_time", "waiting_time", "in_vehicle_time", "total_travel_time",
                             "est_direct_in_vehicle_time", "actual_travel_distance", "est_direct_drive_distance",
-                            "euclidean_distance", "onboard_delay_ratio", "detour_distance_ratio");
+                            "euclidean_distance", "onboard_delay_ratio", "detour_distance_ratio", "arrival_time");
             tsvWriter.printRecord(titleRow);
 
             int numOfTrips = 0;
@@ -120,10 +121,12 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
                     double euclideanDistance = DistanceUtils.calculateDistance(fromLink.getToNode().getCoord(), toLink.getToNode().getCoord());
                     double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
                     double detourRatioDistance = actualTravelDistance / estimatedDirectTravelDistance - 1;
+                    double arrivalTime = departureTime + totalTravelTime;
 
                     waitingTimes.add(waitingTime);
                     onboardDelayRatios.add(onboardDelayRatio);
                     detourDistanceRatios.add(detourRatioDistance);
+                    arrivalTimes.add(arrivalTime);
 
                     List<String> outputRow = new ArrayList<>();
                     outputRow.add(Double.toString(departureTime));
@@ -136,6 +139,7 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
                     outputRow.add(Double.toString(euclideanDistance));
                     outputRow.add(Double.toString(onboardDelayRatio));
                     outputRow.add(Double.toString(detourRatioDistance));
+                    outputRow.add(Double.toString(arrivalTime));
 
                     tsvWriter.printRecord(outputRow);
 
@@ -147,7 +151,7 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
             CSVPrinter tsvWriterKPI = new CSVPrinter(new FileWriter(outputStatsPath.toString()), CSVFormat.TDF);
             List<String> titleRowKPI = Arrays.asList
                     ("number_of_requests", "waiting_time_mean", "waiting_time_median", "waiting_time_95_percentile",
-                            "onboard_delay_ratio_mean", "detour_distance_ratio_mean");
+                            "onboard_delay_ratio_mean", "detour_distance_ratio_mean", "arrival_punctuality");
             tsvWriterKPI.printRecord(titleRowKPI);
 
             int meanWaitingTime = (int) waitingTimes.stream().mapToDouble(w -> w).average().orElse(-1);
@@ -157,6 +161,8 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
             DecimalFormat formatter = new DecimalFormat("0.00");
             String meanDelayRatio = formatter.format(onboardDelayRatios.stream().mapToDouble(r -> r).average().orElse(-1));
             String meanDetourDistanceRatio = formatter.format(detourDistanceRatios.stream().mapToDouble(d -> d).average().orElse(-1));
+            String arrivalPunctuality = formatter.format((double) (arrivalTimes.stream().filter(a -> a <= 28800).count()) / (double) numOfTrips);
+            //TODO Currently 28800 (08:00) is used as the single starting time of school
 
             List<String> outputKPIRow = new ArrayList<>();
             outputKPIRow.add(Integer.toString(numOfTrips));
@@ -165,6 +171,7 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
             outputKPIRow.add(Integer.toString(waitingTime95Percentile));
             outputKPIRow.add(meanDelayRatio);
             outputKPIRow.add(meanDetourDistanceRatio);
+            outputKPIRow.add(arrivalPunctuality);
 
             tsvWriterKPI.printRecord(outputKPIRow);
 
