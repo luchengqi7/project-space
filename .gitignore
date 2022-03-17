@@ -47,4 +47,5 @@ hs_err_pid*
 
 # "local run" related file and folders
 /scenarios/vulkaneifel/config-test.xml
+/scenarios/vulkaneifel/school-childrem.config.xml
 /output_jsprit

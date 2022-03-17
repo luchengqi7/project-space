@@ -30,6 +30,7 @@ import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Solutions;
+import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
@@ -85,6 +86,12 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--school-traffic", description = "if input plan is specific for school traffic", defaultValue = "false")
     private static boolean isSchoolTraffic;
+
+    @CommandLine.Option(names = "--run-test", description = "if running the test for jsprit", defaultValue = "false")
+    private static boolean isRunningTest;
+
+    public UnassignedJobReasonTracker reasonTracker;
+
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -167,6 +174,10 @@ public class RunJspritScenario implements MATSimAppCommand {
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
+        if(isRunningTest){
+            reasonTracker = new UnassignedJobReasonTracker();
+            algorithm.addListener(reasonTracker);
+        }
 
         /*
          * and search a solution
