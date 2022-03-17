@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrival_TD}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -68,7 +68,7 @@ public class MySolutionCostCalculatorFactory {
             //school children related
             case OnTimeArrival:
                 return getOnTimeArrivalObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
-            case OnTimeArrival_TD:
+            case OnTimeArrivalPlusTD:
                 return getOnTimeArrivalPlusTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
