@@ -94,12 +94,6 @@ public class RunJspritScenario implements MATSimAppCommand {
     public UnassignedJobReasonTracker reasonTracker;
 
 
-    @CommandLine.Option(names = "--run-test", description = "if running the test for jsprit", defaultValue = "false")
-    private static boolean isRunningTest;
-
-    public UnassignedJobReasonTracker reasonTracker;
-
-
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
     public static void main(String[] args) {
