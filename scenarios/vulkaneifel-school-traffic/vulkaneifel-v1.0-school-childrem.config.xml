@@ -21,7 +21,7 @@
 			<param name="stopDuration" value="60.0"/>
 
 			<!-- An XML file specifying the vehicle fleet. The file format according to dvrp_vehicles_v1.dtd -->
-			<param name="vehiclesFile" value="drt-vehicles/250-8-seater-drt-vehicles.xml"/>
+			<param name="vehiclesFile" value="drt-vehicles/250-8-seater-drt-vehicles-with-depots.xml"/>
 
 			<!-- Writes out detailed DRT customer stats in each iteration. True by default. -->
 			<param name="writeDetailedCustomerStats" value="true"/>

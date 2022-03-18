@@ -159,7 +159,7 @@ public class RunJsprit {
 		// run jsprit
 		var problem = vrpBuilder.build();
 		var algorithm = Jsprit.Builder.newInstance(problem)
-				.setProperty(Jsprit.Parameter.THREADS, "12")
+				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors()+"")
 				.buildAlgorithm();
 		algorithm.setMaxIterations(200);
 		var solutions = algorithm.searchSolutions();
