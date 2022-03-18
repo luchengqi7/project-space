@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE facilities SYSTEM "http://www.matsim.org/files/dtd/facilities_v1.dtd">
+
+<facilities>
+	<facility id="1023997427" linkId="3400865540004f" x="324079.7450965968" y="5580465.391679194">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Stadtkyll</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="203455453" linkId="2041222790003f" x="336881.44673355675" y="5558311.670297517">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Wallenborn</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="28754765" linkId="117729770012f" x="330010.36581139156" y="5576696.978724021">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule am Möschelberg</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="28898630" linkId="5214385680001f" x="326671.76174856117" y="5579878.586957881">		<attributes>
+			<attribute name="school name" class="java.lang.String">Jugendbildungsstätte Don Bosco</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="302406726" linkId="195558990002f" x="327806.2254787047" y="5580106.976518733">		<attributes>
+			<attribute name="school name" class="java.lang.String">Graf Salentin Grundschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="302412228" linkId="300853420004f" x="327799.7641413897" y="5580017.634091923">		<attributes>
+			<attribute name="school name" class="java.lang.String">Graf Salentin Realschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="31696779" linkId="1881386090007f" x="333175.33525834937" y="5566340.76058945">		<attributes>
+			<attribute name="school name" class="java.lang.String">St.-Matthias-Gymnasium</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="32495855" linkId="7947152460009f" x="332702.66216879943" y="5565719.725934952">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grund- und Realschule plus</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="335210740" linkId="727676730015f" x="350254.7985236932" y="5555161.251795984">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grund- und Realschule Gillenfeld</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="385141141" linkId="323461570001f" x="340661.67542195896" y="5578869.670801459">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="448614581" linkId="770499810005f" x="333869.47734778514" y="5573475.976233349">		<attributes>
+			<attribute name="school name" class="java.lang.String">Augustiner-Realschule plus Hillesheim</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="601078704" linkId="305277540001f" x="358419.2695016648" y="5568822.342672669">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Uersfeld</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="627438258" linkId="316875510008f" x="344753.5904391113" y="5562858.019079656">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Daun</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="627456806" linkId="621438680008f" x="344543.40338591073" y="5562920.424914222">		<attributes>
+			<attribute name="school name" class="java.lang.String">Thomas-Morus-Gymnasium</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="627456832" linkId="317246450027f" x="344394.2310065997" y="5562837.597187905">		<attributes>
+			<attribute name="school name" class="java.lang.String">Geschwister-Scholl-Gymnasium</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="628136766" linkId="6882405290000f" x="344735.06090536213" y="5562620.027160663">		<attributes>
+			<attribute name="school name" class="java.lang.String">Drei-Maare-Realschule plus Daun</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="628921461" linkId="867479390009f" x="344788.7550487206" y="5562510.552293154">		<attributes>
+			<attribute name="school name" class="java.lang.String">St. Laurentius-Förderzentrum Daun</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="663292345" linkId="727676730015f" x="350333.12032619835" y="5555124.951206195">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule oder Realschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="747154780" linkId="10195274340003f" x="330440.6086486954" y="5561103.446922794">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Birresborn</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="765843649" linkId="289830080019f" x="341979.04201140825" y="5569133.222483903">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Dockweiler</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="794689571" linkId="415872400005f" x="339065.76178224914" y="5563023.443486436">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Neroth</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="794734860" linkId="7947152430005f" x="333196.25675038464" y="5565350.620373384">		<attributes>
+			<attribute name="school name" class="java.lang.String">Hubertus-Rader-Förderzentrum</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="794734861" linkId="273342940005f" x="333233.19227833016" y="5565466.783203686">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Gerolstein</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="794754837" linkId="247898420002f" x="348241.1703827246" y="5560605.76178004">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule Mehren</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="796663928" linkId="300570200022f" x="343635.003895561" y="5558118.682254902">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="820142570" linkId="195325100000f" x="332334.18656505976" y="5566198.468935244">		<attributes>
+			<attribute name="school name" class="java.lang.String">Berufsbildende Schule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="894397708" linkId="1283741740007f" x="351727.56597183587" y="5572376.084923413">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grund- und Realschule plus St. Martin</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="manual-01" linkId="323461570001f" x="334073.8125" y="5573359.0">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule</attribute>
+		</attributes>
+
+	</facility>
+	<facility id="manual-02" linkId="323461570001f" x="340661.5625" y="5578869.5">		<attributes>
+			<attribute name="school name" class="java.lang.String">Grundschule</attribute>
+		</attributes>
+
+	</facility>
+</facilities>
