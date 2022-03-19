@@ -19,6 +19,9 @@
 
 package org.matsim.project.utils;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -39,6 +42,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -54,68 +59,82 @@ import java.util.stream.Stream;
  */
 
 @CommandLine.Command(
-		name = "create-fleet",
-		description = "create drt fleet"
+        name = "create-fleet",
+        description = "create drt fleet"
 )
 public class CreateFleetVehicles implements MATSimAppCommand {
-	@CommandLine.Option(names = "--network", description = "path to network file", required = true)
-	private Path networkFile;
+    @CommandLine.Option(names = "--network", description = "path to network file", required = true)
+    private Path networkFile;
 
-	@CommandLine.Option(names = "--fleet-size", description = "number of vehicles to generate", required = true)
-	private int fleetSize;
+    @CommandLine.Option(names = "--fleet-size", description = "number of vehicles to generate", required = true)
+    private int fleetSize;
 
-	@CommandLine.Option(names = "--capacity", description = "capacity of the vehicle", required = true)
-	private int capacity;
+    @CommandLine.Option(names = "--capacity", description = "capacity of the vehicle", required = true)
+    private int capacity;
 
-	@CommandLine.Option(names = "--output", description = "path to network file", required = true)
-	private Path outputFile;
+    @CommandLine.Option(names = "--output", description = "path to output file", required = true)
+    private Path outputFile;
 
-	@CommandLine.Option(names = "--operator", description = "name of the operator", defaultValue = "drt")
-	private String operator;
+    @CommandLine.Option(names = "--operator", description = "name of the operator", defaultValue = "drt")
+    private String operator;
 
-	@CommandLine.Option(names = "--start-time", description = "service starting time", defaultValue = "0")
-	private double startTime;
+    @CommandLine.Option(names = "--start-time", description = "service starting time", defaultValue = "0")
+    private double startTime;
 
-	@CommandLine.Option(names = "--end-time", description = "service ending time", defaultValue = "86400")
-	private double endTime;
+    @CommandLine.Option(names = "--end-time", description = "service ending time", defaultValue = "86400")
+    private double endTime;
 
-	@CommandLine.Mixin
-	private ShpOptions shp = new ShpOptions(); // Optional input for service area (shape file)
+    @CommandLine.Option(names = "--depots", description = "Path to the depots location file", defaultValue = "")
+    private String depotsPath;
 
-	private static final Random random = MatsimRandom.getRandom();
+    @CommandLine.Mixin
+    private ShpOptions shp = new ShpOptions(); // Optional input for service area (shape file)
+
+    private static final Random random = MatsimRandom.getRandom();
 
 
-	public static void main(String[] args) {
-		new CreateFleetVehicles().execute(args);
-	}
+    public static void main(String[] args) {
+        new CreateFleetVehicles().execute(args);
+    }
 
-	@Override
-	public Integer call() throws Exception {
-		Network network = NetworkUtils.readNetwork(networkFile.toString());
-		List<Link> links = network.getLinks().values().stream().
-				filter(l -> l.getAllowedModes().contains(TransportMode.car)).
-				collect(Collectors.toList());
-		if (shp.isDefined()) {
-			Geometry serviceArea = shp.getGeometry();
-			links = links.stream().
-					filter(l -> MGC.coord2Point(l.getToNode().getCoord()).within(serviceArea)).
-					collect(Collectors.toList());
-		}
+    @Override
+    public Integer call() throws Exception {
+        Network network = NetworkUtils.readNetwork(networkFile.toString());
+        List<Link> links = network.getLinks().values().stream().
+                filter(l -> l.getAllowedModes().contains(TransportMode.car)).
+                collect(Collectors.toList());
+        if (shp.isDefined()) {
+            Geometry serviceArea = shp.getGeometry();
+            links = links.stream().
+                    filter(l -> MGC.coord2Point(l.getToNode().getCoord()).within(serviceArea)).
+                    collect(Collectors.toList());
+        }
 
-		List<DvrpVehicleSpecification> vehicleSpecifications = new ArrayList<>();
-		for (int i = 0; i < fleetSize; i++) {
-			Id<Link> startLinkId = links.get(random.nextInt(links.size())).getId();
-			DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
-					id(Id.create(operator + "_" + i, DvrpVehicle.class)).
-					startLinkId(startLinkId).
-					capacity(capacity).
-					serviceBeginTime(startTime).
-					serviceEndTime(endTime).build();
-			vehicleSpecifications.add(vehicleSpecification);
-		}
+        if (!depotsPath.equals("")) {
+            try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(depotsPath), StandardCharsets.UTF_8),
+                    CSVFormat.DEFAULT.withDelimiter(',').withFirstRecordAsHeader())) {
+                links.clear();
+                for (CSVRecord record : parser) {
+                    Link depotLink = network.getLinks().get(Id.createLinkId(record.get(0)));
+                    links.add(depotLink);
+                }
+            }
+        }
 
-		new FleetWriter(vehicleSpecifications.stream()).write(outputFile.toString());
+        List<DvrpVehicleSpecification> vehicleSpecifications = new ArrayList<>();
+        for (int i = 0; i < fleetSize; i++) {
+            Id<Link> startLinkId = links.get(random.nextInt(links.size())).getId();
+            DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
+                    id(Id.create(operator + "_" + i, DvrpVehicle.class)).
+                    startLinkId(startLinkId).
+                    capacity(capacity).
+                    serviceBeginTime(startTime).
+                    serviceEndTime(endTime).build();
+            vehicleSpecifications.add(vehicleSpecification);
+        }
 
-		return 0;
-	}
+        new FleetWriter(vehicleSpecifications.stream()).write(outputFile.toString());
+
+        return 0;
+    }
 }
