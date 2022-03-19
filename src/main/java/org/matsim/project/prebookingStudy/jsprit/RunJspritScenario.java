@@ -93,6 +93,8 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     public UnassignedJobReasonTracker reasonTracker;
 
+    @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
+    private static boolean enableInfiniteFleet;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -162,7 +164,12 @@ public class RunJspritScenario implements MATSimAppCommand {
         statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
 
         // ================ default settings
-        VehicleRoutingProblem problem = vrpBuilder.build();
+        VehicleRoutingProblem problem;
+        if(enableInfiniteFleet){
+            problem = vrpBuilder.build();
+        }else {
+            problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
+        }
         //problem.getJobs();
 
         /*
