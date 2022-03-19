@@ -107,8 +107,10 @@ public class StatisticCollectorForOF {
             Map<String, Double> realPickupDepartureTimeMap = new HashMap<>();
             Map<String, Double> routeTravelDistanceMap = new HashMap<>();
             Location lastStopLocation = null;
-            double lastStopDepartureTime = route.getStart().getEndTime();
             TourActivity prevAct = route.getStart();
+            double lastStopDepartureTime = prevAct.getEndTime();
+            Location vehicleLastLocation = prevAct.getLocation();
+            double drivenDistance = 0;
             for (TourActivity act : route.getActivities()) {
                 if((("pickupShipment").equals(act.getName()))|(("deliverShipment").equals(act.getName()))){
                     String jobId;
@@ -126,12 +128,14 @@ public class StatisticCollectorForOF {
                         } else {
                             lastLegDistance = transportCosts.getDistance(lastStopLocation, act.getLocation(), lastStopDepartureTime, null);
                         }
+                        drivenDistance += transportCosts.getDistance(vehicleLastLocation, act.getLocation(), lastStopDepartureTime, null);
                     } else {
                         if (lastStopLocation == null) {
                             lastLegDistance = 0.;
                         } else {
                             lastLegDistance = EuclideanDistanceCalculator.calculateDistance(lastStopLocation.getCoordinate(), act.getLocation().getCoordinate());
                         }
+                        drivenDistance += EuclideanDistanceCalculator.calculateDistance(vehicleLastLocation.getCoordinate(), act.getLocation().getCoordinate());
                     }
                     if (("pickupShipment").equals(act.getName())) {
                         //time-related:
@@ -157,6 +161,7 @@ public class StatisticCollectorForOF {
                         }
                         lastStopLocation = act.getLocation();
                         lastStopDepartureTime = act.getEndTime();
+                        vehicleLastLocation = act.getLocation();
                     } else if (("deliverShipment").equals(act.getName())) {
                         //time-related:
                         double deliveryTime = act.getArrTime();
@@ -186,10 +191,12 @@ public class StatisticCollectorForOF {
                         }
                         lastStopLocation = act.getLocation();
                         lastStopDepartureTime = act.getEndTime();
+                        vehicleLastLocation = act.getLocation();
                     }
                 }
             }
             TourActivity afterAct = route.getEnd();
+            drivenDistanceMap.put(route.getVehicle().getId(), drivenDistance);
         }
 
         if (enableNetworkBasedCosts) {
