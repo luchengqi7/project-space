@@ -471,11 +471,11 @@ public class StatisticUtils {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
-            //add("totalDistance");
+            add("totalDistance");
             //add("totalEmptyDistance");
             //add("emptyRatio");
             add("totalPassengerDistanceTraveled");
-            //add("averageDrivenDistance");
+            add("averageDrivenDistance");
             //add("averageEmptyDistance");
             add("averagePassengerDistanceTraveled");
             //add("d_p/d_t");
@@ -529,11 +529,11 @@ public class StatisticUtils {
 
                 //add records
                 tripRecord.add(Integer.toString(problem.getVehicles().size()));
-                //tripRecord.add(Double.toString(driven.getSum()));
+                tripRecord.add(Double.toString(driven.getSum()));
                 //tripRecord.add(Double.toString(empty.getSum()));
                 //tripRecord.add(Double.toString(empty.getSum() / driven.getSum()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getSum()));
-                //tripRecord.add(Double.toString(driven.getMean()));
+                tripRecord.add(Double.toString(driven.getMean()));
                 //tripRecord.add(Double.toString(empty.getMean()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
                 //tripRecord.add(Double.toString(d_p_d_t));
