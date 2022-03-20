@@ -104,7 +104,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     public enum MatsimVrpCostsCalculatorType {NetworkBased, MatrixBased}
 
-    @CommandLine.Option(names = "--vrp-costs-calculator", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "NetworkBased")
+    @CommandLine.Option(names = "--vrp-costs-calculator", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "MatrixBased")
     private MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType;
 
     private VehicleRoutingTransportCosts transportCosts;

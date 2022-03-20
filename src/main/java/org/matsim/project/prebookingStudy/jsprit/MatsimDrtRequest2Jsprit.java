@@ -235,7 +235,7 @@ public class MatsimDrtRequest2Jsprit {
                     if (originActivity.getCoord() != null) {
                         pickupLocationX = originActivity.getCoord().getX();
                         pickupLocationY = originActivity.getCoord().getY();
-                        //ToDo: get the ToNode here!
+                        pickupToNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
                     } else {
                         pickupLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
                         pickupLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
@@ -266,7 +266,7 @@ public class MatsimDrtRequest2Jsprit {
                     if (destinationActivity.getCoord() != null) {
                         deliveryLocationX = destinationActivity.getCoord().getX();
                         deliveryLocationY = destinationActivity.getCoord().getY();
-                        //ToDo: get the ToNode here!
+                        deliveryToNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
                     } else {
                         deliveryLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
                         deliveryLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
