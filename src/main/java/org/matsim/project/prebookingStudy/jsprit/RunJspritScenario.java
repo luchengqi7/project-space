@@ -107,11 +107,6 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--vrp-costs-calculator", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "NetworkBased")
     private MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType;
 
-    private final Map<Id<Node>, Location> locationByNodeId = new IdMap<>(Node.class);
-    public Map<Id<Node>, Location> getLocationByNodeId() {
-        return locationByNodeId;
-    }
-
     private VehicleRoutingTransportCosts transportCosts;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
@@ -137,30 +132,6 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
-        StatisticUtils statisticUtils;
-        if (enableNetworkBasedCosts) {
-            if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.NetworkBased)) {
-                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
-                        .enableCache(true)
-                        .setCacheSizeLimit(cacheSizeLimit);
-                if (cacheSizeLimit != 10000) {
-                    LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
-                }
-                transportCosts = networkBasedDrtVrpCostsbuilder.build();
-                LOG.info("NetworkBased VrpCosts Calculator enabled!");
-            } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
-                // compute matrix
-                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), locationByNodeId);
-                LOG.info("MatrixBased VrpCosts Calculator enabled!");
-            }
-            vrpBuilder.setRoutingCost(transportCosts);
-            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
-        } else {
-            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
-            transportCosts = new EuclideanCosts();
-        }
-
-
 
 
         /*
@@ -176,7 +147,7 @@ public class RunJspritScenario implements MATSimAppCommand {
                 //.setCostPerServiceTime()
                 ;
         VehicleType vehicleType = vehicleTypeBuilder.build();
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType);
 
 
         //use Service to create requests
@@ -184,9 +155,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
-        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType, schoolStartTimeScheme);
 
         // ================ default settings
         VehicleRoutingProblem problem;
@@ -196,6 +165,36 @@ public class RunJspritScenario implements MATSimAppCommand {
             problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
         }
         //problem.getJobs();
+
+
+        /*
+         * create routing costs for jsprit
+         */
+        StatisticUtils statisticUtils;
+        if (enableNetworkBasedCosts) {
+            if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.NetworkBased)) {
+                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
+                        .enableCache(true)
+                        .setCacheSizeLimit(cacheSizeLimit);
+                if (cacheSizeLimit != 10000) {
+                    LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
+                }
+                transportCosts = networkBasedDrtVrpCostsbuilder.build();
+                LOG.info("NetworkBased VrpCosts Calculator enabled!");
+            } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
+                // compute matrix
+                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByNodeId());
+                LOG.info("MatrixBased VrpCosts Calculator enabled!");
+            }
+            vrpBuilder.setRoutingCost(transportCosts);
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+        } else {
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+            transportCosts = new EuclideanCosts();
+        }
+        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+
 
         /*
          * get the algorithm out-of-the-box.
