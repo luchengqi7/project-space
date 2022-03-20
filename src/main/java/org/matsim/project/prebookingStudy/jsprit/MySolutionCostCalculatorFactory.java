@@ -9,6 +9,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.BreakActivity;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 
+import com.graphhopper.jsprit.core.util.EuclideanCosts;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.core.config.Config;
@@ -28,7 +29,7 @@ public class MySolutionCostCalculatorFactory {
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
-    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, boolean enableNetworkBasedCosts, int cacheSizeLimit) {
+    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, VehicleRoutingTransportCosts transportCosts) {
         //prepare to calculate the KPIs
         double serviceTimeInMatsim = 0;
         //Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
@@ -36,18 +37,16 @@ public class MySolutionCostCalculatorFactory {
             serviceTimeInMatsim = drtCfg.getStopDuration();
         }
         StatisticCollectorForOF statisticCollectorForOF;
-        if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
-                    .enableCache(true)
-                    .setCacheSizeLimit(cacheSizeLimit);
-            VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
+        if (transportCosts instanceof NetworkBasedDrtVrpCosts | transportCosts instanceof MatrixBasedVrpCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
             statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
             statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
-        } else {
+        } else if(transportCosts instanceof EuclideanCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
             statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
             statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+        } else{
+            throw new RuntimeException("MatsimVrpCostsCaculatorType can either be EuclideanCosts or NetworkBased/MatrixBased!");
         }
 
         switch (objectiveFunctionType) {
