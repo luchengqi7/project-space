@@ -2,6 +2,7 @@ package org.matsim.project.prebookingStudy;
 
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
 import org.matsim.contrib.drt.run.DrtConfigs;
@@ -14,39 +15,47 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.project.prebookingStudy.analysis.DrtServiceQualityAnalysis;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
 
 @CommandLine.Command(
-		name = "run",
-		description = "run drt pre-booking study"
+        name = "run",
+        description = "run drt pre-booking study"
 )
 public class RunMATSimBenchmark implements MATSimAppCommand {
-	@CommandLine.Option(names = "--config", description = "path to config file", required = true)
-	private Path configPath;
+    @CommandLine.Option(names = "--config", description = "path to config file", required = true)
+    private Path configPath;
 
-	public static void main(String[] args) {
-		new RunMATSimBenchmark().execute(args);
-	}
+    public static void main(String[] args) {
+        new RunMATSimBenchmark().execute(args);
+    }
 
-	@Override
-	public Integer call() throws Exception {
-		Config config = ConfigUtils.loadConfig(configPath.toString(), new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
-		MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
-		DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
+    @Override
+    public Integer call() throws Exception {
+        Config config = ConfigUtils.loadConfig(configPath.toString(), new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+        MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
+        DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
 
-		Scenario scenario = ScenarioUtils.loadScenario(config);
-		scenario.getPopulation().getFactory().getRouteFactories().setRouteFactory(DrtRoute.class, new DrtRouteFactory());
+        Scenario scenario = ScenarioUtils.loadScenario(config);
+        scenario.getPopulation().getFactory().getRouteFactories().setRouteFactory(DrtRoute.class, new DrtRouteFactory());
 
-		Controler controler = new Controler(scenario);
-		controler.addOverridingModule(new DvrpModule());
-		controler.addOverridingModule(new MultiModeDrtModule());
-		controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
+        Controler controler = new Controler(scenario);
+        controler.addOverridingModule(new DvrpModule());
+        controler.addOverridingModule(new MultiModeDrtModule());
+        controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
 
-		controler.run();
+        controler.run();
 
+        String outputDirectory = controler.getConfig().controler().getOutputDirectory();
 
-		return 0;
-	}
+        String[] args2 = new String[]{"--directory=" + outputDirectory};
+        DrtServiceQualityAnalysis.main(args2);
+
+        String[] input = new String[]{outputDirectory};
+        DrtVehicleStoppingTaskWriter.main(input);
+
+        return 0;
+    }
 }
