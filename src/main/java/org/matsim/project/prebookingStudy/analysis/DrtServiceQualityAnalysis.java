@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.math.stat.StatUtils;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -96,7 +97,8 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
             List<String> titleRow = Arrays.asList
                     ("departure_time", "waiting_time", "in_vehicle_time", "total_travel_time",
                             "est_direct_in_vehicle_time", "actual_travel_distance", "est_direct_drive_distance",
-                            "euclidean_distance", "onboard_delay_ratio", "detour_distance_ratio", "arrival_time");
+                            "euclidean_distance", "onboard_delay_ratio", "detour_distance_ratio", "arrival_time",
+                            "from_x", "from_y", "to_x", "to_y");
             tsvWriter.printRecord(titleRow);
 
             int numOfTrips = 0;
@@ -104,7 +106,9 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
                     CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
                 for (CSVRecord record : parser.getRecords()) {
                     Link fromLink = network.getLinks().get(Id.createLinkId(record.get(3)));
+                    Coord fromCoord = fromLink.getToNode().getCoord();
                     Link toLink = network.getLinks().get(Id.createLinkId(record.get(6)));
+                    Coord toCoord = toLink.getToNode().getCoord();
                     double departureTime = Double.parseDouble(record.get(0));
                     Vehicle vehicle = null;
                     if (mode.equals("av")) {
@@ -118,7 +122,7 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
                     double actualInVehicleTime = Double.parseDouble(record.get(11));
                     double totalTravelTime = waitingTime + actualInVehicleTime;
                     double actualTravelDistance = Double.parseDouble(record.get(12));
-                    double euclideanDistance = DistanceUtils.calculateDistance(fromLink.getToNode().getCoord(), toLink.getToNode().getCoord());
+                    double euclideanDistance = DistanceUtils.calculateDistance(fromCoord, toCoord);
                     double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
                     double detourRatioDistance = actualTravelDistance / estimatedDirectTravelDistance - 1;
                     double arrivalTime = departureTime + totalTravelTime;
@@ -140,6 +144,10 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
                     outputRow.add(Double.toString(onboardDelayRatio));
                     outputRow.add(Double.toString(detourRatioDistance));
                     outputRow.add(Double.toString(arrivalTime));
+                    outputRow.add(Double.toString(fromCoord.getX()));
+                    outputRow.add(Double.toString(fromCoord.getY()));
+                    outputRow.add(Double.toString(toCoord.getX()));
+                    outputRow.add(Double.toString(toCoord.getY()));
 
                     tsvWriter.printRecord(outputRow);
 
