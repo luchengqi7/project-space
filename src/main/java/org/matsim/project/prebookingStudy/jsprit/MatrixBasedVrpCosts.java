@@ -58,7 +58,7 @@ public class MatrixBasedVrpCosts implements VehicleRoutingTransportCosts {
 		var travelTime = new QSimFreeSpeedTravelTime(1);
 		var travelDisutility = new TimeAsTravelDisutility(travelTime);
 		var matrix = TravelTimeMatrices.calculateTravelTimeMatrix(network, nodeByZone, 0, travelTime, travelDisutility,
-				12);
+				Runtime.getRuntime().availableProcessors());
 
 		var locationZones = new Zone[locationByNodeId.size() + 1];
 		nodeByLocationIndex.forEach((index, node) -> locationZones[index] = zoneByNode.get(node));

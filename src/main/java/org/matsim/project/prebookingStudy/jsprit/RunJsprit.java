@@ -20,6 +20,9 @@
 
 package org.matsim.project.prebookingStudy.jsprit;
 
+import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.Builder;
+import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSize;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -40,7 +43,6 @@ import org.matsim.core.scenario.ScenarioUtils;
 import com.google.common.base.Preconditions;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.problem.Location;
-import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
@@ -48,6 +50,8 @@ import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
+
+import one.util.streamex.StreamEx;
 
 /**
  * @author Michal Maciejewski (michalm)
@@ -58,10 +62,11 @@ public class RunJsprit {
 	public static void main(String[] args) {
 		//		new RunJsprit().runJsprit("D:\\matsim-intelliJ\\luchengqi7_project-space\\scenarios\\vulkaneifel\\config.xml");
 		new RunJsprit().runJsprit(
-				"D:\\matsim-intelliJ\\luchengqi7_project-space\\scenarios\\vulkaneifel-school-traffic\\vulkaneifel-v1.0-school-childrem.config.xml");
+				"D:\\matsim-intelliJ\\luchengqi7_project-space\\scenarios\\vulkaneifel-school-traffic\\vulkaneifel-v1.0-school-childrem.config.xml",
+				true);
 	}
 
-	void runJsprit(String matsimConfig) {
+	void runJsprit(String matsimConfig, boolean infiniteFleet) {
 		var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
 		var scenario = ScenarioUtils.loadScenario(config);
 		var network = scenario.getNetwork();
@@ -69,7 +74,7 @@ public class RunJsprit {
 		Preconditions.checkState(MultiModeDrtConfigGroup.get(config).getModalElements().size() == 1);
 		var drtCfg = MultiModeDrtConfigGroup.get(config).getModalElements().iterator().next();
 
-		var vrpBuilder = new VehicleRoutingProblem.Builder();
+		var vrpBuilder = new Builder();
 
 		// create fleet
 		var dvrpFleetSpecification = new FleetSpecificationImpl();
@@ -86,13 +91,15 @@ public class RunJsprit {
 				.addCapacityDimension(0, vehicleCapacity)
 				.build();
 
-		// let's use one link for all vehicles instead of the start links from the dvrp vehicle file
-		var startLinkId = Id.createLinkId("415872430048f");
-		var startNode = scenario.getNetwork().getLinks().get(startLinkId).getToNode();
-		var startLocation = computeLocationIfAbsent(startNode);
+		var dvrpVehicles = dvrpFleetSpecification.getVehicleSpecifications().values().stream();
+		if (infiniteFleet) {
+			dvrpVehicles = StreamEx.of(dvrpVehicles).distinct(DvrpVehicleSpecification::getStartLinkId);
+		}
 
-		for (DvrpVehicleSpecification dvrpVehicle : dvrpFleetSpecification.getVehicleSpecifications().values()) {
-			// var startLinkId = dvrpVehicle.getStartLinkId();
+		dvrpVehicles.forEach(dvrpVehicle -> {
+			var startLinkId = dvrpVehicle.getStartLinkId();
+			var startNode = scenario.getNetwork().getLinks().get(startLinkId).getToNode();
+			var startLocation = computeLocationIfAbsent(startNode);
 			var vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicle.getId() + "");
 			vehicleBuilder.setStartLocation(startLocation);
 			vehicleBuilder.setEarliestStart(dvrpVehicle.getServiceBeginTime());
@@ -100,7 +107,7 @@ public class RunJsprit {
 			vehicleBuilder.setType(vehicleType);
 
 			vrpBuilder.addVehicle(vehicleBuilder.build());
-		}
+		});
 
 		// collect pickup/dropoff locations
 		for (Person person : scenario.getPopulation().getPersons().values()) {
@@ -157,9 +164,9 @@ public class RunJsprit {
 		}
 
 		// run jsprit
-		var problem = vrpBuilder.build();
+		var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
 		var algorithm = Jsprit.Builder.newInstance(problem)
-				.setProperty(Jsprit.Parameter.THREADS, "12")
+				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
 				.buildAlgorithm();
 		algorithm.setMaxIterations(200);
 		var solutions = algorithm.searchSolutions();
