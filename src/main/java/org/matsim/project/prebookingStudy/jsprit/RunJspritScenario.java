@@ -35,6 +35,7 @@ import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
+import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
 import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
@@ -84,14 +85,16 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
     private static boolean enableGraphStreamViewer;
 
-    @CommandLine.Option(names = "--school-traffic", description = "if input plan is specific for school traffic", defaultValue = "false")
-    private static boolean isSchoolTraffic;
+    @CommandLine.Option(names = "--school-traffic", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "Disabled")
+    private SchoolTrafficUtils.SchoolStartTimeScheme schoolStartTimeScheme;
 
     @CommandLine.Option(names = "--run-test", description = "if running the test for jsprit", defaultValue = "false")
     private static boolean isRunningTest;
 
     public UnassignedJobReasonTracker reasonTracker;
 
+    @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
+    private static boolean enableInfiniteFleet;
 
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
@@ -156,10 +159,17 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, isSchoolTraffic);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
+        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
 
         // ================ default settings
-        VehicleRoutingProblem problem = vrpBuilder.build();
+        VehicleRoutingProblem problem;
+        if(enableInfiniteFleet){
+            problem = vrpBuilder.build();
+        }else {
+            problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
+        }
         //problem.getJobs();
 
         /*
@@ -170,7 +180,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         jobNeighborhoods.initialise();
         double maxCosts = jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
-        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimConfig, enableNetworkBasedCosts, cacheSizeLimit);
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, enableNetworkBasedCosts, cacheSizeLimit);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);

@@ -50,6 +50,16 @@ public class StatisticUtils {
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
 
+    Map<String, Double> desiredPickupTimeMap = new HashMap<>();
+    Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
+    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
+        this.desiredPickupTimeMap = desiredPickupTimeMap;
+    }
+    public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
+        this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
+    }
+
+
     public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
         this.config = config;
         this.separator = config.global().getDefaultDelimiter();
@@ -63,6 +73,7 @@ public class StatisticUtils {
         this.enableNetworkBasedCosts = false;
         this.serviceTimeInMatsim = ServiceTimeInMatsim;
     }
+
 
     public void writeConfig(String outputFilename){
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
@@ -94,8 +105,10 @@ public class StatisticUtils {
             Map<String, Double> realPickupDepartureTimeMap = new HashMap<>();
             Map<String, Double> routeTravelDistanceMap = new HashMap<>();
             Location lastStopLocation = null;
-            double lastStopDepartureTime = route.getStart().getEndTime();
             TourActivity prevAct = route.getStart();
+            double lastStopDepartureTime = prevAct.getEndTime();
+            Location vehicleLastLocation = prevAct.getLocation();
+            double drivenDistance = 0;
             for (TourActivity act : route.getActivities()) {
                 if((("pickupShipment").equals(act.getName()))|(("deliverShipment").equals(act.getName()))){
                     String jobId;
@@ -113,12 +126,14 @@ public class StatisticUtils {
                         } else {
                             lastLegDistance = transportCosts.getDistance(lastStopLocation, act.getLocation(), lastStopDepartureTime, null);
                         }
+                        drivenDistance += transportCosts.getDistance(vehicleLastLocation, act.getLocation(), lastStopDepartureTime, null);
                     } else {
                         if (lastStopLocation == null) {
                             lastLegDistance = 0.;
                         } else {
                             lastLegDistance = EuclideanDistanceCalculator.calculateDistance(lastStopLocation.getCoordinate(), act.getLocation().getCoordinate());
                         }
+                        drivenDistance += EuclideanDistanceCalculator.calculateDistance(vehicleLastLocation.getCoordinate(), act.getLocation().getCoordinate());
                     }
                     if (("pickupShipment").equals(act.getName())) {
                         //time-related:
@@ -144,6 +159,7 @@ public class StatisticUtils {
                         }
                         lastStopLocation = act.getLocation();
                         lastStopDepartureTime = act.getEndTime();
+                        vehicleLastLocation = act.getLocation();
                     } else if (("deliverShipment").equals(act.getName())) {
                         //time-related:
                         double deliveryTime = act.getArrTime();
@@ -173,10 +189,12 @@ public class StatisticUtils {
                         }
                         lastStopLocation = act.getLocation();
                         lastStopDepartureTime = act.getEndTime();
+                        vehicleLastLocation = act.getLocation();
                     }
                 }
             }
             TourActivity afterAct = route.getEnd();
+            drivenDistanceMap.put(route.getVehicle().getId(), drivenDistance);
         }
 
         if (enableNetworkBasedCosts) {
@@ -304,6 +322,15 @@ public class StatisticUtils {
                 add("onboardDelayRatio_mean");
                 add("detourDistanceRatio_mean");
             }
+
+            //add KPIs mainly for school children
+            add("early-arrival_average");
+            add("early-arrival_max");
+            add("early-arrival_p95");
+            add("early-arrival_p75");
+            add("early-arrival_median");
+            add("percentage_early-arrival_above_15");
+            add("percentage_early-arrival_above_30");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -324,13 +351,15 @@ public class StatisticUtils {
             DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
             DescriptiveStatistics detourDistanceRatioStats = new DescriptiveStatistics();
 
+            DescriptiveStatistics timeOffsetStats = new DescriptiveStatistics();
+
 /*                DecimalFormat format = new DecimalFormat();
             format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
             format.setMinimumIntegerDigits(1);
             format.setMaximumFractionDigits(2);
             format.setGroupingUsed(false);*/
 
-            //ToDo: change to steam style
+            //ToDo: change to steam style?
             for (Double value : waitingTimeMap.values()) {
                 waitStats.addValue(value.doubleValue());
             }
@@ -359,6 +388,10 @@ public class StatisticUtils {
             }
             for (Double value : travelTimeMap.values()) {
                 traveltimes.addValue(value.doubleValue());
+            }
+            for (Map.Entry<String, Double> entry : deliveryTimeMap.entrySet()) {
+                double timeOffset = desiredDeliveryTimeMap.get(entry.getKey()) - entry.getValue();
+                timeOffsetStats.addValue(timeOffset);
             }
 
 
@@ -391,6 +424,14 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
 
+                tripRecord.add(Double.toString(timeOffsetStats.getMean()));
+                tripRecord.add(Double.toString(timeOffsetStats.getMax()));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(95)));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(75)));
+                tripRecord.add(Double.toString(timeOffsetStats.getPercentile(50)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeAbove(900, timeOffsetStats)));
+                tripRecord.add(Double.toString(getPercentageWaitTimeAbove(1800, timeOffsetStats)));
+
 
                 if (tripsHeader.length != tripRecord.size()) {
                     throw new RuntimeException("TRIPSHEADER.length != tripRecord.size()");
@@ -415,16 +456,26 @@ public class StatisticUtils {
         double count = (double)Arrays.stream(waitingTimes).filter(t -> t < timeCriteria).count();
         return count * 100 / waitingTimes.length;
     }
+    public static double getPercentageWaitTimeAbove(int timeCriteria, DescriptiveStatistics stats) {
+        double[] waitingTimes = stats.getValues();
+
+        if (waitingTimes.length == 0) {
+            return Double.NaN; // to be consistent with DescriptiveStatistics
+        }
+
+        double count = (double)Arrays.stream(waitingTimes).filter(t -> t > timeCriteria).count();
+        return count * 100 / waitingTimes.length;
+    }
 
     public void writeVehicleStats(String outputFilename, VehicleRoutingProblem problem, VehicleRoutingProblemSolution bestSolution) {
 
         List<String> strList = new ArrayList<String>() {{
             add("vehicles");
-            //add("totalDistance");
+            add("totalDistance");
             //add("totalEmptyDistance");
             //add("emptyRatio");
             add("totalPassengerDistanceTraveled");
-            //add("averageDrivenDistance");
+            add("averageDrivenDistance");
             //add("averageEmptyDistance");
             add("averagePassengerDistanceTraveled");
             //add("d_p/d_t");
@@ -478,11 +529,11 @@ public class StatisticUtils {
 
                 //add records
                 tripRecord.add(Integer.toString(problem.getVehicles().size()));
-                //tripRecord.add(Double.toString(driven.getSum()));
+                tripRecord.add(Double.toString(driven.getSum()));
                 //tripRecord.add(Double.toString(empty.getSum()));
                 //tripRecord.add(Double.toString(empty.getSum() / driven.getSum()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getSum()));
-                //tripRecord.add(Double.toString(driven.getMean()));
+                tripRecord.add(Double.toString(driven.getMean()));
                 //tripRecord.add(Double.toString(empty.getMean()));
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
                 //tripRecord.add(Double.toString(d_p_d_t));
