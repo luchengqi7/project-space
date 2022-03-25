@@ -22,6 +22,7 @@ import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
 import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
+import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
 import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
@@ -29,10 +30,14 @@ import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolutio
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
+import com.graphhopper.jsprit.core.util.EuclideanCosts;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.IdMap;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
@@ -43,6 +48,7 @@ import picocli.CommandLine;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Map;
 
 @CommandLine.Command(
         name = "run",
@@ -96,6 +102,13 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
     private static boolean enableInfiniteFleet;
 
+    public enum MatsimVrpCostsCalculatorType {NetworkBased, MatrixBased}
+
+    @CommandLine.Option(names = "--vrp-costs-calculator", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "MatrixBased")
+    private MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType;
+
+    private VehicleRoutingTransportCosts transportCosts;
+
     private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
 
     public static void main(String[] args) {
@@ -119,23 +132,6 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(matsimConfig.toString(), dvrpMode, capacityIndex);
         VehicleRoutingProblem.Builder vrpBuilder = new VehicleRoutingProblem.Builder();
-        StatisticUtils statisticUtils;
-        if (enableNetworkBasedCosts) {
-            NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
-                    .enableCache(true)
-                    .setCacheSizeLimit(cacheSizeLimit);
-            if(cacheSizeLimit!=10000){
-                LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
-            }
-            VehicleRoutingTransportCosts transportCosts = networkBasedDrtVrpCostsbuilder.build();
-            vrpBuilder.setRoutingCost(transportCosts);
-            LOG.info("network-based costs enabled!");
-            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
-        } else {
-            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
-        }
-
-
 
 
         /*
@@ -151,7 +147,7 @@ public class RunJspritScenario implements MATSimAppCommand {
                 //.setCostPerServiceTime()
                 ;
         VehicleType vehicleType = vehicleTypeBuilder.build();
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType);
 
 
         //use Service to create requests
@@ -159,9 +155,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
-        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType, schoolStartTimeScheme);
 
         // ================ default settings
         VehicleRoutingProblem problem;
@@ -172,6 +166,36 @@ public class RunJspritScenario implements MATSimAppCommand {
         }
         //problem.getJobs();
 
+
+        /*
+         * create routing costs for jsprit
+         */
+        StatisticUtils statisticUtils;
+        if (enableNetworkBasedCosts) {
+            if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.NetworkBased)) {
+                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
+                        .enableCache(true)
+                        .setCacheSizeLimit(cacheSizeLimit);
+                if (cacheSizeLimit != 10000) {
+                    LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
+                }
+                transportCosts = networkBasedDrtVrpCostsbuilder.build();
+                LOG.info("NetworkBased VrpCosts Calculator enabled!");
+            } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
+                // compute matrix
+                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByNodeId());
+                LOG.info("MatrixBased VrpCosts Calculator enabled!");
+            }
+            vrpBuilder.setRoutingCost(transportCosts);
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+        } else {
+            statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
+            transportCosts = new EuclideanCosts();
+        }
+        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+
+
         /*
          * get the algorithm out-of-the-box.
          */
@@ -180,7 +204,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         jobNeighborhoods.initialise();
         double maxCosts = jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
-        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, enableNetworkBasedCosts, cacheSizeLimit);
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, transportCosts);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
