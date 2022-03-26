@@ -157,15 +157,6 @@ public class RunJspritScenario implements MATSimAppCommand {
         //use Shipment to create requests
         vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType, schoolStartTimeScheme);
 
-        // ================ default settings
-        VehicleRoutingProblem problem;
-        if(enableInfiniteFleet){
-            problem = vrpBuilder.build();
-        }else {
-            problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
-        }
-        //problem.getJobs();
-
 
         /*
          * create routing costs for jsprit
@@ -194,6 +185,19 @@ public class RunJspritScenario implements MATSimAppCommand {
         }
         statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
         statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+
+
+        /*
+         * build vehicle routing problem.
+         */
+        VehicleRoutingProblem problem;
+        if(enableInfiniteFleet){
+            // ================ default settings
+            problem = vrpBuilder.build();
+        }else {
+            problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
+        }
+        //problem.getJobs();
 
 
         /*
