@@ -264,7 +264,7 @@ public class StatisticUtils {
                     //add records
                     tripRecord.add(personId);
                     tripRecord.add(shipment.getId());
-                    tripRecord.add(Time.writeTime(pickupTimeMap.get(shipmentId)));
+                    tripRecord.add(Time.writeTime(desiredPickupTimeMap.get(shipmentId) > pickupTimeMap.get(shipmentId) ? desiredPickupTimeMap.get(shipmentId) : pickupTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(deliveryTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(inVehicleTimeMap.get(shipmentId)));
                     tripRecord.add(Time.writeTime(travelTimeMap.get(shipmentId)));
