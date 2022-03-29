@@ -5,6 +5,7 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
@@ -28,6 +29,18 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private Path configPath;
 
+    @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2.0")
+    private double alpha;
+
+    @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
+    private double beta;
+
+    @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "250")
+    private int fleetSize;
+
+    @CommandLine.Option(names = "--output", description = "fleet size", defaultValue = "250")
+    private String output;
+
     public static void main(String[] args) {
         new RunMATSimBenchmark().execute(args);
     }
@@ -37,6 +50,15 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
         Config config = ConfigUtils.loadConfig(configPath.toString(), new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
         DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
+
+        DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next(); // By default, the first drt config group is the one we are using
+        drtConfigGroup.setMaxTravelTimeAlpha(alpha);
+        drtConfigGroup.setMaxTravelTimeBeta(beta);
+        drtConfigGroup.setMaxWaitTime(7200); //This constraint is no longer important in the school traffic case
+
+        drtConfigGroup.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
+
+        config.controler().setOutputDirectory(output);
 
         Scenario scenario = ScenarioUtils.loadScenario(config);
         scenario.getPopulation().getFactory().getRouteFactories().setRouteFactory(DrtRoute.class, new DrtRouteFactory());
