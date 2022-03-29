@@ -1,5 +1,7 @@
 package org.matsim.project.prebookingStudy.prepare;
 
+import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
@@ -8,7 +10,11 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.common.util.DistanceUtils;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
+import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
@@ -29,20 +35,25 @@ import java.util.Random;
  * output of the runs more meaningful
  */
 public class ModifySchoolChildrenPlan implements MATSimAppCommand {
-    @CommandLine.Option(names = "--plans", description = "path to plan file", required = true)
+    private static final Logger log = Logger.getLogger(ModifySchoolChildrenPlan.class);
+
+    @CommandLine.Option(names = "--config", description = "path to config file", required = true)
+    private String configPath;
+
+    @CommandLine.Option(names = "--plans", description = "path to input plan file", required = true)
     private String plansPath;
 
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private String networkPath;
 
+    @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2.0")
+    private double alpha;
+
+    @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
+    private double beta;
+
     @CommandLine.Option(names = "--output", description = "path to output plans file", required = true)
     private String outputPath;
-
-    private final double boardingTime = 60;
-    private final double alphaLower = 1.0;
-    private final double alphaUpper = 2.0;
-    private final double betaLower = 200; // Account for the time to walk to the link
-    private final double betaUpper = 1800;
 
     private final Random random = new Random(1234);
 
@@ -52,6 +63,14 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        Config config = ConfigUtils.loadConfig(configPath);
+        double walkingSpeed = config.plansCalcRoute().getTeleportedModeSpeeds().get(TransportMode.walk);
+        log.info("Walking speed is " + walkingSpeed + " m/s");
+
+        MultiModeDrtConfigGroup drtConfigGroup = ConfigUtils.addOrGetModule(config, MultiModeDrtConfigGroup.class);
+        double stopDuration = drtConfigGroup.getModalElements().iterator().next().getStopDuration(); // Use the first Drt Config Group by default
+        log.info("DRT Stop Duration is: " + stopDuration + " s");
+
         Network network = NetworkUtils.readNetwork(networkPath);
         Population plans = PopulationUtils.readPopulation(plansPath);
         UniformSchoolStartingTimeIdentification schoolStartTimeCalculator = new UniformSchoolStartingTimeIdentification();
@@ -78,14 +97,11 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
 
                 double schoolStartingTime = schoolStartTimeCalculator.getSchoolStartingTime(schoolActivity);
                 schoolActivity.setStartTime(schoolStartingTime);
-                double earliestDepartureTime = schoolStartingTime - alphaUpper * estDirectTravelTime - betaUpper - boardingTime;
-                double latestDepartureTime = schoolStartingTime - alphaLower * estDirectTravelTime - betaLower - boardingTime;
-                assert earliestDepartureTime >= 0 && latestDepartureTime >= 0;
 
-                if (originalDepartureTime >= latestDepartureTime || originalDepartureTime <= earliestDepartureTime) {
-                    double newDepartureTime = earliestDepartureTime + random.nextInt((int) (latestDepartureTime - earliestDepartureTime));
-                    homeActivity.setEndTime(newDepartureTime);
-                }
+                double walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed) + 1;
+                double travelTimeAllowance = alpha * estDirectTravelTime + beta + walkingTime + stopDuration + 1;
+                double updatedDepartureTime = schoolStartingTime - travelTimeAllowance;
+                homeActivity.setEndTime(updatedDepartureTime);
             }
         }
 
