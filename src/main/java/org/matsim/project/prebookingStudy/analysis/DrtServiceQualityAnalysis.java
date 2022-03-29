@@ -14,9 +14,12 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.router.FastAStarLandmarksFactory;
+import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.costcalculators.RandomizingTimeDistanceTravelDisutilityFactory;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
@@ -71,10 +74,9 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
         }
 
         Network network = NetworkUtils.readNetwork(networkPath.toString());
-        TravelTime travelTime = TrafficAnalysis.analyzeTravelTimeFromEvents(network, eventPath.toString());
-        config.plansCalcRoute().setRoutingRandomness(0);
-        TravelDisutility travelDisutility = new RandomizingTimeDistanceTravelDisutilityFactory
-                (TransportMode.car, config).createTravelDisutility(travelTime);
+//        TravelTime travelTime = TrafficAnalysis.analyzeTravelTimeFromEvents(network, eventPath.toString());
+        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);  // Free speed travel time used for this study // TODO update this when traffic congestion is included
+        TravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
         LeastCostPathCalculator router = new SpeedyALTFactory().
                 createPathCalculator(network, travelDisutility, travelTime);
 

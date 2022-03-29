@@ -1,5 +1,6 @@
 package org.matsim.project.prebookingStudy.prepare;
 
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Activity;
@@ -15,6 +16,7 @@ import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.utils.geometry.CoordUtils;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -39,7 +41,7 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
     private final double boardingTime = 60;
     private final double alphaLower = 1.0;
     private final double alphaUpper = 2.0;
-    private final double betaLower = 120; // Account for the time to walk to the link
+    private final double betaLower = 200; // Account for the time to walk to the link
     private final double betaUpper = 1800;
 
     private final Random random = new Random(1234);
@@ -62,6 +64,12 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
             for (TripStructureUtils.Trip trip : trips) {
                 Activity homeActivity = trip.getOriginActivity();
                 Activity schoolActivity = trip.getDestinationActivity();
+
+                homeActivity.setStartTime(0);
+                Link homeLink = NetworkUtils.getNearestLink(network, homeActivity.getCoord());
+                if (CoordUtils.calcEuclideanDistance(homeLink.getToNode().getCoord(), homeActivity.getCoord()) >= 200) {
+                    homeActivity.setCoord(homeLink.getToNode().getCoord());
+                }
 
                 Node from = NetworkUtils.getNearestLink(network, homeActivity.getCoord()).getToNode();
                 Node to = NetworkUtils.getNearestLink(network, schoolActivity.getCoord()).getToNode();
