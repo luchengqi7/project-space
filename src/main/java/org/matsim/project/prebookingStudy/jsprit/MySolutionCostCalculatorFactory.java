@@ -26,7 +26,7 @@ import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVTPlusDDPlusNoVeh, IVTPlusDD}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -78,6 +78,12 @@ public class MySolutionCostCalculatorFactory {
                 return getNoVehObjectiveFunction(vrp, maxCosts);
             case TTPlusDDPlusNoVeh:
                 return getTTPlusDDPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case TTPlusDD:
+                return getTTPlusDDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case IVTPlusDDPlusNoVeh:
+                return getIVTPlusDDPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case IVTPlusDD:
+                return getIVTPlusDDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -376,6 +382,62 @@ public class MySolutionCostCalculatorFactory {
                 costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 //add used number of vehicles
                 costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getTTPlusDDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getIVTPlusDDPlusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add in-vehicle time
+                costs += TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                //add used number of vehicles
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getIVTPlusDDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add in-vehicle time
+                costs += TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
