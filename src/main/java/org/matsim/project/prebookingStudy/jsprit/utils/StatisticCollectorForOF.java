@@ -57,6 +57,9 @@ public class StatisticCollectorForOF {
     public Map<String, Double> getDrivenDistanceMap() {
         return drivenDistanceMap;
     }
+    public Map<String, Double> getInVehicleTimeMap() {
+        return inVehicleTimeMap;
+    }
 
     Map<String, Double> desiredPickupTimeMap = new HashMap<>();
     Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
