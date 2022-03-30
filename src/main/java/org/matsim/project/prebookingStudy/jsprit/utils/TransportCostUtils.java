@@ -41,7 +41,7 @@ public class TransportCostUtils {
      */
     //In-vehicle Time Costs
     //extracted from https://www.vtpi.org/tca/tca0502.pdf, Page 5.2-16, Table 5.2.7-4 Illustrative Values of Time, Passenger Transport: Road - Commuting / Private
-    private final static double IN_VEHICLE_TIME_COST = 6.00;//unit: €/hour
+    private final static double IN_VEHICLE_TIME_COST = 6.00/3600;//unit: €/s
     public static double getInVehicleTimeCost() {
         return IN_VEHICLE_TIME_COST;
     }
