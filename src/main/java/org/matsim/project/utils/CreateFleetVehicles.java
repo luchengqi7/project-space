@@ -24,7 +24,6 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -34,23 +33,18 @@ import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetWriter;
 import org.matsim.contrib.dvrp.fleet.ImmutableDvrpVehicleSpecification;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.io.MatsimNetworkReader;
-import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author jbischoff, modified by luchengqi7
@@ -66,14 +60,20 @@ public class CreateFleetVehicles implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private Path networkFile;
 
-    @CommandLine.Option(names = "--fleet-size", description = "number of vehicles to generate", required = true)
-    private int fleetSize;
+    @CommandLine.Option(names = "--fleet-size-from", description = "number of vehicles to generate", required = true)
+    private int fleetSizeFrom;
+
+    @CommandLine.Option(names = "--fleet-size-to", description = "number of vehicles to generate", required = true)
+    private int fleetSizeTo;
+
+    @CommandLine.Option(names = "--fleet-size-interval", description = "number of vehicles to generate", defaultValue = "10")
+    private int fleetSizeInterval;
 
     @CommandLine.Option(names = "--capacity", description = "capacity of the vehicle", required = true)
     private int capacity;
 
-    @CommandLine.Option(names = "--output", description = "path to output file", required = true)
-    private Path outputFile;
+    @CommandLine.Option(names = "--output-folder", description = "path to output folder", required = true)
+    private Path outputFolder;
 
     @CommandLine.Option(names = "--operator", description = "name of the operator", defaultValue = "drt")
     private String operator;
@@ -121,20 +121,21 @@ public class CreateFleetVehicles implements MATSimAppCommand {
             }
         }
 
-        List<DvrpVehicleSpecification> vehicleSpecifications = new ArrayList<>();
-        for (int i = 0; i < fleetSize; i++) {
-            Id<Link> startLinkId = links.get(random.nextInt(links.size())).getId();
-            DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
-                    id(Id.create(operator + "_" + i, DvrpVehicle.class)).
-                    startLinkId(startLinkId).
-                    capacity(capacity).
-                    serviceBeginTime(startTime).
-                    serviceEndTime(endTime).build();
-            vehicleSpecifications.add(vehicleSpecification);
+        for (int fleetSize = fleetSizeFrom; fleetSize <= fleetSizeTo; fleetSize += fleetSizeInterval) {
+            System.out.println("Creating fleet: " + fleetSize);
+            List<DvrpVehicleSpecification> vehicleSpecifications = new ArrayList<>();
+            for (int i = 0; i < fleetSize; i++) {
+                Id<Link> startLinkId = links.get(random.nextInt(links.size())).getId();
+                DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
+                        id(Id.create(operator + "_" + i, DvrpVehicle.class)).
+                        startLinkId(startLinkId).
+                        capacity(capacity).
+                        serviceBeginTime(startTime).
+                        serviceEndTime(endTime).build();
+                vehicleSpecifications.add(vehicleSpecification);
+            }
+            new FleetWriter(vehicleSpecifications.stream()).write(outputFolder.toString() + "/" + fleetSize + "-" + capacity + "_seater-" + operator + "-vehicles.xml");
         }
-
-        new FleetWriter(vehicleSpecifications.stream()).write(outputFile.toString());
-
         return 0;
     }
 }
