@@ -164,13 +164,13 @@ public class RunJspritScenario implements MATSimAppCommand {
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
             if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.NetworkBased)) {
-                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsbuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
+                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsBuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
                         .enableCache(true)
                         .setCacheSizeLimit(cacheSizeLimit);
                 if (cacheSizeLimit != 10000) {
                     LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
                 }
-                transportCosts = networkBasedDrtVrpCostsbuilder.build();
+                transportCosts = networkBasedDrtVrpCostsBuilder.build();
                 LOG.info("NetworkBased VrpCosts Calculator enabled!");
             } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
                 // compute matrix

@@ -22,10 +22,11 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVTPlusDDPlusNoVeh, IVTPlusDD}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -77,6 +78,12 @@ public class MySolutionCostCalculatorFactory {
                 return getNoVehObjectiveFunction(vrp, maxCosts);
             case TTPlusDDPlusNoVeh:
                 return getTTPlusDDPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case TTPlusDD:
+                return getTTPlusDDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case IVTPlusDDPlusNoVeh:
+                return getIVTPlusDDPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case IVTPlusDD:
+                return getIVTPlusDDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -175,7 +182,7 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
-                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -191,9 +198,9 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
-                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add travel distance
-                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelDistanceCosts() * statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -209,7 +216,7 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel distance
-                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelDistanceCosts() * statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -225,7 +232,7 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add waiting time
-                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getWaitingTimeCosts() * statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -241,9 +248,9 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
-                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add waiting time
-                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getWaitingTimeCosts() * statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -259,11 +266,11 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
-                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add waiting time
-                costs += statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getWaitingTimeCosts() * statisticCollectorForOF.getWaitingTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add travel distance
-                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelDistanceCosts() * statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -278,12 +285,11 @@ public class MySolutionCostCalculatorFactory {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
-                double factor = 20.;
                 //add penalty for early/late arrival
                 //ToDo: maybe 15 minutes earlier is better than on-time arrival?
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getDeliveryTimeMap().entrySet()) {
                     double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += factor * timeOffset;
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset;
                 }
                 return costs;
             }
@@ -299,15 +305,14 @@ public class MySolutionCostCalculatorFactory {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
-                double factor = 20.;
                 //add penalty for early/late arrival
                 //ToDo: maybe 15 minutes earlier is better than on-time arrival?
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getDeliveryTimeMap().entrySet()) {
                     double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += factor * timeOffset;
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset;
                 }
                 //add travel distance
-                costs += statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelDistanceCosts() * statisticCollectorForOF.getPassengerTraveledDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -323,7 +328,7 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add driven distance
-                costs += statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -339,10 +344,9 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add driven distance
-                costs += statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 //add used number of vehicles
-                double factor = 300.;
-                costs += factor * solution.getRoutes().size();
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
                 return costs;
             }
         };
@@ -357,8 +361,7 @@ public class MySolutionCostCalculatorFactory {
                 double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
 
                 //add used number of vehicles
-                double factor = 300.;
-                costs += factor * solution.getRoutes().size();
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
                 return costs;
             }
         };
@@ -374,12 +377,67 @@ public class MySolutionCostCalculatorFactory {
 
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
-                costs += statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add driven distance
-                costs += statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 //add used number of vehicles
-                double factor = 300.;
-                costs += factor * solution.getRoutes().size();
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getTTPlusDDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getIVTPlusDDPlusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add in-vehicle time
+                costs += TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                //add used number of vehicles
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getIVTPlusDDObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add in-vehicle time
+                costs += TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add driven distance
+                costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
                 return costs;
             }
         };
@@ -415,7 +473,7 @@ public class MySolutionCostCalculatorFactory {
             LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
         }
         for(Job j : solution.getUnassignedJobs()){
-            costs += maxCosts * 2 * (11 - j.getPriority());
+            costs += maxCosts * 2 * (11 - j.getPriority()) + TransportCostUtils.getVehicleCosts();
         }
         return costs;
     }

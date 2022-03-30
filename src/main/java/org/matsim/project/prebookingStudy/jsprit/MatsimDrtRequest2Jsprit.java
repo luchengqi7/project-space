@@ -140,7 +140,7 @@ public class MatsimDrtRequest2Jsprit {
                     }
 
                     startNode = scenario.getNetwork().getLinks().get(startLinkId).getToNode();
-                    computeLocationIfAbsent(locationByNodeId, startNode);
+                    computeLocationIfAbsent(startNode);
                 }
             }
         }
@@ -199,11 +199,11 @@ public class MatsimDrtRequest2Jsprit {
 
                         var originActivity = trip.getOriginActivity();
                         var originNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
-                        computeLocationIfAbsent(locationByNodeId, originNode);
+                        computeLocationIfAbsent(originNode);
 
                         var destinationActivity = trip.getDestinationActivity();
                         var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
-                        computeLocationIfAbsent(locationByNodeId, destinationNode);
+                        computeLocationIfAbsent(destinationNode);
                     }
                 }
             }
@@ -372,7 +372,7 @@ public class MatsimDrtRequest2Jsprit {
                             //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                             .setPickupServiceTime(serviceTimeInMatsim)
                             .setDeliveryServiceTime(serviceTimeInMatsim)
-                            .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
+                            .setPickupTimeWindow(new TimeWindow(pickupTime, latestDeliveryTime))
                             //ToDo: remove travelTime?
                             .setDeliveryTimeWindow(new TimeWindow(pickupTime, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
@@ -395,7 +395,7 @@ public class MatsimDrtRequest2Jsprit {
         return vrpBuilder;
     }
 
-    private Location computeLocationIfAbsent(Map<Id<Node>, Location> locationByNodeId, Node node) {
+    private Location computeLocationIfAbsent(Node node) {
         return locationByNodeId.computeIfAbsent(node.getId(), nodeId -> Location.Builder.newInstance()
                 .setId(node.getId() + "")
                 .setIndex(locationByNodeId.size())
