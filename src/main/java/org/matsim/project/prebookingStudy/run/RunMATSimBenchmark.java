@@ -1,10 +1,11 @@
-package org.matsim.project.prebookingStudy;
+package org.matsim.project.prebookingStudy.run;
 
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
@@ -16,6 +17,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.analysis.DrtServiceQualityAnalysis;
+import org.matsim.project.prebookingStudy.run.rebalancing.RuralScenarioRebalancingTCModule;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
@@ -45,6 +47,11 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
         controler.addOverridingModule(new DvrpModule());
         controler.addOverridingModule(new MultiModeDrtModule());
         controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
+
+        // Adding the custom rebalancing target calculator
+        for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
+            controler.addOverridingQSimModule(new RuralScenarioRebalancingTCModule(drtCfg, 300));
+        }
 
         controler.run();
 
