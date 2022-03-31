@@ -324,7 +324,7 @@ public class StatisticUtils {
             }
 
             //add KPIs mainly for school children
-            add("assign_rate");
+            add("assignment_rate");
             add("rejection_rate");
 
             add("early-arrival_average");
