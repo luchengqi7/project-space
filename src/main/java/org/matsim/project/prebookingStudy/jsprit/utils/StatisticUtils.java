@@ -324,6 +324,9 @@ public class StatisticUtils {
             }
 
             //add KPIs mainly for school children
+            add("assign_rate");
+            add("rejection_rate");
+
             add("early-arrival_average");
             add("early-arrival_max");
             add("early-arrival_p95");
@@ -423,6 +426,9 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
+
+                tripRecord.add(Double.toString(assignedShipments.size()/shipments.size()));
+                tripRecord.add(Double.toString(unAssignedShipments.size()/shipments.size()));
 
                 tripRecord.add(Double.toString(timeOffsetStats.getMean()));
                 tripRecord.add(Double.toString(timeOffsetStats.getMax()));
