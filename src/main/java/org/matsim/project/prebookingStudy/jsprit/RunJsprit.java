@@ -157,8 +157,8 @@ public class RunJsprit {
                 var shipment = Shipment.Builder.newInstance(person.getId() + "")
                         .setPickupLocation(originLocation)
                         .setDeliveryLocation(destinationLocation)
-                        .setPickupServiceTime(0) //TODO
-                        .setDeliveryServiceTime(0)
+                        .setPickupServiceTime(1) //TODO change this value after the drt stopping time in MATSim has been updated
+                        .setDeliveryServiceTime(1)
                         .setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestDeliveryTime))
                         .setDeliveryTimeWindow(new TimeWindow(earliestPickupTime, latestDeliveryTime))
                         .addSizeDimension(0, 1)
