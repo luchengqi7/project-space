@@ -185,7 +185,7 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     @Override
     public double getTransportTime(Location from, Location to, double departureTime, Driver driver, Vehicle vehicle) {
         if (from.getId().equals(to.getId())) {
-            return drtStopDuration;
+            return 0;  // Because of the structure design, we cannot 100% replicate the vehilce behavior in MATSim. This is the best approximation we can get.
         }
         Link fromLink = network.getLinks().get(Id.createLinkId(from.getId()));
         Link toLink = network.getLinks().get(Id.createLinkId(to.getId()));
