@@ -23,6 +23,7 @@ package org.matsim.project.prebookingStudy.jsprit;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.Builder;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSize;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
@@ -60,19 +62,38 @@ import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
 
 import one.util.streamex.StreamEx;
+import picocli.CommandLine;
 
 /**
- * @author Michal Maciejewski (michalm)
+ * @author Michal Maciejewski (michalm)， modified by Chengqi Lu (luchengqi7)
  */
-public class RunJsprit {
+@CommandLine.Command(
+        name = "run-jsprit",
+        description = "run Jsprit scenario"
+)
+public class RunJsprit implements MATSimAppCommand {
     private final Map<Id<Node>, Location> locationByNodeId = new IdMap<>(Node.class);
 
-    public static void main(String[] args) {
-        new RunJsprit().runJsprit(args[0], Boolean.parseBoolean(args[1]), Boolean.parseBoolean(args[2]));
-        // arg0: config path; arg1: infinity fleet (boolean); arg2: print progress statistics (boolean)
+    @CommandLine.Option(names = "--config", description = "path to config file", required = true)
+    private String configPath;
+
+    @CommandLine.Option(names = "--infinite-fleet", description = "path to config file", defaultValue = "true")
+    private boolean infiniteFleetSize;
+
+    @CommandLine.Option(names = "--write-optimization-progress", description = "path to config file", defaultValue = "false")
+    private boolean printProgressStatistics;
+
+    @Override
+    public Integer call() throws Exception {
+        runJsprit(configPath, infiniteFleetSize, printProgressStatistics);
+        return 0;
     }
 
-    void runJsprit(String matsimConfig, boolean infiniteFleet, boolean printProgressStatistics) {
+    public static void main(String[] args) {
+        new RunJsprit().execute(args);
+    }
+
+    public void runJsprit(String matsimConfig, boolean infiniteFleet, boolean printProgressStatistics) {
         var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
         var scenario = ScenarioUtils.loadScenario(config);
         var network = scenario.getNetwork();
