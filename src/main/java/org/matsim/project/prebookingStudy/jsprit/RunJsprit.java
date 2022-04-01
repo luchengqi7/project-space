@@ -23,6 +23,7 @@ package org.matsim.project.prebookingStudy.jsprit;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.Builder;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSize;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
@@ -60,18 +62,38 @@ import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
 
 import one.util.streamex.StreamEx;
+import picocli.CommandLine;
 
 /**
- * @author Michal Maciejewski (michalm)
+ * @author Michal Maciejewski (michalm)， modified by Chengqi Lu (luchengqi7)
  */
-public class RunJsprit {
+@CommandLine.Command(
+        name = "run-jsprit",
+        description = "run Jsprit scenario"
+)
+public class RunJsprit implements MATSimAppCommand {
     private final Map<Id<Node>, Location> locationByNodeId = new IdMap<>(Node.class);
 
-    public static void main(String[] args) {
-        new RunJsprit().runJsprit(args[0], Boolean.parseBoolean(args[1]));
+    @CommandLine.Option(names = "--config", description = "path to config file", required = true)
+    private String configPath;
+
+    @CommandLine.Option(names = "--infinite-fleet", description = "path to config file", defaultValue = "true")
+    private boolean infiniteFleetSize;
+
+    @CommandLine.Option(names = "--write-optimization-progress", description = "path to config file", defaultValue = "false")
+    private boolean printProgressStatistics;
+
+    @Override
+    public Integer call() throws Exception {
+        runJsprit(configPath, infiniteFleetSize, printProgressStatistics);
+        return 0;
     }
 
-    void runJsprit(String matsimConfig, boolean infiniteFleet) {
+    public static void main(String[] args) {
+        new RunJsprit().execute(args);
+    }
+
+    public void runJsprit(String matsimConfig, boolean infiniteFleet, boolean printProgressStatistics) {
         var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
         var scenario = ScenarioUtils.loadScenario(config);
         var network = scenario.getNetwork();
@@ -146,6 +168,10 @@ public class RunJsprit {
                 var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
                 var destinationLocation = locationByNodeId.get(destinationNode.getId());
 
+                if (originNode.getId().toString().equals(destinationNode.getId().toString())) {
+                    continue;  // If the departure location and destination location of the DRT trips is the same, then skip
+                }
+
                 double walkingDistance = DistanceUtils.calculateDistance(originNode.getCoord(), originActivity.getCoord());
                 double walkingSpeed = config.plansCalcRoute().getTeleportedModeSpeeds().get(TransportMode.walk);
                 double distanceFactor = config.plansCalcRoute().getBeelineDistanceFactors().get(TransportMode.walk);
@@ -170,7 +196,7 @@ public class RunJsprit {
         // run jsprit
         var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
         var algorithm = Jsprit.Builder.newInstance(problem)
-                .setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, infiniteFleet))
+                .setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, infiniteFleet, printProgressStatistics))
                 .setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
                 .buildAlgorithm();
         algorithm.setMaxIterations(200);
@@ -187,15 +213,18 @@ public class RunJsprit {
                 .build());
     }
 
-    static class SchoolTrafficObjectiveFunction implements SolutionCostCalculator {
-        private final double unassignedPenalty = 10000; // equivalent to EURO
-        private final double costPerVehicle = 200;
+    private static class SchoolTrafficObjectiveFunction implements SolutionCostCalculator {
+        private final double unassignedPenalty = 10000; // Most important objective
+        private final double costPerVehicle = 200; // Second most important objective
+        private final double drivingCostPerHour = 6.0; // Less important objective
         private final boolean infiniteVehicle;
         private final VehicleRoutingProblem problem;
+        private final boolean printProgressStatistics;
 
-        SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, boolean infiniteVehicle) {
+        SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, boolean infiniteVehicle, boolean printProgressStatistics) {
             this.infiniteVehicle = infiniteVehicle;
             this.problem = problem;
+            this.printProgressStatistics = printProgressStatistics;
         }
 
         @Override
@@ -219,12 +248,14 @@ public class RunJsprit {
                 }
             }
 
-            totalTransportCost = totalTransportCost / 3600 * 6;
+            totalTransportCost = totalTransportCost / 3600 * drivingCostPerHour;  // In current setup, transport cost = driving time
             double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost;
-            System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
-            System.out.println("Number of vehicles used: " + numVehiclesUsed);
-            System.out.println("Transport cost of the whole fleet: " + totalTransportCost);
-            System.out.println("Total cost = " + totalCost);
+            if (printProgressStatistics) {
+                System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
+                System.out.println("Number of vehicles used: " + numVehiclesUsed);
+                System.out.println("Transport cost of the whole fleet: " + totalTransportCost);
+                System.out.println("Total cost = " + totalCost);
+            }
             return totalCost;
         }
     }
