@@ -27,10 +27,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
+import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
+import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
+import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetReader;
@@ -57,128 +65,167 @@ import one.util.streamex.StreamEx;
  * @author Michal Maciejewski (michalm)
  */
 public class RunJsprit {
-	private final Map<Id<Node>, Location> locationByNodeId = new IdMap<>(Node.class);
+    private final Map<Id<Node>, Location> locationByNodeId = new IdMap<>(Node.class);
 
-	public static void main(String[] args) {
-		//		new RunJsprit().runJsprit("D:\\matsim-intelliJ\\luchengqi7_project-space\\scenarios\\vulkaneifel\\config.xml");
-		new RunJsprit().runJsprit(
-				"D:\\matsim-intelliJ\\luchengqi7_project-space\\scenarios\\vulkaneifel-school-traffic\\vulkaneifel-v1.0-school-childrem.config.xml",
-				true);
-	}
+    public static void main(String[] args) {
+        new RunJsprit().runJsprit(args[0], Boolean.parseBoolean(args[1]));
+    }
 
-	void runJsprit(String matsimConfig, boolean infiniteFleet) {
-		var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
-		var scenario = ScenarioUtils.loadScenario(config);
-		var network = scenario.getNetwork();
+    void runJsprit(String matsimConfig, boolean infiniteFleet) {
+        var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
+        var scenario = ScenarioUtils.loadScenario(config);
+        var network = scenario.getNetwork();
 
-		Preconditions.checkState(MultiModeDrtConfigGroup.get(config).getModalElements().size() == 1);
-		var drtCfg = MultiModeDrtConfigGroup.get(config).getModalElements().iterator().next();
+        Preconditions.checkState(MultiModeDrtConfigGroup.get(config).getModalElements().size() == 1);
+        var drtCfg = MultiModeDrtConfigGroup.get(config).getModalElements().iterator().next();
 
-		var vrpBuilder = new Builder();
+        var vrpBuilder = new Builder();
 
-		// create fleet
-		var dvrpFleetSpecification = new FleetSpecificationImpl();
-		new FleetReader(dvrpFleetSpecification).parse(drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext()));
+        // create fleet
+        var dvrpFleetSpecification = new FleetSpecificationImpl();
+        new FleetReader(dvrpFleetSpecification).parse(drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext()));
 
-		var capacities = dvrpFleetSpecification.getVehicleSpecifications()
-				.values()
-				.stream()
-				.map(DvrpVehicleSpecification::getCapacity)
-				.collect(Collectors.toSet());
-		Preconditions.checkState(capacities.size() == 1);
-		var vehicleCapacity = capacities.iterator().next();
-		var vehicleType = VehicleTypeImpl.Builder.newInstance(drtCfg.getMode() + "-vehicle")
-				.addCapacityDimension(0, vehicleCapacity)
-				.build();
+        var capacities = dvrpFleetSpecification.getVehicleSpecifications()
+                .values()
+                .stream()
+                .map(DvrpVehicleSpecification::getCapacity)
+                .collect(Collectors.toSet());
+        Preconditions.checkState(capacities.size() == 1);
+        var vehicleCapacity = capacities.iterator().next();
+        var vehicleType = VehicleTypeImpl.Builder.newInstance(drtCfg.getMode() + "-vehicle")
+                .addCapacityDimension(0, vehicleCapacity)
+                .build();
 
-		var dvrpVehicles = dvrpFleetSpecification.getVehicleSpecifications().values().stream();
-		if (infiniteFleet) {
-			dvrpVehicles = StreamEx.of(dvrpVehicles).distinct(DvrpVehicleSpecification::getStartLinkId);
-		}
+        var dvrpVehicles = dvrpFleetSpecification.getVehicleSpecifications().values().stream();
+        if (infiniteFleet) {
+            dvrpVehicles = StreamEx.of(dvrpVehicles).distinct(DvrpVehicleSpecification::getStartLinkId);
+        }
 
-		dvrpVehicles.forEach(dvrpVehicle -> {
-			var startLinkId = dvrpVehicle.getStartLinkId();
-			var startNode = scenario.getNetwork().getLinks().get(startLinkId).getToNode();
-			var startLocation = computeLocationIfAbsent(startNode);
-			var vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicle.getId() + "");
-			vehicleBuilder.setStartLocation(startLocation);
-			vehicleBuilder.setEarliestStart(dvrpVehicle.getServiceBeginTime());
-			vehicleBuilder.setLatestArrival(dvrpVehicle.getServiceEndTime());
-			vehicleBuilder.setType(vehicleType);
+        dvrpVehicles.forEach(dvrpVehicle -> {
+            var startLinkId = dvrpVehicle.getStartLinkId();
+            var startNode = scenario.getNetwork().getLinks().get(startLinkId).getToNode();
+            var startLocation = computeLocationIfAbsent(startNode);
+            var vehicleBuilder = VehicleImpl.Builder.newInstance(dvrpVehicle.getId() + "");
+            vehicleBuilder.setStartLocation(startLocation);
+            vehicleBuilder.setEarliestStart(dvrpVehicle.getServiceBeginTime());
+            vehicleBuilder.setLatestArrival(dvrpVehicle.getServiceEndTime());
+            vehicleBuilder.setType(vehicleType);
 
-			vrpBuilder.addVehicle(vehicleBuilder.build());
-		});
+            vrpBuilder.addVehicle(vehicleBuilder.build());
+        });
 
-		// collect pickup/dropoff locations
-		for (Person person : scenario.getPopulation().getPersons().values()) {
-			List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
-			for (TripStructureUtils.Trip trip : trips) {
-				Preconditions.checkState(trip.getLegsOnly().size() == 1, "A trip has more than one leg.");
+        // collect pickup/dropoff locations
+        for (Person person : scenario.getPopulation().getPersons().values()) {
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            for (TripStructureUtils.Trip trip : trips) {
+                Preconditions.checkState(trip.getLegsOnly().size() == 1, "A trip has more than one leg.");
 
-				var originActivity = trip.getOriginActivity();
-				var originNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
-				computeLocationIfAbsent(originNode);
+                var originActivity = trip.getOriginActivity();
+                var originNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
+                computeLocationIfAbsent(originNode);
 
-				var destinationActivity = trip.getDestinationActivity();
-				var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
-				computeLocationIfAbsent(destinationNode);
-			}
-		}
+                var destinationActivity = trip.getDestinationActivity();
+                var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
+                computeLocationIfAbsent(destinationNode);
+            }
+        }
 
-		// compute matrix
-		var vrpCosts = MatrixBasedVrpCosts.calculateVrpCosts(network, locationByNodeId);
-		vrpBuilder.setRoutingCost(vrpCosts);
+        // compute matrix
+        var vrpCosts = MatrixBasedVrpCosts.calculateVrpCosts(network, locationByNodeId);
+        vrpBuilder.setRoutingCost(vrpCosts);
 
-		// create shipments
-		for (Person person : scenario.getPopulation().getPersons().values()) {
-			List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
-			for (TripStructureUtils.Trip trip : trips) {
-				var originActivity = trip.getOriginActivity();
-				var originNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
-				var originLocation = locationByNodeId.get(originNode.getId());
+        // create shipments
+        for (Person person : scenario.getPopulation().getPersons().values()) {
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            for (TripStructureUtils.Trip trip : trips) {
+                var originActivity = trip.getOriginActivity();
+                var originNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
+                var originLocation = locationByNodeId.get(originNode.getId());
 
-				var destinationActivity = trip.getDestinationActivity();
-				var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
-				var destinationLocation = locationByNodeId.get(destinationNode.getId());
+                var destinationActivity = trip.getDestinationActivity();
+                var destinationNode = NetworkUtils.getNearestLink(network, destinationActivity.getCoord()).getToNode();
+                var destinationLocation = locationByNodeId.get(destinationNode.getId());
 
-				double earliestPickupTime = originActivity.getEndTime().seconds();
-				double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
-				double travelTime = vrpCosts.getTransportTime(originLocation, destinationLocation, earliestPickupTime,
-						null, null);
-				double earliestDeliveryTime = earliestPickupTime + travelTime;
-				double latestDeliveryTime = earliestPickupTime
-						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();
+                double walkingDistance = DistanceUtils.calculateDistance(originNode.getCoord(), originActivity.getCoord());
+                double walkingSpeed = config.plansCalcRoute().getTeleportedModeSpeeds().get(TransportMode.walk);
+                double distanceFactor = config.plansCalcRoute().getBeelineDistanceFactors().get(TransportMode.walk);
+                double walkingTime = walkingDistance * distanceFactor / walkingSpeed;
 
-				var shipment = Shipment.Builder.newInstance(person.getId() + "")
-						.setPickupLocation(originLocation)
-						.setDeliveryLocation(destinationLocation)
-						.setPickupServiceTime(0)
-						.setDeliveryServiceTime(0)
-						.setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestPickupTime))
-						.setDeliveryTimeWindow(new TimeWindow(earliestDeliveryTime, latestDeliveryTime))
-						.addSizeDimension(0, 1)
-						.build();
-				vrpBuilder.addJob(shipment);
-			}
-		}
+                double earliestPickupTime = originActivity.getEndTime().seconds() + walkingTime;
+                double latestDeliveryTime = destinationActivity.getStartTime().seconds();
 
-		// run jsprit
-		var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
-		var algorithm = Jsprit.Builder.newInstance(problem)
-				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
-				.buildAlgorithm();
-		algorithm.setMaxIterations(200);
-		var solutions = algorithm.searchSolutions();
-		var bestSolution = Solutions.bestOf(solutions);
-		SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
-	}
+                var shipment = Shipment.Builder.newInstance(person.getId() + "")
+                        .setPickupLocation(originLocation)
+                        .setDeliveryLocation(destinationLocation)
+                        .setPickupServiceTime(1) //TODO change this value after the drt stopping time in MATSim has been updated
+                        .setDeliveryServiceTime(1)
+                        .setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestDeliveryTime))
+                        .setDeliveryTimeWindow(new TimeWindow(earliestPickupTime, latestDeliveryTime))
+                        .addSizeDimension(0, 1)
+                        .build();
+                vrpBuilder.addJob(shipment);
+            }
+        }
 
-	private Location computeLocationIfAbsent(Node node) {
-		return locationByNodeId.computeIfAbsent(node.getId(), nodeId -> Location.Builder.newInstance()
-				.setId(node.getId() + "")
-				.setIndex(locationByNodeId.size())
-				.setCoordinate(Coordinate.newInstance(node.getCoord().getX(), node.getCoord().getY()))
-				.build());
-	}
+        // run jsprit
+        var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
+        var algorithm = Jsprit.Builder.newInstance(problem)
+                .setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, infiniteFleet))
+                .setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
+                .buildAlgorithm();
+        algorithm.setMaxIterations(200);
+        var solutions = algorithm.searchSolutions();
+        var bestSolution = Solutions.bestOf(solutions);
+        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+    }
+
+    private Location computeLocationIfAbsent(Node node) {
+        return locationByNodeId.computeIfAbsent(node.getId(), nodeId -> Location.Builder.newInstance()
+                .setId(node.getId() + "")
+                .setIndex(locationByNodeId.size())
+                .setCoordinate(Coordinate.newInstance(node.getCoord().getX(), node.getCoord().getY()))
+                .build());
+    }
+
+    static class SchoolTrafficObjectiveFunction implements SolutionCostCalculator {
+        private final double unassignedPenalty = 10000; // equivalent to EURO
+        private final double costPerVehicle = 200;
+        private final boolean infiniteVehicle;
+        private final VehicleRoutingProblem problem;
+
+        SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, boolean infiniteVehicle) {
+            this.infiniteVehicle = infiniteVehicle;
+            this.problem = problem;
+        }
+
+        @Override
+        public double getCosts(VehicleRoutingProblemSolution solution) {
+            double numUnassignedJobs = solution.getUnassignedJobs().size();
+            double costForUnassignedRequests = numUnassignedJobs * unassignedPenalty;
+
+            double numVehiclesUsed = solution.getRoutes().size();
+            double costForFleet = numVehiclesUsed * costPerVehicle;
+            if (!infiniteVehicle) {
+                costForFleet = 0;
+            }
+
+            VehicleRoutingTransportCosts costMatrix = problem.getTransportCosts();
+            double totalTransportCost = 0;
+            for (VehicleRoute route : solution.getRoutes()) {
+                TourActivity prevAct = route.getStart();
+                for (TourActivity activity : route.getActivities()) {
+                    totalTransportCost += costMatrix.getTransportCost(prevAct.getLocation(), activity.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    prevAct = activity;
+                }
+            }
+
+            totalTransportCost = totalTransportCost / 3600 * 6;
+            double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost;
+            System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
+            System.out.println("Number of vehicles used: " + numVehiclesUsed);
+            System.out.println("Transport cost of the whole fleet: " + totalTransportCost);
+            System.out.println("Total cost = " + totalCost);
+            return totalCost;
+        }
+    }
 }

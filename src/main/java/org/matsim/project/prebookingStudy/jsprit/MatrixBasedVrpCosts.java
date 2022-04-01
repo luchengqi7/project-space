@@ -104,6 +104,6 @@ public class MatrixBasedVrpCosts implements VehicleRoutingTransportCosts {
 
 	@Override
 	public double getDistance(Location from, Location to, double departureTime, Vehicle vehicle) {
-		return getTravelTime(from, to);
+		return getTravelTime(from, to);  //TODO
 	}
 }
