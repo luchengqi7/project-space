@@ -272,6 +272,9 @@ public class MatsimDrtRequest2Jsprit {
                         deliveryLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
                         deliveryToNode = network.getLinks().get(activityLinkId).getToNode();
                     }
+                    if (pickupToNode.getId().toString().equals(deliveryToNode.getId().toString())) {
+                        continue;  // If the departure location and destination location of the DRT trips is the same, then skip
+                    }
 
                     if (activityLinkId != null) {
                         deliveryLocationId = activityLinkId.toString();
