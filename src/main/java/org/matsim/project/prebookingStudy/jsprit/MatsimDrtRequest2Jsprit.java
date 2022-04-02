@@ -9,14 +9,12 @@ import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
-import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.IdMap;
-import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.*;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
+import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
@@ -229,6 +227,7 @@ public class MatsimDrtRequest2Jsprit {
                 assert trip.getLegsOnly().size() == 1 : "Error: There exists a trip has more than one legs!";
 
                 //originActivity
+                double walkingTime;
                 {
                     Activity originActivity = trip.getOriginActivity();
                     Id<Link> activityLinkId = originActivity.getLinkId();
@@ -236,10 +235,19 @@ public class MatsimDrtRequest2Jsprit {
                         pickupLocationX = originActivity.getCoord().getX();
                         pickupLocationY = originActivity.getCoord().getY();
                         pickupToNode = NetworkUtils.getNearestLink(network, originActivity.getCoord()).getToNode();
+
+                        //calculate walking time between originActivity location and pickup location
+                        double walkingDistance = DistanceUtils.calculateDistance(pickupToNode.getCoord(), originActivity.getCoord());
+                        double walkingSpeed = config.plansCalcRoute().getTeleportedModeSpeeds().get(TransportMode.walk);
+                        double distanceFactor = config.plansCalcRoute().getBeelineDistanceFactors().get(TransportMode.walk);
+                        walkingTime = walkingDistance * distanceFactor / walkingSpeed;
                     } else {
                         pickupLocationX = network.getLinks().get(activityLinkId).getToNode().getCoord().getX();
                         pickupLocationY = network.getLinks().get(activityLinkId).getToNode().getCoord().getY();
                         pickupToNode = network.getLinks().get(activityLinkId).getToNode();
+
+                        //calculate walking time between originActivity location and pickup location
+                        walkingTime = 0.;
                     }
 
                     if (activityLinkId != null) {
@@ -324,9 +332,9 @@ public class MatsimDrtRequest2Jsprit {
                             //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                             .setPickupServiceTime(serviceTimeInMatsim)
                             .setDeliveryServiceTime(serviceTimeInMatsim)
-                            .setPickupTimeWindow(new TimeWindow(pickupTime, pickupTime + maxWaitTime))
+                            .setPickupTimeWindow(new TimeWindow(pickupTime + walkingTime, pickupTime + maxWaitTime))
                             //ToDo: remove travelTime?
-                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + travelTime, latestDeliveryTime))
+                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + walkingTime + travelTime, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
                             //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                             //.setPriority()
@@ -350,9 +358,9 @@ public class MatsimDrtRequest2Jsprit {
                             //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                             .setPickupServiceTime(serviceTimeInMatsim)
                             .setDeliveryServiceTime(serviceTimeInMatsim)
-                            .setPickupTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery, latestDeliveryTime))
+                            .setPickupTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery + walkingTime, latestDeliveryTime))
                             //ToDo: remove travelTime?
-                            .setDeliveryTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery, latestDeliveryTime))
+                            .setDeliveryTimeWindow(new TimeWindow(latestDeliveryTime - timeBetweenPickUpAndLatestDelivery + walkingTime, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
                             //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                             //.setPriority()
@@ -375,9 +383,9 @@ public class MatsimDrtRequest2Jsprit {
                             //.addRequiredSkill("loading bridge").addRequiredSkill("electric drill")
                             .setPickupServiceTime(serviceTimeInMatsim)
                             .setDeliveryServiceTime(serviceTimeInMatsim)
-                            .setPickupTimeWindow(new TimeWindow(pickupTime, latestDeliveryTime))
+                            .setPickupTimeWindow(new TimeWindow(pickupTime + walkingTime, latestDeliveryTime))
                             //ToDo: remove travelTime?
-                            .setDeliveryTimeWindow(new TimeWindow(pickupTime, latestDeliveryTime))
+                            .setDeliveryTimeWindow(new TimeWindow(pickupTime + walkingTime, latestDeliveryTime))
                             //Approach1:the deliveryTime - pickupTime is too much!  Approach2:use α(detour factor) * time travel!
                             //.setMaxTimeInVehicle(maxTravelTimeAlpha * travelTime + maxTravelTimeBeta)
                             //.setPriority()
