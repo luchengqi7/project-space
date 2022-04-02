@@ -577,6 +577,7 @@ public class StatisticUtils {
             add("detour_distance_ratio_mean");
             add("fleet_total_distance");
             add("fleet_efficiency");
+            add("used_vehicle_number");
         }};
 
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
@@ -670,6 +671,7 @@ public class StatisticUtils {
                 }
                 tripRecord.add(Double.toString(driven.getSum()));
                 tripRecord.add(Double.toString(directDistanceStats.getSum()/driven.getSum()));
+                tripRecord.add(Integer.toString(bestSolution.getRoutes().size()));
 
 
                 if (tripsHeader.length != tripRecord.size()) {
