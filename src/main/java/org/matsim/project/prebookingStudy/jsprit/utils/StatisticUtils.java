@@ -588,14 +588,6 @@ public class StatisticUtils {
 
         ) {
 
-
-
-
-
-
-
-
-
             DescriptiveStatistics inVehicleTimes = new DescriptiveStatistics();
             DescriptiveStatistics directInVehicleTimes = new DescriptiveStatistics();
             DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
@@ -626,22 +618,27 @@ public class StatisticUtils {
             }
 
             if (enableNetworkBasedCosts) {
-                for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
-                    for (Double value : directTravelTimeMap.values()) {
-                        directInVehicleTimes.addValue(value.doubleValue());
-                    }
+/*                for (Double value : directTravelTimeMap.values()) {
+                    directInVehicleTimes.addValue(value.doubleValue());
+                }*/
+                for (Map.Entry<String, Double> entry : directTravelTimeMap.entrySet()) {
+                    double estimatedDirectInVehicleTime = entry.getValue().doubleValue();
+                    directInVehicleTimes.addValue(estimatedDirectInVehicleTime);
 
+                    double actualInVehicleTime = inVehicleTimeMap.get(entry.getKey());
+                    double onBoardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
+                    detourDistanceRatioStats.addValue(onBoardDelayRatio);
+                }
+
+                for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
                     double estimatedDirectTravelDistance = entry.getValue().doubleValue();
                     directDistanceStats.addValue(estimatedDirectTravelDistance);
 
                     double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
                     double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
-                    detourDistanceRatioStats.addValue(detourDistanceRatio);
+                    onboardDelayRatioStats.addValue(detourDistanceRatio);
                 }
             }
-
-
-
 
 
             //ToDo: check the order of assignedShipments <- .values()
