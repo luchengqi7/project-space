@@ -594,6 +594,7 @@ public class StatisticUtils {
             DescriptiveStatistics detourDistanceRatioStats = new DescriptiveStatistics();
             DescriptiveStatistics distanceStats = new DescriptiveStatistics();
             DescriptiveStatistics directDistanceStats = new DescriptiveStatistics();
+            DescriptiveStatistics driven = new DescriptiveStatistics();
 
 /*            DecimalFormat format = new DecimalFormat();
             format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
@@ -640,6 +641,10 @@ public class StatisticUtils {
                 }
             }
 
+            for (Double value : drivenDistanceMap.values()) {
+                driven.addValue(value.doubleValue());
+            }
+
 
             //ToDo: check the order of assignedShipments <- .values()
             //for (Shipment shipment : assignedShipments.values()) { //for iterations
@@ -663,6 +668,8 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(directDistanceStats.getMean()));
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
+                tripRecord.add(Double.toString(driven.getSum()));
+                tripRecord.add(Double.toString(directDistanceStats.getSum()/driven.getSum()));
 
 
                 if (tripsHeader.length != tripRecord.size()) {
