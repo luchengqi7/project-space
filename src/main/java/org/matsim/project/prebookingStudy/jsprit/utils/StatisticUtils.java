@@ -396,6 +396,8 @@ public class StatisticUtils {
                 double timeOffset = desiredDeliveryTimeMap.get(entry.getKey()) - entry.getValue();
                 timeOffsetStats.addValue(timeOffset);
             }
+            double assignmentRate = (double)assignedShipments.size()/shipments.size();
+            double rejectionRate = (double)unAssignedShipments.size()/shipments.size();
 
 
             //ToDo: check the order of assignedShipments <- .values()
@@ -427,8 +429,8 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
 
-                tripRecord.add(Double.toString(assignedShipments.size()/shipments.size()));
-                tripRecord.add(Double.toString(unAssignedShipments.size()/shipments.size()));
+                tripRecord.add(Double.toString(assignmentRate));
+                tripRecord.add(Double.toString(rejectionRate));
 
                 tripRecord.add(Double.toString(timeOffsetStats.getMean()));
                 tripRecord.add(Double.toString(timeOffsetStats.getMax()));
