@@ -396,6 +396,8 @@ public class StatisticUtils {
                 double timeOffset = desiredDeliveryTimeMap.get(entry.getKey()) - entry.getValue();
                 timeOffsetStats.addValue(timeOffset);
             }
+            double assignmentRate = (double) assignedShipments.size()/shipments.size();
+            double rejectionRate = (double) unAssignedShipments.size()/shipments.size();
 
 
             //ToDo: check the order of assignedShipments <- .values()
@@ -407,7 +409,7 @@ public class StatisticUtils {
 
 
                 //add records
-                tripRecord.add(Integer.toString(shipments.size()));
+                tripRecord.add(Integer.toString(assignedShipments.size()));
                 tripRecord.add(Double.toString(waitStats.getMean()));
                 tripRecord.add(Double.toString(waitStats.getMax()));
                 tripRecord.add(Double.toString(waitStats.getPercentile(95)));
@@ -427,8 +429,8 @@ public class StatisticUtils {
                     tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
                 }
 
-                tripRecord.add(Double.toString(assignedShipments.size()/shipments.size()));
-                tripRecord.add(Double.toString(unAssignedShipments.size()/shipments.size()));
+                tripRecord.add(Double.toString(assignmentRate));
+                tripRecord.add(Double.toString(rejectionRate));
 
                 tripRecord.add(Double.toString(timeOffsetStats.getMean()));
                 tripRecord.add(Double.toString(timeOffsetStats.getMax()));
@@ -544,6 +546,131 @@ public class StatisticUtils {
                 tripRecord.add(Double.toString(passengerTraveledDistance.getMean()));
                 //tripRecord.add(Double.toString(d_p_d_t));
 
+                tripRecord.add(Integer.toString(bestSolution.getRoutes().size()));
+
+
+                if (tripsHeader.length != tripRecord.size()) {
+                    throw new RuntimeException("TRIPSHEADER.length != tripRecord.size()");
+                }
+            }
+
+            tripsCsvPrinter.printRecords(tripRecords);
+            //}
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+
+    }
+
+    public void writeSummaryStats(String outputFilename, VehicleRoutingProblem problem, VehicleRoutingProblemSolution bestSolution) {
+
+        List<String> strList = new ArrayList<String>() {{
+            add("fleet_size");
+            add("number_of_trips");
+            add("arrival_punctuality");
+            add("actual_in_vehicle_time_mean");
+            add("estimated_direct_in_vehicle_time_mean");
+            add("onboard_delay_ratio_mean");
+            add("actual_travel_distance_mean");
+            add("estimated_direct_network_distance_mean");
+            add("detour_distance_ratio_mean");
+            add("fleet_total_distance");
+            add("fleet_efficiency");
+            add("used_vehicle_number");
+        }};
+
+        String[] tripsHeader = strList.toArray(new String[strList.size()]);
+
+        //ToDo: do not use BufferedWriter
+        if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
+        try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "summary_stats.csv"),
+                CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
+
+        ) {
+
+            DescriptiveStatistics inVehicleTimes = new DescriptiveStatistics();
+            DescriptiveStatistics directInVehicleTimes = new DescriptiveStatistics();
+            DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
+            DescriptiveStatistics detourDistanceRatioStats = new DescriptiveStatistics();
+            DescriptiveStatistics distanceStats = new DescriptiveStatistics();
+            DescriptiveStatistics directDistanceStats = new DescriptiveStatistics();
+            DescriptiveStatistics driven = new DescriptiveStatistics();
+
+/*            DecimalFormat format = new DecimalFormat();
+            format.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
+            format.setMinimumIntegerDigits(1);
+            format.setMaximumFractionDigits(2);
+            format.setGroupingUsed(false);*/
+
+            //ToDo: change to steam style
+            int onTimeArrivalCounter = 0;
+            for (Map.Entry<String, Double> entry : deliveryTimeMap.entrySet()) {
+                if(desiredDeliveryTimeMap.get(entry.getKey()) >= (entry.getValue() + serviceTimeInMatsim))
+                onTimeArrivalCounter++;
+            }
+            double arrivalPunctuality = (double) onTimeArrivalCounter/assignedShipments.size();
+
+            for (Double value : inVehicleTimeMap.values()) {
+                inVehicleTimes.addValue(value.doubleValue());
+            }
+
+            for (Double value : passengerTraveledDistanceMap.values()) {
+                distanceStats.addValue(value.doubleValue());
+            }
+
+            if (enableNetworkBasedCosts) {
+/*                for (Double value : directTravelTimeMap.values()) {
+                    directInVehicleTimes.addValue(value.doubleValue());
+                }*/
+                for (Map.Entry<String, Double> entry : directTravelTimeMap.entrySet()) {
+                    double estimatedDirectInVehicleTime = entry.getValue().doubleValue();
+                    directInVehicleTimes.addValue(estimatedDirectInVehicleTime);
+
+                    double actualInVehicleTime = inVehicleTimeMap.get(entry.getKey());
+                    double onBoardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
+                    detourDistanceRatioStats.addValue(onBoardDelayRatio);
+                }
+
+                for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
+                    double estimatedDirectTravelDistance = entry.getValue().doubleValue();
+                    directDistanceStats.addValue(estimatedDirectTravelDistance);
+
+                    double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
+                    double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
+                    onboardDelayRatioStats.addValue(detourDistanceRatio);
+                }
+            }
+
+            for (Double value : drivenDistanceMap.values()) {
+                driven.addValue(value.doubleValue());
+            }
+
+
+            //ToDo: check the order of assignedShipments <- .values()
+            //for (Shipment shipment : assignedShipments.values()) { //for iterations
+            List<List<String>> tripRecords = new ArrayList<>();
+            for (int i = 0; i < 1; i++) {
+                List<String> tripRecord = new ArrayList<>();
+                tripRecords.add(tripRecord);
+
+
+                //add records
+                tripRecord.add(Integer.toString(problem.getVehicles().size()));
+                tripRecord.add(Integer.toString(assignedShipments.size()));
+                tripRecord.add(Double.toString(arrivalPunctuality));
+                tripRecord.add(Double.toString(inVehicleTimes.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(directInVehicleTimes.getMean()));
+                    tripRecord.add(Double.toString(onboardDelayRatioStats.getMean()));
+                }
+                tripRecord.add(Double.toString(distanceStats.getMean()));
+                if (enableNetworkBasedCosts) {
+                    tripRecord.add(Double.toString(directDistanceStats.getMean()));
+                    tripRecord.add(Double.toString(detourDistanceRatioStats.getMean()));
+                }
+                tripRecord.add(Double.toString(driven.getSum()));
+                tripRecord.add(Double.toString(directDistanceStats.getSum()/driven.getSum()));
                 tripRecord.add(Integer.toString(bestSolution.getRoutes().size()));
 
 

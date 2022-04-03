@@ -239,6 +239,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         statisticUtils.writeOutputTrips(statsOutputPath.toString());
         statisticUtils.writeCustomerStats(statsOutputPath.toString());
         statisticUtils.writeVehicleStats(statsOutputPath.toString(), problem, bestSolution);
+        statisticUtils.writeSummaryStats(statsOutputPath.toString(), problem, bestSolution);
 
 
         MemoryObserver.stop();
