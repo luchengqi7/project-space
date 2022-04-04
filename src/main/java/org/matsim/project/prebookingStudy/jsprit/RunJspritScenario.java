@@ -42,6 +42,7 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
+import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
 
@@ -206,7 +207,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(problem);
         JobNeighborhoods jobNeighborhoods = new JobNeighborhoodsFactory().createNeighborhoods(problem, new AvgServiceAndShipmentDistance(problem.getTransportCosts()), (int) (problem.getJobs().values().size() * 0.5));
         jobNeighborhoods.initialise();
-        double maxCosts = jobNeighborhoods.getMaxDistance();
+        double maxCosts = TransportCostUtils.getInVehicleTimeCost() * jobNeighborhoods.getMaxDistance();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
         SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, transportCosts);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
