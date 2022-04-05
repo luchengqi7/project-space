@@ -30,15 +30,6 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     private final boolean enableCache;
     private final int timeBinSize;
     private final Map<TravelCostKey, TravelCostValue> cacheMap;
-    /**
-     * In MATSim, each DRT stop has a fixed duration, regardless of the number of passengers boarding / alighting the
-     * vehicle. In Jsprit, the service time is depending on the number of service to perform at the site. To solve this
-     * problem, the drt stopping time is included in the travel time.
-     *
-     * When doing performance analysis for Jsprit solution, the drt stop duration should be subtracted from the total travel
-     * time / on-board travel time. As in MATSim drop off time is not included in the trip.
-     * */
-    private final double drtStopDuration;
 
     public static class Builder {
         private final Network network;
@@ -47,7 +38,6 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
         private int cacheSizeLimit = 10000;
         private int timeBinSize = 86400;
         private TravelTime travelTime = new FreeSpeedTravelTimeWithRoundingUp();
-        private double drtStopDuration = 60;
 
         public Builder(Network network) {
             this.network = network;
@@ -78,18 +68,9 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
             return this;
         }
 
-        public Builder drtStopDuration(double drtStopDuration) {
-            this.drtStopDuration = drtStopDuration;
-            return this;
-        }
-
         public NetworkBasedDrtVrpCosts build() {
             return new NetworkBasedDrtVrpCosts(this);
         }
-    }
-
-    public double getDrtStopDuration() {
-        return drtStopDuration;
     }
 
     private NetworkBasedDrtVrpCosts(Builder builder) {
@@ -97,7 +78,6 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
         this.enableCache = builder.enableCache;
         this.timeBinSize = builder.timeBinSize;
         this.cacheMap = new LinkedHashMap<>(builder.cacheSizeLimit);
-        this.drtStopDuration = builder.drtStopDuration;
         this.router = new SpeedyALTFactory().createPathCalculator
                 (network, new OnlyTimeDependentTravelDisutility(builder.travelTime), builder.travelTime);
     }
@@ -196,9 +176,9 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
             if (travelCostValue == null) {
                 travelCostValue = calculateTravelCostValue(fromLink, toLink, departureTime);
             }
-            return travelCostValue.getTravelTime() + drtStopDuration;
+            return travelCostValue.getTravelTime();
         }
-        return router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null).travelTime + drtStopDuration;
+        return router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null).travelTime;
     }
 
     @Override

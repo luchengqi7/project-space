@@ -4,11 +4,12 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.math.stat.StatUtils;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
@@ -17,14 +18,13 @@ import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
-import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleType;
-import org.matsim.vehicles.VehicleUtils;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
@@ -32,9 +32,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static org.matsim.application.ApplicationUtils.globFile;
 
@@ -47,7 +45,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
     private Path directory;
 
     private final List<String> titleRowKPI = Arrays.asList
-            ("fleet_size", "number_of_trips", "arrival_punctuality",
+            ("fleet_size", "total_requests", "served_requests", "punctual_arrivals", "service_satisfaction_rate",
                     "actual_in_vehicle_time_mean", "estimated_direct_in_vehicle_time_mean", "onboard_delay_ratio_mean",
                     "actual_travel_distance_mean", "estimated_direct_network_distance_mean", "detour_distance_ratio_mean",
                     "fleet_total_distance", "fleet_efficiency");
@@ -72,6 +70,9 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
         Path networkPath = globFile(directory, "*output_network.*");
         Path eventPath = globFile(directory, "*output_events.*");
         Path outputFolder = Path.of(directory + "/analysis-drt-service-quality");
+        Path outputPlansPath = globFile(directory, "*output_plans.*");
+
+        Map<String, Double> schoolStartingTimeMap = getSchoolStartingTimeMap(PopulationUtils.readPopulation(outputPlansPath.toString()));
 
         if (!Files.exists(outputFolder)) {
             Files.createDirectory(outputFolder);
@@ -80,7 +81,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
         Config config = ConfigUtils.loadConfig(configPath.toString());
         int lastIteration = config.controler().getLastIteration();
         String runId = config.controler().getRunId();
-        Path folderOfLastIteration = Path.of(directory.toString() + "/ITERS/it." + lastIteration);
+        Path folderOfLastIteration = Path.of(directory + "/ITERS/it." + lastIteration);
         MultiModeDrtConfigGroup multiModeDrtConfigGroup = ConfigUtils.addOrGetModule(config, MultiModeDrtConfigGroup.class);
         List<String> modes = new ArrayList<>();
         for (DrtConfigGroup drtCfg : multiModeDrtConfigGroup.getModalElements()) {
@@ -97,6 +98,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
         for (String mode : modes) {
             Path tripsFile = globFile(folderOfLastIteration, "*drt_legs_" + mode + ".*");
             Path distanceStatsFile = globFile(directory, "*drt_vehicle_stats_" + mode + ".*");
+            Path customerStatsFile = globFile(directory, "*drt_customer_stats_" + mode + ".*");
             Path outputTripsPath = Path.of(outputFolder + "/" + mode + "_trips.tsv");
             Path outputStatsPath = Path.of(outputFolder + "/" + mode + "_KPI.tsv");
 
@@ -106,17 +108,13 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             List<Double> estimatedDirectTravelDistances = new ArrayList<>();
             List<Double> onboardDelayRatios = new ArrayList<>();
             List<Double> detourDistanceRatios = new ArrayList<>();
-            List<Double> arrivalTimes = new ArrayList<>();
+//            List<Double> arrivalTimes = new ArrayList<>();
+            Map<String, Double> arrivalTimes = new HashMap<>();
 
             CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputTripsPath.toString()), CSVFormat.TDF);
-            List<String> titleRow = Arrays.asList
-                    ("earliest_boarding_time", "actual_boarding_time", "actual_arrival_time",
-                            "actual_in_vehicle_time", "est_direct_in_vehicle_time", "onboard_delay_ratio",
-                            "actual_travel_distance", "est_direct_network_distance", "detour_distance_ratio",
-                            "from_x", "from_y", "to_x", "to_y", "euclidean_distance");
-            tsvWriter.printRecord(titleRow);
+            tsvWriter.printRecord(titleRowKPI);
 
-            int numOfTrips = 0;
+            int numOfTripsServed = 0;
             try (CSVParser parser = new CSVParser(Files.newBufferedReader(tripsFile),
                     CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
                 for (CSVRecord record : parser.getRecords()) {
@@ -138,8 +136,9 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                     double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
                     double detourRatioDistance = actualTravelDistance / estimatedDirectTravelDistance - 1;
                     double arrivalTime = departureTime + totalTravelTime;
+                    String personIdString = record.get(1);
 
-                    arrivalTimes.add(arrivalTime);
+                    arrivalTimes.put(personIdString, arrivalTime);
                     inVehicleTimes.add(actualInVehicleTime);
                     estimatedDirectInVehicleTimes.add(estimatedDirectInVehicleTime);
                     actualTravelDistances.add(actualTravelDistance);
@@ -169,7 +168,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
                     tsvWriter.printRecord(outputRow);
 
-                    numOfTrips++;
+                    numOfTripsServed++;
                 }
             }
             tsvWriter.close();
@@ -183,6 +182,15 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                 CSVRecord record = records.get(size - 1);
                 fleetSize = Integer.parseInt(record.get(2));
                 totalFleetDistance = Double.parseDouble(record.get(3));
+            }
+
+            int totalRequests;
+            try (CSVParser parser = new CSVParser(Files.newBufferedReader(customerStatsFile),
+                    CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
+                List<CSVRecord> records = parser.getRecords();
+                int size = records.size();
+                CSVRecord record = records.get(size - 1);
+                totalRequests = Integer.parseInt(record.get(2)) + Integer.parseInt(record.get(15));
             }
 
             CSVPrinter tsvWriterKPI = new CSVPrinter(new FileWriter(outputStatsPath.toString()), CSVFormat.TDF);
@@ -200,12 +208,21 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             String fleetEfficiency = formatter.format(totalFleetDistance / estimatedDirectTravelDistances.stream().mapToDouble(d -> d).sum());
 
             DecimalFormat formatter2 = new DecimalFormat("0.000");
-            String arrivalPunctuality = formatter2.format(arrivalTimes.stream().filter(a -> a <= 28800).count() / (double) numOfTrips);
-            //TODO Currently 28800 (08:00) is used as the single starting time of school
+            int numPersonsArrivingOnTime = 0;
+            for (String personIdString : arrivalTimes.keySet()) {
+                double actualArrivalTime = arrivalTimes.get(personIdString);
+                double schoolStartingTime = schoolStartingTimeMap.get(personIdString);
+                if (actualArrivalTime <= schoolStartingTime) {
+                    numPersonsArrivingOnTime++;
+                }
+            }
+            String satisfactionRate = formatter2.format((double) numPersonsArrivingOnTime / (double) totalRequests);
 
             outputKPIRow.add(Integer.toString(fleetSize));
-            outputKPIRow.add(Integer.toString(numOfTrips));
-            outputKPIRow.add(arrivalPunctuality);
+            outputKPIRow.add(Integer.toString(totalRequests));
+            outputKPIRow.add(Integer.toString(numOfTripsServed));
+            outputKPIRow.add(Integer.toString(numPersonsArrivingOnTime));
+            outputKPIRow.add(satisfactionRate);
 
             outputKPIRow.add(Integer.toString(inVehicleTimeMean));
             outputKPIRow.add(Integer.toString(estDirectInVehicleTimeMean));
@@ -228,5 +245,27 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
     public Integer call() throws Exception {
         analyze(directory);
         return 0;
+    }
+
+    private Map<String, Double> getSchoolStartingTimeMap(Population plans) {
+        Map<String, Double> targetArrivalTimeMap = new HashMap<>();
+        double defaultStartingTime = 28800;
+        for (Person person : plans.getPersons().values()) {
+            String personIdString = person.getId().toString();
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            assert trips.size() == 1; // For the plans file for this project, each person only has 1 trip (school trip)
+            for (TripStructureUtils.Trip trip : trips) {
+                String destinationActType = trip.getDestinationActivity().getType();
+                if (destinationActType.contains("_starting_at_")) {
+                    String[] splitString = destinationActType.split("_");
+                    int length = splitString.length;
+                    double schoolStartingTime = Double.parseDouble(splitString[length - 1]);
+                    targetArrivalTimeMap.put(personIdString, schoolStartingTime);
+                } else {
+                    targetArrivalTimeMap.put(personIdString, defaultStartingTime);
+                }
+            }
+        }
+        return targetArrivalTimeMap;
     }
 }
