@@ -26,7 +26,7 @@ import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD, LatePickup, LatePickupPlusNoVeh}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -90,6 +90,10 @@ public class MySolutionCostCalculatorFactory {
                 return getIVTPlusDDPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case IVTPlusDD:
                 return getIVTPlusDDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case LatePickup:
+                return getLatePickupObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case LatePickupPlusNoVeh:
+                return getLatePickupPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
@@ -496,6 +500,46 @@ public class MySolutionCostCalculatorFactory {
                 costs += TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().values().stream().mapToDouble(x -> x).sum();
                 //add driven distance
                 costs += TransportCostUtils.getDrivenDistanceCosts() * statisticCollectorForOF.getDrivenDistanceMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getLatePickupObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add penalty for too early pickups
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset - TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey());
+                }
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getLatePickupPlusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add penalty for too early pickups
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset - TransportCostUtils.getInVehicleTimeCost() * statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey());
+                }
+                //add used number of vehicles
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
                 return costs;
             }
         };

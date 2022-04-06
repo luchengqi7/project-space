@@ -51,7 +51,8 @@ public class TransportCostUtils {
 
     //Travel Time Costs
     //ToDo: need to feed the value
-    private final static double TRAVEL_TIME_COSTS = Double.NaN;
+    //private final static double TRAVEL_TIME_COSTS = Double.NaN;
+    private final static double TRAVEL_TIME_COSTS = IN_VEHICLE_TIME_COST;
     public static double getTravelTimeCosts() {
         return TRAVEL_TIME_COSTS;
     }
@@ -65,7 +66,8 @@ public class TransportCostUtils {
 
     //ToDo: need to feed the value
     //Standard Deviation Costs
-    private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = Double.NaN;
+    //private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = Double.NaN;
+    private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = IN_VEHICLE_TIME_COST;
     public static double getStandardActivityDeviationCosts() {
         return STANDARD_ACTIVITY_DEVIATION_COSTS;
     }
