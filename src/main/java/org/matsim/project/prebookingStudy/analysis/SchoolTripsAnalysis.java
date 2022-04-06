@@ -112,7 +112,12 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             Map<String, Double> arrivalTimes = new HashMap<>();
 
             CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputTripsPath.toString()), CSVFormat.TDF);
-            tsvWriter.printRecord(titleRowKPI);
+            List<String> tripsTitleRow = Arrays.asList
+                    ("earliest_boarding_time", "actual_boarding_time", "actual_arrival_time",
+                            "actual_in_vehicle_time", "est_direct_in_vehicle_time", "onboard_delay_ratio",
+                            "actual_travel_distance", "est_direct_network_distance", "detour_distance_ratio",
+                            "from_x", "from_y", "to_x", "to_y", "euclidean_distance");
+            tsvWriter.printRecord(tripsTitleRow);
 
             int numOfTripsServed = 0;
             try (CSVParser parser = new CSVParser(Files.newBufferedReader(tripsFile),
