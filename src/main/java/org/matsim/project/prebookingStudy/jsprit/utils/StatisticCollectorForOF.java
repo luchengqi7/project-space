@@ -210,6 +210,7 @@ public class StatisticCollectorForOF {
             }
             TourActivity afterAct = route.getEnd();
             drivenDistanceMap.put(route.getVehicle().getId(), drivenDistance);
+            drivenTimeMap.put(route.getVehicle().getId(), drivenTime);
         }
 
         if (enableNetworkBasedCosts) {

@@ -7,10 +7,13 @@ public class TransportCostUtils {
      */
     //Vehicle Costs
     private final static double VEHICLE_FIX_COST_PER_DAY = 17.88;//unit: €/(veh·day)
-    private final static double DRIVE_COST_RATE = 17.64;//unit: €/hour
-    private final static double VEHICLE_COSTS = VEHICLE_FIX_COST_PER_DAY + DRIVE_COST_RATE * 8;
+    private final static double DRIVE_COST_RATE = 17.64/3600;//unit: €/s
+    private final static double VEHICLE_COSTS = VEHICLE_FIX_COST_PER_DAY + DRIVE_COST_RATE * 3600 * 8;
     public static double getVehicleCosts() {
         return VEHICLE_COSTS;
+    }
+    public static double getDriveCostRate() {
+        return DRIVE_COST_RATE;
     }
 
 
