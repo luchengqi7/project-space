@@ -26,7 +26,7 @@ import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, TT, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD}
+    public enum ObjectiveFunctionType {JspritDefault, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -65,6 +65,8 @@ public class MySolutionCostCalculatorFactory {
                 return getTTWTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             case TTWTTD:
                 return getTTWTTDObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
+            case TTPlusNoVeh:
+                return getTTPlusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
             //school children related
             case OnTimeArrival:
                 return getOnTimeArrivalObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
@@ -187,6 +189,24 @@ public class MySolutionCostCalculatorFactory {
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add travel time
                 costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                return costs;
+            }
+        };
+    }
+
+    private static SolutionCostCalculator getTTPlusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = MySolutionCostCalculatorFactory.getDefaultCosts(solution, maxCosts);
+
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add travel time
+                costs += TransportCostUtils.getTravelTimeCosts() * statisticCollectorForOF.getTravelTimeMap().values().stream().mapToDouble(x -> x).sum();
+                //add used number of vehicles
+                costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
                 return costs;
             }
         };
