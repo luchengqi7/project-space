@@ -38,6 +38,7 @@ public class StatisticCollectorForOF {
     final Map<String, Double> drivenDistanceMap = new HashMap<>();
     final Map<String, Double> occupiedDistanceMap = new HashMap<>();
     final Map<String, Double> emptyDistanceMap = new HashMap<>();
+    final Map<String, Double> drivenTimeMap = new HashMap<>();
 
     public Map<String, Double> getTravelTimeMap() {
         return travelTimeMap;
@@ -56,6 +57,9 @@ public class StatisticCollectorForOF {
     }
     public Map<String, Double> getDrivenDistanceMap() {
         return drivenDistanceMap;
+    }
+    public Map<String, Double> getDrivenTimeMap() {
+        return drivenTimeMap;
     }
     public Map<String, Double> getInVehicleTimeMap() {
         return inVehicleTimeMap;
@@ -116,7 +120,8 @@ public class StatisticCollectorForOF {
             TourActivity prevAct = route.getStart();
             double lastStopDepartureTime = prevAct.getEndTime();
             Location vehicleLastLocation = prevAct.getLocation();
-            double drivenDistance = 0;
+            double drivenDistance = 0.;
+            double drivenTime = 0.;
             for (TourActivity act : route.getActivities()) {
                 if((("pickupShipment").equals(act.getName()))|(("deliverShipment").equals(act.getName()))){
                     String jobId;
@@ -135,6 +140,7 @@ public class StatisticCollectorForOF {
                             lastLegDistance = transportCosts.getDistance(lastStopLocation, act.getLocation(), lastStopDepartureTime, null);
                         }
                         drivenDistance += transportCosts.getDistance(vehicleLastLocation, act.getLocation(), lastStopDepartureTime, null);
+                        drivenTime += transportCosts.getTransportCost(vehicleLastLocation, act.getLocation(), lastStopDepartureTime, null, null);
                     } else {
                         if (lastStopLocation == null) {
                             lastLegDistance = 0.;
@@ -142,6 +148,7 @@ public class StatisticCollectorForOF {
                             lastLegDistance = EuclideanDistanceCalculator.calculateDistance(lastStopLocation.getCoordinate(), act.getLocation().getCoordinate());
                         }
                         drivenDistance += EuclideanDistanceCalculator.calculateDistance(vehicleLastLocation.getCoordinate(), act.getLocation().getCoordinate());
+                        drivenTime += EuclideanDistanceCalculator.calculateDistance(vehicleLastLocation.getCoordinate(), act.getLocation().getCoordinate())/route.getVehicle().getType().getMaxVelocity();
                     }
                     if (("pickupShipment").equals(act.getName())) {
                         //time-related:
