@@ -567,8 +567,11 @@ public class StatisticUtils {
 
         List<String> strList = new ArrayList<String>() {{
             add("fleet_size");
-            add("number_of_trips");
-            add("arrival_punctuality");
+            add("total_requests");
+            add("served_requests");
+            add("punctual_arrivals");
+            add("service_satisfaction_rate");
+
             add("actual_in_vehicle_time_mean");
             add("estimated_direct_in_vehicle_time_mean");
             add("onboard_delay_ratio_mean");
@@ -606,10 +609,10 @@ public class StatisticUtils {
             //ToDo: change to steam style
             int onTimeArrivalCounter = 0;
             for (Map.Entry<String, Double> entry : deliveryTimeMap.entrySet()) {
-                if(desiredDeliveryTimeMap.get(entry.getKey()) >= (entry.getValue() + serviceTimeInMatsim))
+                if(desiredDeliveryTimeMap.get(entry.getKey()) >= (entry.getValue() /*+ serviceTimeInMatsim*/))
                 onTimeArrivalCounter++;
             }
-            double arrivalPunctuality = (double) onTimeArrivalCounter/assignedShipments.size();
+            double arrivalPunctuality = (double) onTimeArrivalCounter/shipments.size();
 
             for (Double value : inVehicleTimeMap.values()) {
                 inVehicleTimes.addValue(value.doubleValue());
@@ -657,8 +660,11 @@ public class StatisticUtils {
 
                 //add records
                 tripRecord.add(Integer.toString(problem.getVehicles().size()));
+                tripRecord.add(Integer.toString(shipments.size()));
                 tripRecord.add(Integer.toString(assignedShipments.size()));
+                tripRecord.add(Integer.toString(onTimeArrivalCounter));
                 tripRecord.add(Double.toString(arrivalPunctuality));
+
                 tripRecord.add(Double.toString(inVehicleTimes.getMean()));
                 if (enableNetworkBasedCosts) {
                     tripRecord.add(Double.toString(directInVehicleTimes.getMean()));
