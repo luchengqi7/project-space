@@ -26,6 +26,7 @@ import java.util.Objects;
  */
 public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     private final Network network;
+    private final TravelTime travelTime;
     private final LeastCostPathCalculator router;
     private final boolean enableCache;
     private final int timeBinSize;
@@ -78,6 +79,7 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
         this.enableCache = builder.enableCache;
         this.timeBinSize = builder.timeBinSize;
         this.cacheMap = new LinkedHashMap<>(builder.cacheSizeLimit);
+        this.travelTime = builder.travelTime;
         this.router = new SpeedyALTFactory().createPathCalculator
                 (network, new OnlyTimeDependentTravelDisutility(builder.travelTime), builder.travelTime);
     }
@@ -213,10 +215,12 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     }
 
     private TravelCostValue calculateTravelCostValue(Link fromLink, Link toLink, double departureTime) {
-        LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null);
+        LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(), departureTime, null, null);
+        path.links.add(toLink);
+        double completeRouteTravelTime = path.travelTime + travelTime.getLinkTravelTime(toLink, path.travelTime + departureTime, null, null) + 2; // 2 extra seconds for the first link
         int timeBin = (int) (departureTime / timeBinSize);
         TravelCostKey travelCostKey = new TravelCostKey(fromLink.getId().toString(), toLink.getId().toString(), timeBin);
-        TravelCostValue travelCostValue = new TravelCostValue(path.travelCost, path.travelTime, path.links.stream().mapToDouble(Link::getLength).sum());
+        TravelCostValue travelCostValue = new TravelCostValue(path.travelCost, completeRouteTravelTime, path.links.stream().mapToDouble(Link::getLength).sum());
         cacheMap.put(travelCostKey, travelCostValue); // Store in the cache map
         return travelCostValue;
     }

@@ -128,9 +128,10 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                     Link toLink = network.getLinks().get(Id.createLinkId(record.get(6)));
                     Coord toCoord = toLink.getToNode().getCoord();
                     double departureTime = Double.parseDouble(record.get(0));
-                    LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(),
+                    LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(),
                             departureTime, null, null);
-                    double estimatedDirectInVehicleTime = path.travelTime;
+                    path.links.add(toLink);
+                    double estimatedDirectInVehicleTime = path.travelTime + travelTime.getLinkTravelTime(toLink, path.travelTime + departureTime, null, null) + 2;
                     double estimatedDirectTravelDistance = path.links.stream().map(Link::getLength).mapToDouble(l -> l).sum();
                     double waitingTime = Double.parseDouble(record.get(9));
                     double boardingTime = departureTime + waitingTime;
