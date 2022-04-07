@@ -637,7 +637,7 @@ public class StatisticUtils {
 
                     double actualInVehicleTime = inVehicleTimeMap.get(entry.getKey());
                     double onBoardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
-                    detourDistanceRatioStats.addValue(onBoardDelayRatio);
+                    onboardDelayRatioStats.addValue(onBoardDelayRatio);
                 }
 
                 for (Map.Entry<String, Double> entry : directTravelDistanceMap.entrySet()) {
@@ -646,7 +646,7 @@ public class StatisticUtils {
 
                     double actualTravelDistance = passengerTraveledDistanceMap.get(entry.getKey());
                     double detourDistanceRatio = actualTravelDistance / estimatedDirectTravelDistance - 1;
-                    onboardDelayRatioStats.addValue(detourDistanceRatio);
+                    detourDistanceRatioStats.addValue(detourDistanceRatio);
                 }
             }
 
