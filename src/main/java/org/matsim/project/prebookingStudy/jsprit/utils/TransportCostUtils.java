@@ -7,10 +7,13 @@ public class TransportCostUtils {
      */
     //Vehicle Costs
     private final static double VEHICLE_FIX_COST_PER_DAY = 17.88;//unit: €/(veh·day)
-    private final static double DRIVE_COST_RATE = 17.64;//unit: €/hour
-    private final static double VEHICLE_COSTS = VEHICLE_FIX_COST_PER_DAY + DRIVE_COST_RATE * 8;
+    private final static double DRIVE_COST_RATE = 17.64/3600;//unit: €/s
+    private final static double VEHICLE_COSTS = VEHICLE_FIX_COST_PER_DAY + DRIVE_COST_RATE * 3600 * 8;
     public static double getVehicleCosts() {
         return VEHICLE_COSTS;
+    }
+    public static double getDriveCostRate() {
+        return DRIVE_COST_RATE;
     }
 
 
@@ -51,7 +54,8 @@ public class TransportCostUtils {
 
     //Travel Time Costs
     //ToDo: need to feed the value
-    private final static double TRAVEL_TIME_COSTS = Double.NaN;
+    //private final static double TRAVEL_TIME_COSTS = Double.NaN;
+    private final static double TRAVEL_TIME_COSTS = IN_VEHICLE_TIME_COST;
     public static double getTravelTimeCosts() {
         return TRAVEL_TIME_COSTS;
     }
@@ -65,7 +69,8 @@ public class TransportCostUtils {
 
     //ToDo: need to feed the value
     //Standard Deviation Costs
-    private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = Double.NaN;
+    //private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = Double.NaN;
+    private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = IN_VEHICLE_TIME_COST;
     public static double getStandardActivityDeviationCosts() {
         return STANDARD_ACTIVITY_DEVIATION_COSTS;
     }
