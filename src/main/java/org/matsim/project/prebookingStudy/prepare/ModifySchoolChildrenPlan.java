@@ -5,7 +5,6 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
@@ -110,11 +109,11 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
                     homeActivity.setCoord(homeLink.getToNode().getCoord());
                 }
 
-                Node from = NetworkUtils.getNearestLink(network, homeActivity.getCoord()).getToNode();
-                Node to = NetworkUtils.getNearestLink(network, schoolActivity.getCoord()).getToNode();
+                Link fromLink = NetworkUtils.getNearestLink(network, homeActivity.getCoord());
+                Link toLink = NetworkUtils.getNearestLink(network, schoolActivity.getCoord());
                 double originalDepartureTime = homeActivity.getEndTime().orElseThrow(RuntimeException::new);
-                double estDirectTravelTime = router.calcLeastCostPath(from, to, originalDepartureTime, null, null).travelTime;
-
+                LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(), originalDepartureTime, null, null);
+                double estDirectTravelTime = path.travelTime + travelTime.getLinkTravelTime(toLink, originalDepartureTime + path.travelTime, null, null) + 2;
                 double schoolStartingTime = schoolStartTimeCalculator.getSchoolStartingTime(schoolActivity);
                 schoolActivity.setStartTime(schoolStartingTime);
 

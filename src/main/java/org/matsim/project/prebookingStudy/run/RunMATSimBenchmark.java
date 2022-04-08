@@ -94,7 +94,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
             Controler controler = new Controler(scenario);
 
-            controler.addOverridingModule(new DvrpModule());
+            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
             controler.addOverridingModule(new MultiModeDrtModule());
             controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
             controler.addOverridingModule(new AbstractModule() {
@@ -103,9 +103,6 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                     bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
                 }
             });
-
-            // Override DVRP estimated travel time module
-            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
 
             // Adding the custom rebalancing target calculator
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
