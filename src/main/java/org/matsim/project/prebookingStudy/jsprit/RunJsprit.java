@@ -20,6 +20,8 @@
 
 package org.matsim.project.prebookingStudy.jsprit;
 
+import static org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator.Options;
+
 import java.util.Map;
 
 import org.matsim.api.core.v01.Id;
@@ -75,7 +77,7 @@ public class RunJsprit implements MATSimAppCommand {
 		var fleetSpecification = new FleetSpecificationImpl();
 		new FleetReader(fleetSpecification).parse(drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext()));
 
-		new PreplannedSchedulesCalculator(drtCfg, fleetSpecification, network, population, infiniteFleet,
-				printProgressStatistics).calculate();
+		new PreplannedSchedulesCalculator(drtCfg, fleetSpecification, network, population,
+				new Options(infiniteFleet, printProgressStatistics, 200)).calculate();
 	}
 }

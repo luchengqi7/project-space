@@ -66,25 +66,34 @@ import one.util.streamex.StreamEx;
  * @author Michal Maciejewski (michalm)
  */
 public class PreplannedSchedulesCalculator {
+	public static class Options {
+		public final boolean infiniteFleet;
+		public final boolean printProgressStatistics;
+		public final int maxIterations;
+
+		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations) {
+			this.infiniteFleet = infiniteFleet;
+			this.printProgressStatistics = printProgressStatistics;
+			this.maxIterations = maxIterations;
+		}
+	}
 
 	private final DrtConfigGroup drtCfg;
 	private final FleetSpecification fleetSpecification;
 	private final Network network;
 	private final Population population;
-	private final boolean infiniteFleet;
-	private final boolean printProgressStatistics;
+	private final Options options;
 
 	private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
 	//infinite fleet - set to false when calculating plans inside the mobsim (the fleet is finite)
 	public PreplannedSchedulesCalculator(DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
-			Population population, boolean infiniteFleet, boolean printProgressStatistics) {
+			Population population, Options options) {
 		this.drtCfg = drtCfg;
 		this.fleetSpecification = fleetSpecification;
 		this.network = network;
 		this.population = population;
-		this.infiniteFleet = infiniteFleet;
-		this.printProgressStatistics = printProgressStatistics;
+		this.options = options;
 	}
 
 	public PreplannedSchedules calculate() {
@@ -103,7 +112,7 @@ public class PreplannedSchedulesCalculator {
 				.build();
 
 		var dvrpVehicles = fleetSpecification.getVehicleSpecifications().values().stream();
-		if (infiniteFleet) {
+		if (options.infiniteFleet) {
 			dvrpVehicles = StreamEx.of(dvrpVehicles).distinct(DvrpVehicleSpecification::getStartLinkId);
 		}
 
@@ -173,8 +182,8 @@ public class PreplannedSchedulesCalculator {
 				var shipment = Shipment.Builder.newInstance(shipmentId)
 						.setPickupLocation(pickupLocation)
 						.setDeliveryLocation(dropoffLocation)
-						.setPickupServiceTime(0)
-						.setDeliveryServiceTime(0)
+						.setPickupServiceTime(1)
+						.setDeliveryServiceTime(1)
 						.setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestPickupTime))
 						.setDeliveryTimeWindow(new TimeWindow(earliestDeliveryTime, latestDeliveryTime))
 						.addSizeDimension(0, 1)
@@ -189,13 +198,12 @@ public class PreplannedSchedulesCalculator {
 		}
 
 		// run jsprit
-		var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
+		var problem = vrpBuilder.setFleetSize(options.infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
 		var algorithm = Jsprit.Builder.newInstance(problem)
-				.setObjectiveFunction(
-						new SchoolTrafficObjectiveFunction(problem, infiniteFleet, printProgressStatistics))
+				.setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, options))
 				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
 				.buildAlgorithm();
-		algorithm.setMaxIterations(200);
+		algorithm.setMaxIterations(options.maxIterations);
 		var solutions = algorithm.searchSolutions();
 		var bestSolution = Solutions.bestOf(solutions);
 		SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
@@ -234,15 +242,12 @@ public class PreplannedSchedulesCalculator {
 		private final double unassignedPenalty = 10000; // Most important objective
 		private final double costPerVehicle = 200; // Second most important objective
 		private final double drivingCostPerHour = 6.0; // Less important objective
-		private final boolean infiniteVehicle;
 		private final VehicleRoutingProblem problem;
-		private final boolean printProgressStatistics;
+		private final Options options;
 
-		SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, boolean infiniteVehicle,
-				boolean printProgressStatistics) {
-			this.infiniteVehicle = infiniteVehicle;
+		SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, Options options) {
 			this.problem = problem;
-			this.printProgressStatistics = printProgressStatistics;
+			this.options = options;
 		}
 
 		@Override
@@ -252,7 +257,7 @@ public class PreplannedSchedulesCalculator {
 
 			double numVehiclesUsed = solution.getRoutes().size();
 			double costForFleet = numVehiclesUsed * costPerVehicle;
-			if (!infiniteVehicle) {
+			if (!options.infiniteFleet) {
 				costForFleet = 0;
 			}
 
@@ -270,7 +275,7 @@ public class PreplannedSchedulesCalculator {
 			totalTransportCost = totalTransportCost / 3600
 					* drivingCostPerHour;  // In current setup, transport cost = driving time
 			double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost;
-			if (printProgressStatistics) {
+			if (options.printProgressStatistics) {
 				System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
 				System.out.println("Number of vehicles used: " + numVehiclesUsed);
 				System.out.println("Transport cost of the whole fleet: " + totalTransportCost);
