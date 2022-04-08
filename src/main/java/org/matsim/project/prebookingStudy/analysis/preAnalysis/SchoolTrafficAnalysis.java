@@ -8,6 +8,7 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
@@ -64,8 +65,7 @@ public class SchoolTrafficAnalysis implements MATSimAppCommand {
                 double plannedTravelTime = plannedArrivalTime - plannedDepartureTime;
                 Link fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
                 Link toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
-                LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(), plannedDepartureTime, null, null);
-                double estimatedDirectTravelTime = path.travelTime + travelTime.getLinkTravelTime(toLink, plannedTravelTime + path.travelTime, null, null) + 2;
+                double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(fromLink, toLink, plannedDepartureTime, router, travelTime).getTravelTime();
                 double estimatedEarliestArrivalTime = plannedDepartureTime + estimatedDirectTravelTime;
                 double travelTimeAllowance = schoolStartingTime - plannedDepartureTime;
                 tsvWriter.printRecord(person.getId().toString() + "_" + tripCounter,
