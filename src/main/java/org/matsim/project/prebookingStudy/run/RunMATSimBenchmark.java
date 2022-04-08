@@ -12,6 +12,7 @@ import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
+import org.matsim.contrib.dvrp.benchmark.DvrpBenchmarkTravelTimeModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.run.DvrpModule;
 import org.matsim.contrib.dvrp.run.DvrpQSimComponents;
@@ -28,7 +29,6 @@ import picocli.CommandLine;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 
 @CommandLine.Command(
         name = "run",
@@ -103,6 +103,9 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                     bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
                 }
             });
+
+            // Override DVRP estimated travel time module
+            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
 
             // Adding the custom rebalancing target calculator
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
