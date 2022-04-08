@@ -22,7 +22,6 @@ import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoods;
 import com.graphhopper.jsprit.core.algorithm.ruin.JobNeighborhoodsFactory;
 import com.graphhopper.jsprit.core.algorithm.ruin.distance.AvgServiceAndShipmentDistance;
-import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
 import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
@@ -35,9 +34,6 @@ import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.IdMap;
-import org.matsim.api.core.v01.network.Node;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
@@ -49,7 +45,6 @@ import picocli.CommandLine;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Map;
 
 @CommandLine.Command(
         name = "run",
@@ -175,7 +170,7 @@ public class RunJspritScenario implements MATSimAppCommand {
                 LOG.info("NetworkBased VrpCosts Calculator enabled!");
             } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
                 // compute matrix
-                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByNodeId());
+                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByLinkId());
                 LOG.info("MatrixBased VrpCosts Calculator enabled!");
             }
             vrpBuilder.setRoutingCost(transportCosts);

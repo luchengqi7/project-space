@@ -21,16 +21,18 @@
 package org.matsim.project.prebookingStudy.jsprit;
 
 import static java.util.stream.Collectors.toMap;
+import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
 
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.Node;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.contrib.zone.Zone;
-import org.matsim.contrib.zone.skims.Matrix;
 import org.matsim.contrib.zone.skims.TravelTimeMatrices;
 
 import com.graphhopper.jsprit.core.problem.Location;
@@ -44,40 +46,59 @@ import one.util.streamex.EntryStream;
  * @author Michal Maciejewski (michalm)
  */
 public class MatrixBasedVrpCosts implements VehicleRoutingTransportCosts {
-	public static MatrixBasedVrpCosts calculateVrpCosts(Network network, Map<Id<Node>, Location> locationByNodeId) {
-		var nodeByLocationIndex = EntryStream.of(locationByNodeId)
+	public static MatrixBasedVrpCosts calculateVrpCosts(Network network, Map<Id<Link>, Location> locationByLinkId) {
+		var linkByLocationIndex = EntryStream.of(locationByLinkId)
 				.invert()
 				.mapKeys(Location::getIndex)
-				.mapValues(nodeId -> (Node)network.getNodes().get(nodeId))
+				.mapValues(linkId -> (Link)network.getLinks().get(linkId))
 				.toMap();
-		var zoneByNode = nodeByLocationIndex.values()
+
+		var zoneByNode = linkByLocationIndex.values()
 				.stream()
-				.collect(toMap(n -> n, node -> new Zone(Id.create(node.getId(), Zone.class), "node", node.getCoord())));
+				.flatMap(link -> Stream.of(link.getFromNode(), link.getToNode()))
+				.collect(toMap(n -> n, node -> new Zone(Id.create(node.getId(), Zone.class), "node", node.getCoord()),
+						(zone1, zone2) -> zone1));
+
 		var nodeByZone = EntryStream.of(zoneByNode).invert().toMap();
 
+		// compute node-to-node TT matrix
 		var travelTime = new QSimFreeSpeedTravelTime(1);
 		var travelDisutility = new TimeAsTravelDisutility(travelTime);
-		var matrix = TravelTimeMatrices.calculateTravelTimeMatrix(network, nodeByZone, 0, travelTime, travelDisutility,
-				Runtime.getRuntime().availableProcessors());
+		var nodeToNodeMatrix = TravelTimeMatrices.calculateTravelTimeMatrix(network, nodeByZone, 0, travelTime,
+				travelDisutility, Runtime.getRuntime().availableProcessors());
 
-		var locationZones = new Zone[locationByNodeId.size() + 1];
-		nodeByLocationIndex.forEach((index, node) -> locationZones[index] = zoneByNode.get(node));
+		int size = locationByLinkId.size();
+		int[][] travelTimes = new int[size][size];
 
-		return new MatrixBasedVrpCosts(matrix, locationZones);
+		for (var from : locationByLinkId.entrySet()) {
+			var fromLink = network.getLinks().get(from.getKey());
+			var fromZone = zoneByNode.get(fromLink.getToNode()); // we start from the link's TO node
+			var fromLocationIdx = from.getValue().getIndex();
+
+			for (var to : locationByLinkId.entrySet()) {
+				var toLink = network.getLinks().get(to.getKey());
+				var toZone = zoneByNode.get(toLink.getFromNode()); // we finish at the link's FROM node
+				var toLocationIdx = to.getValue().getIndex();
+
+				if (fromLink != toLink) { // otherwise, the matrix cell remains set to 0
+					double duration = FIRST_LINK_TT + nodeToNodeMatrix.get(fromZone, toZone) + VrpPaths.getLastLinkTT(
+							travelTime, toLink, 0);
+					travelTimes[fromLocationIdx][toLocationIdx] = (int)duration;
+				}
+			}
+		}
+
+		return new MatrixBasedVrpCosts(travelTimes);
 	}
 
-	private final Matrix matrix;
-	private final Zone[] locationZones;
+	private final int[][] travelTimes;
 
-	private MatrixBasedVrpCosts(Matrix matrix, Zone[] locationZones) {
-		this.matrix = matrix;
-		this.locationZones = locationZones;
+	private MatrixBasedVrpCosts(int[][] travelTimes) {
+		this.travelTimes = travelTimes;
 	}
 
 	private double getTravelTime(Location from, Location to) {
-		var fromZone = locationZones[from.getIndex()];
-		var toZone = locationZones[to.getIndex()];
-		return matrix.get(fromZone, toZone);
+		return travelTimes[from.getIndex()][to.getIndex()];
 	}
 
 	@Override
