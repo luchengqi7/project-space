@@ -2,11 +2,13 @@ package org.matsim.project.prebookingStudy.analysis.preAnalysis;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
@@ -61,9 +63,9 @@ public class SchoolTrafficAnalysis implements MATSimAppCommand {
                     continue;
                 }
                 double plannedTravelTime = plannedArrivalTime - plannedDepartureTime;
-                Node fromNode = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord()).getToNode();
-                Node toNode = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord()).getToNode();
-                double estimatedDirectTravelTime = router.calcLeastCostPath(fromNode, toNode, plannedDepartureTime, null, null).travelTime;
+                Link fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
+                Link toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
+                double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(fromLink, toLink, plannedDepartureTime, router, travelTime).getTravelTime();
                 double estimatedEarliestArrivalTime = plannedDepartureTime + estimatedDirectTravelTime;
                 double travelTimeAllowance = schoolStartingTime - plannedDepartureTime;
                 tsvWriter.printRecord(person.getId().toString() + "_" + tripCounter,

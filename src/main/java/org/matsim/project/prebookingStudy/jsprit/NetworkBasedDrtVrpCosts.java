@@ -7,6 +7,8 @@ import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
@@ -215,12 +217,10 @@ public class NetworkBasedDrtVrpCosts implements VehicleRoutingTransportCosts {
     }
 
     private TravelCostValue calculateTravelCostValue(Link fromLink, Link toLink, double departureTime) {
-        LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(), departureTime, null, null);
-        path.links.add(toLink);
-        double completeRouteTravelTime = path.travelTime + travelTime.getLinkTravelTime(toLink, path.travelTime + departureTime, null, null) + 2; // 2 extra seconds for the first link
+        VrpPathWithTravelData path = VrpPaths.calcAndCreatePath(fromLink, toLink, departureTime, router, travelTime);
         int timeBin = (int) (departureTime / timeBinSize);
         TravelCostKey travelCostKey = new TravelCostKey(fromLink.getId().toString(), toLink.getId().toString(), timeBin);
-        TravelCostValue travelCostValue = new TravelCostValue(path.travelCost, completeRouteTravelTime, path.links.stream().mapToDouble(Link::getLength).sum());
+        TravelCostValue travelCostValue = new TravelCostValue(path.getTravelTime(), path.getTravelTime(), VrpPaths.calcDistance(path));  // By default, travel cost = travel time in DRT setup
         cacheMap.put(travelCostKey, travelCostValue); // Store in the cache map
         return travelCostValue;
     }

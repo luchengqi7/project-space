@@ -5,7 +5,6 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
@@ -14,6 +13,8 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -94,7 +95,8 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
             throw new RuntimeException("Unknown school starting time type!");
         }
 
-        TravelTime travelTime = new QSimFreeSpeedTravelTime(1.0);
+        double timeStepSize = config.qsim().getTimeStepSize();
+        TravelTime travelTime = new QSimFreeSpeedTravelTime(timeStepSize);
         LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new OnlyTimeDependentTravelDisutility(travelTime), travelTime);
 
         for (Person person : plans.getPersons().values()) {
@@ -110,16 +112,15 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
                     homeActivity.setCoord(homeLink.getToNode().getCoord());
                 }
 
-                Node from = NetworkUtils.getNearestLink(network, homeActivity.getCoord()).getToNode();
-                Node to = NetworkUtils.getNearestLink(network, schoolActivity.getCoord()).getToNode();
+                Link fromLink = NetworkUtils.getNearestLink(network, homeActivity.getCoord());
+                Link toLink = NetworkUtils.getNearestLink(network, schoolActivity.getCoord());
                 double originalDepartureTime = homeActivity.getEndTime().orElseThrow(RuntimeException::new);
-                double estDirectTravelTime = router.calcLeastCostPath(from, to, originalDepartureTime, null, null).travelTime;
-
+                double estDirectTravelTime = VrpPaths.calcAndCreatePath(fromLink, toLink, originalDepartureTime, router, travelTime).getTravelTime();
                 double schoolStartingTime = schoolStartTimeCalculator.getSchoolStartingTime(schoolActivity);
                 schoolActivity.setStartTime(schoolStartingTime);
 
-                double walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed) + 1;
-                double travelTimeAllowance = alpha * estDirectTravelTime + beta + walkingTime + stopDuration + 1;
+                double walkingTime = Math.floor((DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed) / timeStepSize) + timeStepSize;
+                double travelTimeAllowance = alpha * estDirectTravelTime + beta + walkingTime + stopDuration;
                 double updatedDepartureTime = schoolStartingTime - travelTimeAllowance;
                 homeActivity.setEndTime(updatedDepartureTime);
             }

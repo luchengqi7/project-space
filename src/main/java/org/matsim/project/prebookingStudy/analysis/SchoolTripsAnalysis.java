@@ -14,6 +14,8 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
+import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -128,11 +130,9 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                     Link toLink = network.getLinks().get(Id.createLinkId(record.get(6)));
                     Coord toCoord = toLink.getToNode().getCoord();
                     double departureTime = Double.parseDouble(record.get(0));
-                    LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromLink.getToNode(), toLink.getFromNode(),
-                            departureTime, null, null);
-                    path.links.add(toLink);
-                    double estimatedDirectInVehicleTime = path.travelTime + travelTime.getLinkTravelTime(toLink, path.travelTime + departureTime, null, null) + 2;
-                    double estimatedDirectTravelDistance = path.links.stream().map(Link::getLength).mapToDouble(l -> l).sum();
+                    VrpPathWithTravelData path = VrpPaths.calcAndCreatePath(fromLink, toLink, departureTime, router, travelTime);
+                    double estimatedDirectInVehicleTime = path.getTravelTime();
+                    double estimatedDirectTravelDistance = VrpPaths.calcDistance(path);
                     double waitingTime = Double.parseDouble(record.get(9));
                     double boardingTime = departureTime + waitingTime;
                     double actualInVehicleTime = Double.parseDouble(record.get(11));
