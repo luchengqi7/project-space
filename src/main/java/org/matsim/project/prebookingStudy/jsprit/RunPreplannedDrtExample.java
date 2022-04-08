@@ -38,8 +38,6 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.vis.otfvis.OTFVisConfigGroup;
 
-import com.google.common.base.Preconditions;
-
 /**
  * @author michal.mac
  */
@@ -55,12 +53,6 @@ public class RunPreplannedDrtExample {
 		config.controler().setLastIteration(lastIteration);
 
 		Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
-
-		// make sure rebalancing is OFF
-		MultiModeDrtConfigGroup.get(config)
-				.getModalElements()
-				.forEach(
-						drtConfigGroup -> Preconditions.checkArgument(drtConfigGroup.getRebalancingParams().isEmpty()));
 
 		// compute PreplannedSchedules before starting QSim
 		MultiModeDrtConfigGroup.get(config)
