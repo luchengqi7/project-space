@@ -18,7 +18,7 @@
 			<param name="operationalScheme" value="door2door"/>
 
 			<!-- Bus stop duration. -->
-			<param name="stopDuration" value="60.0"/>
+			<param name="stopDuration" value="1.0"/>
 
 			<!-- An XML file specifying the vehicle fleet. The file format according to dvrp_vehicles_v1.dtd -->
 			<param name="vehiclesFile" value="drt-vehicles/250-8-seater-drt-vehicles-with-depots.xml"/>
@@ -91,7 +91,8 @@
 	</module>
 
 	<module name="controler">
-		<param name="outputDirectory" value="/Users/luchengqi/Documents/MATSimScenarios/Vulkaneifel/drt-prebooking-study/output/school_trips/run-latest" />
+		<param name="routingAlgorithmType" value="SpeedyALT"/>
+		<param name="outputDirectory" value="./output/school_trips/run-latest" />
 		<param name="overwriteFiles" value="deleteDirectoryIfExists" />
 		<param name="firstIteration" value="0" />
 		<param name="lastIteration" value="5" />
