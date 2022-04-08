@@ -45,7 +45,12 @@ import org.matsim.core.router.TripStructureUtils;
 import com.google.common.base.Preconditions;
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.problem.Location;
+import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
+import com.graphhopper.jsprit.core.problem.cost.VehicleRoutingTransportCosts;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
+import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
+import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.PickupShipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
@@ -67,17 +72,19 @@ public class PreplannedSchedulesCalculator {
 	private final Network network;
 	private final Population population;
 	private final boolean infiniteFleet;
+	private final boolean printProgressStatistics;
 
 	private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
 	//infinite fleet - set to false when calculating plans inside the mobsim (the fleet is finite)
 	public PreplannedSchedulesCalculator(DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
-			Population population, boolean infiniteFleet) {
+			Population population, boolean infiniteFleet, boolean printProgressStatistics) {
 		this.drtCfg = drtCfg;
 		this.fleetSpecification = fleetSpecification;
 		this.network = network;
 		this.population = population;
 		this.infiniteFleet = infiniteFleet;
+		this.printProgressStatistics = printProgressStatistics;
 	}
 
 	public PreplannedSchedules calculate() {
@@ -184,9 +191,11 @@ public class PreplannedSchedulesCalculator {
 		// run jsprit
 		var problem = vrpBuilder.setFleetSize(infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
 		var algorithm = Jsprit.Builder.newInstance(problem)
+				.setObjectiveFunction(
+						new SchoolTrafficObjectiveFunction(problem, infiniteFleet, printProgressStatistics))
 				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
 				.buildAlgorithm();
-		algorithm.setMaxIterations(1);
+		algorithm.setMaxIterations(200);
 		var solutions = algorithm.searchSolutions();
 		var bestSolution = Solutions.bestOf(solutions);
 		SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
@@ -219,5 +228,55 @@ public class PreplannedSchedulesCalculator {
 				.setIndex(locationByLinkId.size())
 				.setCoordinate(Coordinate.newInstance(link.getCoord().getX(), link.getCoord().getY()))
 				.build());
+	}
+
+	private static class SchoolTrafficObjectiveFunction implements SolutionCostCalculator {
+		private final double unassignedPenalty = 10000; // Most important objective
+		private final double costPerVehicle = 200; // Second most important objective
+		private final double drivingCostPerHour = 6.0; // Less important objective
+		private final boolean infiniteVehicle;
+		private final VehicleRoutingProblem problem;
+		private final boolean printProgressStatistics;
+
+		SchoolTrafficObjectiveFunction(VehicleRoutingProblem problem, boolean infiniteVehicle,
+				boolean printProgressStatistics) {
+			this.infiniteVehicle = infiniteVehicle;
+			this.problem = problem;
+			this.printProgressStatistics = printProgressStatistics;
+		}
+
+		@Override
+		public double getCosts(VehicleRoutingProblemSolution solution) {
+			double numUnassignedJobs = solution.getUnassignedJobs().size();
+			double costForUnassignedRequests = numUnassignedJobs * unassignedPenalty;
+
+			double numVehiclesUsed = solution.getRoutes().size();
+			double costForFleet = numVehiclesUsed * costPerVehicle;
+			if (!infiniteVehicle) {
+				costForFleet = 0;
+			}
+
+			VehicleRoutingTransportCosts costMatrix = problem.getTransportCosts();
+			double totalTransportCost = 0;
+			for (VehicleRoute route : solution.getRoutes()) {
+				TourActivity prevAct = route.getStart();
+				for (TourActivity activity : route.getActivities()) {
+					totalTransportCost += costMatrix.getTransportCost(prevAct.getLocation(), activity.getLocation(),
+							prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+					prevAct = activity;
+				}
+			}
+
+			totalTransportCost = totalTransportCost / 3600
+					* drivingCostPerHour;  // In current setup, transport cost = driving time
+			double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost;
+			if (printProgressStatistics) {
+				System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
+				System.out.println("Number of vehicles used: " + numVehiclesUsed);
+				System.out.println("Transport cost of the whole fleet: " + totalTransportCost);
+				System.out.println("Total cost = " + totalCost);
+			}
+			return totalCost;
+		}
 	}
 }

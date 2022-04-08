@@ -64,8 +64,8 @@ public class RunPreplannedDrtExample {
 								bindModal(PreplannedSchedules.class).toProvider(modalProvider(
 										getter -> new PreplannedSchedulesCalculator(drtConfig,
 												getter.getModal(FleetSpecification.class),
-												getter.getModal(Network.class), getter.get(Population.class),
-												false).calculate())).asEagerSingleton();
+												getter.getModal(Network.class), getter.get(Population.class), false,
+												true).calculate())).asEagerSingleton();
 							}
 						}));
 

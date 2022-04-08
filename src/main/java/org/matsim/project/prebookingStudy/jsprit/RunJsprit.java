@@ -75,6 +75,7 @@ public class RunJsprit implements MATSimAppCommand {
 		var fleetSpecification = new FleetSpecificationImpl();
 		new FleetReader(fleetSpecification).parse(drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext()));
 
-		new PreplannedSchedulesCalculator(drtCfg, fleetSpecification, network, population, infiniteFleet).calculate();
+		new PreplannedSchedulesCalculator(drtCfg, fleetSpecification, network, population, infiniteFleet,
+				printProgressStatistics).calculate();
 	}
 }
