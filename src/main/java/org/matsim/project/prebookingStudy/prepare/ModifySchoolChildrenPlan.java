@@ -2,6 +2,7 @@ package org.matsim.project.prebookingStudy.prepare;
 
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -108,18 +109,18 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
 
                 homeActivity.setStartTime(0);
                 Link homeLink = NetworkUtils.getNearestLink(network, homeActivity.getCoord());
+                homeActivity.setLinkId(homeLink.getId());
                 if (CoordUtils.calcEuclideanDistance(homeLink.getToNode().getCoord(), homeActivity.getCoord()) >= 200) {
                     homeActivity.setCoord(homeLink.getToNode().getCoord());
                 }
 
-                Link fromLink = NetworkUtils.getNearestLink(network, homeActivity.getCoord());
                 Link toLink = NetworkUtils.getNearestLink(network, schoolActivity.getCoord());
                 double originalDepartureTime = homeActivity.getEndTime().orElseThrow(RuntimeException::new);
-                double estDirectTravelTime = VrpPaths.calcAndCreatePath(fromLink, toLink, originalDepartureTime, router, travelTime).getTravelTime();
+                double estDirectTravelTime = VrpPaths.calcAndCreatePath(homeLink, toLink, originalDepartureTime, router, travelTime).getTravelTime();
                 double schoolStartingTime = schoolStartTimeCalculator.getSchoolStartingTime(schoolActivity);
                 schoolActivity.setStartTime(schoolStartingTime);
 
-                double walkingTime = Math.floor((DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed) / timeStepSize) + timeStepSize;
+                double walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed);
                 double travelTimeAllowance = alpha * estDirectTravelTime + beta + walkingTime + stopDuration;
                 double updatedDepartureTime = schoolStartingTime - travelTimeAllowance;
                 homeActivity.setEndTime(updatedDepartureTime);
