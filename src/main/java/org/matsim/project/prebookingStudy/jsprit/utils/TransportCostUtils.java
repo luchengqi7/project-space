@@ -15,6 +15,9 @@ public class TransportCostUtils {
     public static double getDriveCostRate() {
         return DRIVE_COST_RATE;
     }
+    public static double getVehicleFixCostPerDay() {
+        return VEHICLE_FIX_COST_PER_DAY;
+    }
 
 
     /*
@@ -73,6 +76,12 @@ public class TransportCostUtils {
     private final static double STANDARD_ACTIVITY_DEVIATION_COSTS = IN_VEHICLE_TIME_COST;
     public static double getStandardActivityDeviationCosts() {
         return STANDARD_ACTIVITY_DEVIATION_COSTS;
+    }
+
+    //Costs for rejection
+    private final static double REQUEST_REJECTION_COSTS = 10000;
+    public static double getRequestRejectionCosts() {
+        return REQUEST_REJECTION_COSTS;
     }
 
 }

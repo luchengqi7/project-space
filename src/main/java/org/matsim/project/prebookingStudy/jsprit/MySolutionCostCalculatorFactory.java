@@ -26,7 +26,7 @@ import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
-    public enum ObjectiveFunctionType {JspritDefault, JspritDefaultMinusNoVeh, JspritDefaultPlusLatePickup, JspritDefaultPlusLatePickupMinusNoVeh, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, DT, DTPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD, LatePickup, LatePickupPlusNoVeh}
+    public enum ObjectiveFunctionType {JspritDefault, /*JspritDefaultMinusNoVeh, JspritDefaultPlusLatePickup, JspritDefaultPlusLatePickupMinusNoVeh, */Jsprit, JspritMinusNoVeh, JspritPlusLatePickup, JspritPlusLatePickupMinusNoVeh, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, DT, DTPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD, LatePickup, LatePickupPlusNoVeh}
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
@@ -53,12 +53,21 @@ public class MySolutionCostCalculatorFactory {
         switch (objectiveFunctionType) {
             case JspritDefault:
                 return getJspritDefaultObjectiveFunction(vrp, maxCosts);
-            case JspritDefaultMinusNoVeh:
+/*            case JspritDefaultMinusNoVeh:
                 return getJspritDefaultMinusNoVehObjectiveFunction(vrp, maxCosts);
             case JspritDefaultPlusLatePickup:
                 return getJspritDefaultPlusLatePickupObjectiveFunction(vrp, maxCosts, statisticCollectorForOF, serviceTimeInMatsim);
             case JspritDefaultPlusLatePickupMinusNoVeh:
-                return getJspritDefaultPlusLatePickupMinusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF, serviceTimeInMatsim);
+                return getJspritDefaultPlusLatePickupMinusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF, serviceTimeInMatsim);*/
+            //jsprit default idea but using generalised transport costs
+            case Jsprit:
+                return getJspritObjectiveFunction(vrp, maxCosts);
+            case JspritMinusNoVeh:
+                return getJspritMinusNoVehObjectiveFunction(vrp, maxCosts);
+            case JspritPlusLatePickup:
+                return getJspritPlusLatePickupObjectiveFunction(vrp, maxCosts, statisticCollectorForOF, serviceTimeInMatsim);
+            case JspritPlusLatePickupMinusNoVeh:
+                return getJspritPlusLatePickupMinusNoVehObjectiveFunction(vrp, maxCosts, statisticCollectorForOF, serviceTimeInMatsim);
             //customised objective functions (using generalised transport costs)
             case TT:
                 return getTTObjectiveFunction(vrp, maxCosts, statisticCollectorForOF);
@@ -240,7 +249,7 @@ public class MySolutionCostCalculatorFactory {
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
                     double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += timeOffset - (statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) + 2 * serviceTimeInMatsim);
+                    costs += timeOffset - statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey());
                 }
 
                 return costs;
@@ -292,7 +301,201 @@ public class MySolutionCostCalculatorFactory {
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
                     double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += timeOffset - (statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) + 2 * serviceTimeInMatsim);
+                    costs += timeOffset - statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey());
+                }
+
+                return costs;
+            }
+        };
+    }
+
+    //jsprit default idea but using generalised transport costs
+    private static SolutionCostCalculator getJspritObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = 0.;
+
+                for (VehicleRoute route : solution.getRoutes()) {
+                    costs += TransportCostUtils.getVehicleFixCostPerDay();
+                    boolean hasBreak = false;
+                    TourActivity prevAct = route.getStart();
+                    for (TourActivity act : route.getActivities()) {
+                        if (act instanceof BreakActivity) hasBreak = true;
+                        //ToDo: The used cost here is the TravelDisutility rather than travel time.
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                        prevAct = act;
+                    }
+                    costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    if (route.getVehicle().getBreak() != null) {
+                        if (!hasBreak) {
+                            //break defined and required but not assigned penalty
+                            if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
+                                costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * TransportCostUtils.getDriveCostRate());
+                            }
+                        }
+                        //throw new RuntimeException("There exists Breaks.");
+                        LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
+                    }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    //throw new RuntimeException("There exists unassgndJobs.");
+                    LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
+                }
+                for(Job j : solution.getUnassignedJobs()){
+                    costs += maxCosts * 2 * (11 - j.getPriority());
+                }
+                return costs;
+            }
+        };
+    }
+
+    //jsprit default idea but using generalised transport costs
+    private static SolutionCostCalculator getJspritMinusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = 0.;
+
+                for (VehicleRoute route : solution.getRoutes()) {
+                    //costs += TransportCostUtils.getVehicleFixCostPerDay();
+                    boolean hasBreak = false;
+                    TourActivity prevAct = route.getStart();
+                    for (TourActivity act : route.getActivities()) {
+                        if (act instanceof BreakActivity) hasBreak = true;
+                        //ToDo: The used cost here is the TravelDisutility rather than travel time.
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                        prevAct = act;
+                    }
+                    costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    if (route.getVehicle().getBreak() != null) {
+                        if (!hasBreak) {
+                            //break defined and required but not assigned penalty
+                            if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
+                                costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * TransportCostUtils.getDriveCostRate());
+                            }
+                        }
+                        //throw new RuntimeException("There exists Breaks.");
+                        LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
+                    }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    //throw new RuntimeException("There exists unassgndJobs.");
+                    LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
+                }
+                for(Job j : solution.getUnassignedJobs()){
+                    costs += maxCosts * 2 * (11 - j.getPriority());
+                }
+                return costs;
+            }
+        };
+    }
+
+    //jsprit default idea but using generalised transport costs
+    private static SolutionCostCalculator getJspritPlusLatePickupObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF, double serviceTimeInMatsim) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = 0.;
+
+                for (VehicleRoute route : solution.getRoutes()) {
+                    costs += TransportCostUtils.getVehicleFixCostPerDay();
+                    boolean hasBreak = false;
+                    TourActivity prevAct = route.getStart();
+                    for (TourActivity act : route.getActivities()) {
+                        if (act instanceof BreakActivity) hasBreak = true;
+                        //ToDo: The used cost here is the TravelDisutility rather than travel time.
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                        prevAct = act;
+                    }
+                    costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    if (route.getVehicle().getBreak() != null) {
+                        if (!hasBreak) {
+                            //break defined and required but not assigned penalty
+                            if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
+                                costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * TransportCostUtils.getDriveCostRate());
+                            }
+                        }
+                        //throw new RuntimeException("There exists Breaks.");
+                        LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
+                    }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    //throw new RuntimeException("There exists unassgndJobs.");
+                    LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
+                }
+                for(Job j : solution.getUnassignedJobs()){
+                    costs += maxCosts * 2 * (11 - j.getPriority());
+                }
+
+                //add costs for late pickups
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add penalty for too early pickups
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset - statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()));
+                }
+
+                return costs;
+            }
+        };
+    }
+
+    //jsprit default idea but using generalised transport costs
+    private static SolutionCostCalculator getJspritPlusLatePickupMinusNoVehObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, StatisticCollectorForOF statisticCollectorForOF, double serviceTimeInMatsim) {
+        //if (objectiveFunction != null) return objectiveFunction;
+
+        return new SolutionCostCalculator() {
+            @Override
+            public double getCosts(VehicleRoutingProblemSolution solution) {
+                double costs = 0.;
+
+                for (VehicleRoute route : solution.getRoutes()) {
+                    //costs += TransportCostUtils.getVehicleFixCostPerDay();
+                    boolean hasBreak = false;
+                    TourActivity prevAct = route.getStart();
+                    for (TourActivity act : route.getActivities()) {
+                        if (act instanceof BreakActivity) hasBreak = true;
+                        //ToDo: The used cost here is the TravelDisutility rather than travel time.
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                        costs += TransportCostUtils.getDriveCostRate() * vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                        prevAct = act;
+                    }
+                    costs += TransportCostUtils.getDriveCostRate() * vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), route.getEnd().getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    if (route.getVehicle().getBreak() != null) {
+                        if (!hasBreak) {
+                            //break defined and required but not assigned penalty
+                            if (route.getEnd().getArrTime() > route.getVehicle().getBreak().getTimeWindow().getEnd()) {
+                                costs += 4 * (maxCosts * 2 + route.getVehicle().getBreak().getServiceDuration() * TransportCostUtils.getDriveCostRate());
+                            }
+                        }
+                        //throw new RuntimeException("There exists Breaks.");
+                        LOG.info("************There exists Breaks! The vehicleId of this route is: " + route.getVehicle().getId() + "The number of breaks of this route is: " + route.getVehicle().getBreak() + "************");
+                    }
+                }
+                if (solution.getUnassignedJobs().size() != 0){
+                    //throw new RuntimeException("There exists unassgndJobs.");
+                    LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
+                }
+                for(Job j : solution.getUnassignedJobs()){
+                    costs += maxCosts * 2 * (11 - j.getPriority());
+                }
+
+                //add costs for late pickups
+                statisticCollectorForOF.statsCollector(vrp, solution);
+                //add penalty for too early pickups
+                for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
+                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset - statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()));
                 }
 
                 return costs;
