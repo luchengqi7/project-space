@@ -405,7 +405,7 @@ public class MatsimDrtRequest2Jsprit {
 					vrpBuilder.addJob(shipment);
 
 					//save the desiredPickupTime and desiredDeliveryTime into maps
-					desiredPickupTimeMap.put(requestId, pickupTime);
+					desiredPickupTimeMap.put(requestId, pickupTime + walkingTime);
 					desiredDeliveryTimeMap.put(requestId, deliveryTime);
 				} else if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.SchoolType)) {
 					/*
@@ -462,7 +462,7 @@ public class MatsimDrtRequest2Jsprit {
 					vrpBuilder.addJob(shipment);
 
 					//save the desiredPickupTime and desiredDeliveryTime into maps
-					desiredPickupTimeMap.put(requestId, pickupTime);
+					desiredPickupTimeMap.put(requestId, pickupTime + walkingTime);
 					desiredDeliveryTimeMap.put(requestId, latestDeliveryTime);
 				}
 				requestCount++;
