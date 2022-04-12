@@ -16,12 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 public class StatisticCollectorForIterationEndsListener {
-    final private Map<Integer, Integer> fleetSizeMap = new HashMap<>();
-    final private Map<Integer, Double> costsMap = new HashMap<>();
-    public Map<Integer, Integer> getFleetSizeMap() {
+    final private static Map<Integer, Integer> fleetSizeMap = new HashMap<>();
+    final private static Map<Integer, Double> costsMap = new HashMap<>();
+    public static Map<Integer, Integer> getFleetSizeMap() {
         return fleetSizeMap;
     }
-    public Map<Integer, Double> getCostsMap() {
+    public static Map<Integer, Double> getCostsMap() {
         return costsMap;
     }
 
