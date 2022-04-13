@@ -11,6 +11,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 
 public class TestingNode {
     public static void main(String[] args) {
+        int time = (int) (System.currentTimeMillis() / 1000);
+        System.out.println("Current time is " + time);
         Network network1 = NetworkUtils.readNetwork("/Users/luchengqi/Documents/MATSimScenarios/Vulkaneifel/drt-prebooking-study/scenarios/input/vulkaneifel-v1.0-network.xml.gz");
         Coord coord = new Coord(333509.84287451406, 5578818.032624912);
         Link link = NetworkUtils.getNearestLink(network1, coord);

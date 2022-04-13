@@ -2,6 +2,7 @@ package org.matsim.project.prebookingStudy.run;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.io.FileUtils;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
@@ -26,7 +27,9 @@ import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.run.rebalancing.RuralScenarioRebalancingTCModule;
 import picocli.CommandLine;
 
+import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -66,6 +69,17 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             Files.createDirectory(Path.of(output));
         }
 
+        // Create a temporary config file in the same folder, so that multiple runs can be run in the cluster at the same time
+        int taskId = (int) (System.currentTimeMillis() / 1000);
+        File originalConfig = new File(configPath.toString());
+        String temporaryConfig = configPath.getParent().toString() + "/temporary_" + taskId + ".config.xml";
+        File copy = new File(temporaryConfig);
+        try {
+            FileUtils.copyFile(originalConfig, copy);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         SchoolTripsAnalysis schoolTripsAnalysis = new SchoolTripsAnalysis();
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv"), CSVFormat.TDF);
         tsvWriter.printRecord(schoolTripsAnalysis.getTitleRowKPI());
@@ -76,7 +90,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             fleetSize -= stepSize;
             String outputDirectory = output + "/fleet-size-" + fleetSize;
 
-            Config config = ConfigUtils.loadConfig(configPath.toString(), new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+            Config config = ConfigUtils.loadConfig(temporaryConfig, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
             MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
             DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
 
@@ -119,6 +133,10 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             String[] input = new String[]{outputDirectory};
             DrtVehicleStoppingTaskWriter.main(input);
         }
+
+        // Delete the temporary config file for the current run
+        Files.delete(Path.of(temporaryConfig));
+
         return 0;
     }
 }
