@@ -30,11 +30,11 @@ public class MySolutionCostCalculatorFactory {
 
     private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
 
-    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit, VehicleRoutingTransportCosts transportCosts) {
+    public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Config config, VehicleRoutingTransportCosts transportCosts) {
         //prepare to calculate the KPIs
         double serviceTimeInMatsim = 0;
         //Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
-        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(matsimDrtRequest2Jsprit.getConfig()).getModalElements()) {
+        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
             serviceTimeInMatsim = drtCfg.getStopDuration();
         }
         StatisticCollectorForOF statisticCollectorForOF;
