@@ -40,12 +40,12 @@ public class MySolutionCostCalculatorFactory {
         StatisticCollectorForOF statisticCollectorForOF;
         if (transportCosts instanceof NetworkBasedDrtVrpCosts | transportCosts instanceof MatrixBasedVrpCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
-            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+/*            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/
         } else if(transportCosts instanceof EuclideanCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
-            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+/*            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/
         } else{
             throw new RuntimeException("MatsimVrpCostsCaculatorType can either be EuclideanCosts or NetworkBased/MatrixBased!");
         }
