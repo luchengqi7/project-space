@@ -46,7 +46,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--directory", description = "path to output directory", required = true)
     private Path directory;
 
-    private final List<String> titleRowKPI = Arrays.asList
+    public static final List<String> TITLE_ROW_KPI = Arrays.asList
             ("fleet_size", "total_requests", "served_requests", "punctual_arrivals", "service_satisfaction_rate",
                     "actual_in_vehicle_time_mean", "estimated_direct_in_vehicle_time_mean", "onboard_delay_ratio_mean",
                     "actual_travel_distance_mean", "estimated_direct_network_distance_mean", "detour_distance_ratio_mean",
@@ -55,10 +55,6 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
     public static void main(String[] args) {
         new SchoolTripsAnalysis().execute(args);
-    }
-
-    public List<String> getTitleRowKPI() {
-        return titleRowKPI;
     }
 
     public List<String> getOutputKPIRow() {
@@ -200,7 +196,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             }
 
             CSVPrinter tsvWriterKPI = new CSVPrinter(new FileWriter(outputStatsPath.toString()), CSVFormat.TDF);
-            tsvWriterKPI.printRecord(titleRowKPI);
+            tsvWriterKPI.printRecord(TITLE_ROW_KPI);
 
             int inVehicleTimeMean = (int) inVehicleTimes.stream().mapToDouble(t -> t).average().orElse(-1);
             int estDirectInVehicleTimeMean = (int) estimatedDirectInVehicleTimes.stream().mapToDouble(t -> t).average().orElse(-1);
