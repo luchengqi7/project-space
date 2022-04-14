@@ -177,8 +177,8 @@ public class RunJspritScenario implements MATSimAppCommand {
             statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
             transportCosts = new EuclideanCosts();
         }
-        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());
+/*        statisticUtils.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
+        statisticUtils.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/
 
 
         /*
@@ -203,7 +203,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //double maxCosts = TransportCostUtils.getInVehicleTimeCost() * jobNeighborhoods.getMaxDistance();
         double maxCosts = TransportCostUtils.getRequestRejectionCosts();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
-        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit, transportCosts);
+        SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit.getConfig(), transportCosts);
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);

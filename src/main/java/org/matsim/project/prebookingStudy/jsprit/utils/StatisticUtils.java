@@ -53,12 +53,12 @@ public class StatisticUtils {
 
     Map<String, Double> desiredPickupTimeMap = new HashMap<>();
     Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
-    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
+/*    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
         this.desiredPickupTimeMap = desiredPickupTimeMap;
     }
     public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
         this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
-    }
+    }*/
 
 
     public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
@@ -90,6 +90,12 @@ public class StatisticUtils {
             if (j instanceof Shipment) {
                 Shipment jShipment = (Shipment) j;
                 shipments.put(jShipment.getId(),jShipment);
+
+                //extract desiredPickupTime and desiredDeliveryTime
+                double desiredPickupTime = jShipment.getPickupTimeWindow().getStart();
+                desiredPickupTimeMap.put(jShipment.getId(), desiredPickupTime);
+                double desiredDeliveryTime = jShipment.getDeliveryTimeWindow().getEnd();
+                desiredDeliveryTimeMap.put(jShipment.getId(), desiredDeliveryTime);
             }
         }
         for (Job unassignedJob : solution.getUnassignedJobs()) {
