@@ -35,10 +35,8 @@ import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
 import org.apache.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.project.prebookingStudy.jsprit.utils.GraphStreamViewer;
-import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
-import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
-import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
+import org.matsim.project.prebookingStudy.jsprit.listener.MyIterationEndsListener;
+import org.matsim.project.prebookingStudy.jsprit.utils.*;
 import org.matsim.utils.MemoryObserver;
 import picocli.CommandLine;
 
@@ -213,24 +211,32 @@ public class RunJspritScenario implements MATSimAppCommand {
             reasonTracker = new UnassignedJobReasonTracker();
             algorithm.addListener(reasonTracker);
         }
+        algorithm.getAlgorithmListeners().addListener(new MyIterationEndsListener());
+
 
         /*
          * and search a solution
          */
         Collection<VehicleRoutingProblemSolution> solutions = algorithm.searchSolutions();
 
+
         /*
-         * get the best
+         * get the best and print the Jsprit-related stats
          */
         VehicleRoutingProblemSolution bestSolution = Solutions.bestOf(solutions);
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
-        statisticUtils.writeConfig(statsOutputPath.toString());
-
         String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
+        StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(matsimDrtRequest2Jsprit.getConfig());
+        statisticCollectorForIterationEndsListener.writeOutputTrips(statsOutputPath.toString());
+
+        /*
+         * print the MATSim-related stats
+         */
+        statisticUtils.writeConfig(statsOutputPath.toString());
         //print results to csv files
         statisticUtils.statsCollector(problem, bestSolution);
         statisticUtils.writeOutputTrips(statsOutputPath.toString());
@@ -240,6 +246,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
 
         MemoryObserver.stop();
+
 
         /*
          * plot
@@ -253,6 +260,7 @@ public class RunJspritScenario implements MATSimAppCommand {
             GraphStreamViewer graphStreamViewer = new GraphStreamViewer(problem, bestSolution);
             graphStreamViewer.labelWith(GraphStreamViewer.Label.ID).setRenderDelay(300).setGraphStreamFrameScalingFactor(2)/*.setRenderShipments(true)*/.display();
         }
+
 
         return 0;
     }

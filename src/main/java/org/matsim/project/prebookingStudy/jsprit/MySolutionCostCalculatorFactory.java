@@ -441,8 +441,14 @@ public class MySolutionCostCalculatorFactory {
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
-                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    if(statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) > entry.getValue()) {
+                        costs += TransportCostUtils.getDriveCostRate() * (statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) - entry.getValue());
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey());
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    }else{
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    }
                 }
 
                 return costs;
@@ -494,8 +500,14 @@ public class MySolutionCostCalculatorFactory {
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
-                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    if(statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) > entry.getValue()) {
+                        costs += TransportCostUtils.getDriveCostRate() * (statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) - entry.getValue());
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey());
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    }else{
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/);
+                    }
                 }
 
                 return costs;
@@ -912,8 +924,14 @@ public class MySolutionCostCalculatorFactory {
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
-                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    if(statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) > entry.getValue()) {
+                        costs += TransportCostUtils.getDriveCostRate() * (statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) - entry.getValue());
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey());
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/) - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    }else{
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/) - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    }
                 }
                 return costs;
             }
@@ -931,8 +949,14 @@ public class MySolutionCostCalculatorFactory {
                 statisticCollectorForOF.statsCollector(vrp, solution);
                 //add penalty for too early pickups
                 for (Map.Entry<String, Double> entry : statisticCollectorForOF.getPickupTimeMap().entrySet()) {
-                    double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
-                    costs += TransportCostUtils.getStandardActivityDeviationCosts() * timeOffset - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    if(statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) > entry.getValue()) {
+                        costs += TransportCostUtils.getDriveCostRate() * (statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey()) - entry.getValue());
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - statisticCollectorForOF.getDesiredPickupTimeMap().get(entry.getKey());
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/) - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    }else{
+                        double timeOffset = statisticCollectorForOF.getDesiredDeliveryTimeMap().get(entry.getKey()) - entry.getValue();
+                        costs += TransportCostUtils.getStandardActivityDeviationCosts() * (timeOffset /*- statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey())*/) - TransportCostUtils.getInVehicleTimeCost() * (/*statisticCollectorForOF.getInVehicleTimeMap().get(entry.getKey()) +*/ 2 * serviceTimeInMatsim);
+                    }
                 }
                 //add used number of vehicles
                 costs += TransportCostUtils.getVehicleCosts() * solution.getRoutes().size();
