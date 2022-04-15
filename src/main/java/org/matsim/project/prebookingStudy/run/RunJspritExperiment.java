@@ -121,8 +121,8 @@ public class RunJspritExperiment implements MATSimAppCommand {
         resultsWriter.printRecord(analysis.getOutputKPIRow());
         resultsWriter.close();
 
-        String[] input = new String[]{outputDirectory};
-        DrtVehicleStoppingTaskWriter.main(input);
+//        String[] input = new String[]{outputDirectory};
+//        DrtVehicleStoppingTaskWriter.main(input);  //TODO modification is needed for the plotting script
     }
 
     private void modifyDrtConfigs(MultiModeDrtConfigGroup multiModeDrtConfigGroup) {
