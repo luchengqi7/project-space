@@ -79,7 +79,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
         }
 
         // Run infinite fleet size
-        fleetSize = 400; //TODO improve this
+        fleetSize = 400; //TODO improve this. Currently, using the largest fleet vehicle file we have
         runJsprit(temporaryConfig, output + "/infinite-fleet", true);
 
         // Delete the temporary config file for the current run
