@@ -82,7 +82,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
         SchoolTripsAnalysis schoolTripsAnalysis = new SchoolTripsAnalysis();
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv"), CSVFormat.TDF);
-        tsvWriter.printRecord(schoolTripsAnalysis.getTitleRowKPI());
+        tsvWriter.printRecord(SchoolTripsAnalysis.TITLE_ROW_KPI);
         tsvWriter.close();
 
         fleetSize += stepSize;

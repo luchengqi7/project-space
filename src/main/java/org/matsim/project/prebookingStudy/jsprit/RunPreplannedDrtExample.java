@@ -22,11 +22,15 @@ package org.matsim.project.prebookingStudy.jsprit;
 
 import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.PreplannedSchedules;
 
+import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Path;
 
+import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
@@ -36,21 +40,31 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.vis.otfvis.OTFVisConfigGroup;
 
 /**
  * @author michal.mac
  */
 public class RunPreplannedDrtExample {
-	public static void main(String[] args) {
+    private static final Logger log = Logger.getLogger(RunPreplannedDrtExample.class);
+	public static void main(String[] args) throws IOException {
 		var configFile = "scenarios/vulkaneifel-school-traffic/vulkaneifel-v1.0-school-childrem.config.xml";
 		RunPreplannedDrtExample.run(IOUtils.resolveFileOrResource(configFile), false, 0);
 	}
 
-	public static void run(URL configUrl, boolean otfvis, int lastIteration) {
+	public static void run(URL configUrl, boolean otfvis, int lastIteration) throws IOException {
 		Config config = ConfigUtils.loadConfig(configUrl, new MultiModeDrtConfigGroup(), new DvrpConfigGroup(),
 				new OTFVisConfigGroup());
 		config.controler().setLastIteration(lastIteration);
+        for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
+            if (drtCfg.getRebalancingParams().isPresent()) {
+                log.warn("The rebalancing parameter set is defined for drt mode: "
+                        + drtCfg.getMode()
+                        + ". It will be ignored. No rebalancing will happen.");
+                drtCfg.removeParameterSet(drtCfg.getRebalancingParams().get());
+            }
+        }
 
 		Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
 
@@ -76,5 +90,6 @@ public class RunPreplannedDrtExample {
 		}
 
 		controler.run();
+		new SchoolTripsAnalysis().analyze(Path.of(config.controler().getOutputDirectory()));
 	}
 }
