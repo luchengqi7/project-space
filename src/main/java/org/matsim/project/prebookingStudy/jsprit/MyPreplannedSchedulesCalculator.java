@@ -53,6 +53,7 @@ import org.matsim.core.router.TripStructureUtils;
 import org.matsim.project.prebookingStudy.jsprit.listener.MyIterationEndsListener;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForIterationEndsListener;
+import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 import java.io.File;
@@ -232,6 +233,14 @@ public class MyPreplannedSchedulesCalculator {
 		mkdir(jspritStatsDirectory);
 		StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(config);
 		statisticCollectorForIterationEndsListener.writeOutputTrips(jspritStatsDirectory);
+		StatisticUtils statisticUtils = new StatisticUtils(config, vrpCosts, 1);
+		//statisticUtils.writeConfig(jspritStatsDirectory);
+		//print results to csv files
+		statisticUtils.statsCollector(problem, bestSolution);
+		statisticUtils.writeOutputTrips(jspritStatsDirectory);
+		//statisticUtils.writeCustomerStats(jspritStatsDirectory);
+		//statisticUtils.writeVehicleStats(jspritStatsDirectory, problem, bestSolution);
+		statisticUtils.writeSummaryStats(jspritStatsDirectory, problem, bestSolution);
 
 		Map<PreplannedRequest, Id<DvrpVehicle>> preplannedRequestToVehicle = new HashMap<>();
 		Map<Id<DvrpVehicle>, Queue<PreplannedStop>> vehicleToPreplannedStops = problem.getVehicles()
