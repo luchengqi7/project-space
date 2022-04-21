@@ -50,6 +50,7 @@ import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.core.config.Config;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -152,6 +153,10 @@ public class MyPreplannedSchedulesCalculator {
 		var preplannedRequestByShipmentId = new HashMap<String, PreplannedRequest>();
 		// create shipments
 		for (Person person : population.getPersons().values()) {
+			String destinationActivityType = null;
+			for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+				destinationActivityType = trip.getDestinationActivity().getType();
+			}
 			for (var leg : TripStructureUtils.getLegs(person.getSelectedPlan())) {
 				if (!leg.getMode().equals(drtCfg.getMode())) {
 					continue;
@@ -168,9 +173,11 @@ public class MyPreplannedSchedulesCalculator {
 						null);
 
 				double earliestDeliveryTime = earliestPickupTime + travelTime;
-				double latestDeliveryTime = earliestPickupTime
+/*				double latestDeliveryTime = earliestPickupTime
 						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();
+						+ drtCfg.getMaxTravelTimeBeta();*/
+				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
+						destinationActivityType);
 
 				var shipmentId = person.getId()
 						+ "_"
