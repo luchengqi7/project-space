@@ -50,8 +50,11 @@ import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.core.config.Config;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.project.prebookingStudy.jsprit.listener.MyIterationEndsListener;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
+import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForIterationEndsListener;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -212,9 +215,18 @@ public class MyPreplannedSchedulesCalculator {
 				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
 				.buildAlgorithm();
 		algorithm.setMaxIterations(options.maxIterations);
+		algorithm.getAlgorithmListeners().addListener(new MyIterationEndsListener());
 		var solutions = algorithm.searchSolutions();
 		var bestSolution = Solutions.bestOf(solutions);
 		SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
+		/*
+		 * not the jsprit default output stats
+		 */
+		String matsimOutputDirectory = config.controler().getOutputDirectory();
+		String jspritStatsDirectory = ((matsimOutputDirectory).endsWith("/")) ? matsimOutputDirectory + "jsprit" : matsimOutputDirectory + "/jsprit";
+		mkdir(jspritStatsDirectory);
+		StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(config);
+		statisticCollectorForIterationEndsListener.writeOutputTrips(jspritStatsDirectory);
 
 		Map<PreplannedRequest, Id<DvrpVehicle>> preplannedRequestToVehicle = new HashMap<>();
 		Map<Id<DvrpVehicle>, Queue<PreplannedStop>> vehicleToPreplannedStops = problem.getVehicles()
@@ -236,6 +248,16 @@ public class MyPreplannedSchedulesCalculator {
 
 		return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops);
 
+	}
+
+	private void mkdir(String jspritStatsDirectory) {
+		File dir = new File(jspritStatsDirectory);
+		// if the directory does not exist, create it
+		if (!dir.exists()) {
+			System.out.println("creating directory " + jspritStatsDirectory);
+			boolean result = dir.mkdir();
+			if (result) System.out.println(jspritStatsDirectory + " created");
+		}
 	}
 
 	private Location collectLocationIfAbsent(Link link) {
