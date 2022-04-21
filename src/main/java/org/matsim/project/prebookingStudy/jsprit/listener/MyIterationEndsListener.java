@@ -28,9 +28,11 @@ public class MyIterationEndsListener implements IterationEndsListener {
         // save best costs and best fleet size
         if (costs < bestCosts) {
             bestCosts = costs;
+            StatisticCollectorForIterationEndsListener.setBestCosts(bestCosts);
         }
         if (fleetSize < bestFleetSize) {
             bestFleetSize = fleetSize;
+            StatisticCollectorForIterationEndsListener.setBestFleetSize(bestFleetSize);
         }
         StatisticCollectorForIterationEndsListener.getBestCostsMap().put(i, bestCosts);
         StatisticCollectorForIterationEndsListener.getBestFleetSizeMap().put(i, bestFleetSize);
