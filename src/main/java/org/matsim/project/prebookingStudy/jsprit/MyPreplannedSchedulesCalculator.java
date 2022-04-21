@@ -53,6 +53,7 @@ import org.matsim.core.router.TripStructureUtils;
 import org.matsim.project.prebookingStudy.jsprit.listener.MyIterationEndsListener;
 import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForIterationEndsListener;
+import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
 
 import java.io.File;
 import java.util.HashMap;
@@ -210,6 +211,10 @@ public class MyPreplannedSchedulesCalculator {
 
 		// run jsprit
 		var problem = vrpBuilder.setFleetSize(options.infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
+		// prepare objective function
+		double maxCosts = TransportCostUtils.getRequestRejectionCosts();
+		MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
+		SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, MySolutionCostCalculatorFactory.ObjectiveFunctionType.JspritDefault, config, vrpCosts);
 		var algorithm = Jsprit.Builder.newInstance(problem)
 				.setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, options))
 				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
