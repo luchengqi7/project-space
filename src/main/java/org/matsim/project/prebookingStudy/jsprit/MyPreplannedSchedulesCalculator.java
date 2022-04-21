@@ -48,6 +48,7 @@ import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
+import org.matsim.core.config.Config;
 import org.matsim.core.router.TripStructureUtils;
 
 import java.util.HashMap;
@@ -61,7 +62,7 @@ import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSiz
 import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.*;
 
 /**
- * @author Michal Maciejewski (michalm)
+ * @author Michal Maciejewski (michalm), modified by Hao Wu (haowuintub)
  */
 public class MyPreplannedSchedulesCalculator {
 	public static class Options {
@@ -81,12 +82,14 @@ public class MyPreplannedSchedulesCalculator {
 	private final Network network;
 	private final Population population;
 	private final Options options;
+	private final Config config;
 
 	private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
 	//infinite fleet - set to false when calculating plans inside the mobsim (the fleet is finite)
-	public MyPreplannedSchedulesCalculator(DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
+	public MyPreplannedSchedulesCalculator(Config config, DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
                                            Population population, Options options) {
+		this.config = config;
 		this.drtCfg = drtCfg;
 		this.fleetSpecification = fleetSpecification;
 		this.network = network;

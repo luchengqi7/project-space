@@ -19,6 +19,7 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
+import org.matsim.project.prebookingStudy.jsprit.MyPreplannedSchedulesCalculator;
 import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
 import picocli.CommandLine;
 
@@ -96,7 +97,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
 
-        var options = new PreplannedSchedulesCalculator.Options(infiniteFleetSize, false, jspritIterations);
+        var options = new MyPreplannedSchedulesCalculator.Options(infiniteFleetSize, false, jspritIterations);
 
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
@@ -105,7 +106,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
                             @Override
                             protected void configureQSim() {
                                 bindModal(PreplannedDrtOptimizer.PreplannedSchedules.class).toProvider(modalProvider(
-                                        getter -> new PreplannedSchedulesCalculator(drtConfig,
+                                        getter -> new MyPreplannedSchedulesCalculator(config, drtConfig,
                                                 getter.getModal(FleetSpecification.class),
                                                 getter.getModal(Network.class), getter.get(Population.class),
                                                 options).calculate())).asEagerSingleton();
