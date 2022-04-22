@@ -49,3 +49,4 @@ hs_err_pid*
 /scenarios/vulkaneifel/config-test.xml
 /scenarios/vulkaneifel/school-childrem.config.xml
 /output_jsprit
+src/main/java/org/matsim/playground/testingScript/HelloWorld.java
