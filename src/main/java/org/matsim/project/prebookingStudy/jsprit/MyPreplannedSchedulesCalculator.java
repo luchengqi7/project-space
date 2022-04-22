@@ -32,6 +32,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.PickupShipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity.JobActivity;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
@@ -250,7 +251,7 @@ public class MyPreplannedSchedulesCalculator {
 		for (var route : bestSolution.getRoutes()) {
 			var vehicleId = Id.create(route.getVehicle().getId(), DvrpVehicle.class);
 			for (var activity : route.getActivities()) {
-				var preplannedRequest = preplannedRequestByShipmentId.get(((TourActivity.JobActivity)activity).getJob().getId());
+				var preplannedRequest = preplannedRequestByShipmentId.get(((JobActivity)activity).getJob().getId());
 
 				boolean isPickup = activity instanceof PickupShipment;
 				if (isPickup) {
