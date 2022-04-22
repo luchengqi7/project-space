@@ -231,7 +231,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
         StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(matsimDrtRequest2Jsprit.getConfig());
-        statisticCollectorForIterationEndsListener.writeOutputTrips(statsOutputPath.toString());
+        statisticCollectorForIterationEndsListener.writeOutputStats(statsOutputPath.toString());
 
         /*
          * print the MATSim-related stats

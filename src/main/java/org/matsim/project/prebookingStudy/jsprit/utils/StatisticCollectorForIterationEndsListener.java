@@ -57,7 +57,7 @@ public class StatisticCollectorForIterationEndsListener {
         this.separator = config.global().getDefaultDelimiter();
     }
 
-    public void writeOutputTrips(String outputFilename) {
+    public void writeOutputStats(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("iteration");

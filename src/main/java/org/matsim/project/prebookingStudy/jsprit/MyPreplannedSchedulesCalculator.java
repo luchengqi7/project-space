@@ -233,7 +233,7 @@ public class MyPreplannedSchedulesCalculator {
 		String jspritStatsDirectory = ((matsimOutputDirectory).endsWith("/")) ? matsimOutputDirectory + "jsprit" : matsimOutputDirectory + "/jsprit";
 		mkdir(jspritStatsDirectory);
 		StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(config);
-		statisticCollectorForIterationEndsListener.writeOutputTrips(jspritStatsDirectory);
+		statisticCollectorForIterationEndsListener.writeOutputStats(jspritStatsDirectory);
 		StatisticUtils statisticUtils = new StatisticUtils(config, vrpCosts, 1);
 		//statisticUtils.writeConfig(jspritStatsDirectory);
 		//print results to csv files
