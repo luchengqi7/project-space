@@ -250,17 +250,25 @@ public class MyPreplannedSchedulesCalculator {
 		for (var route : bestSolution.getRoutes()) {
 			var vehicleId = Id.create(route.getVehicle().getId(), DvrpVehicle.class);
 			for (var activity : route.getActivities()) {
-				var jobActivity = (TourActivity.JobActivity)activity;
-				var preplannedRequest = preplannedRequestByShipmentId.get(jobActivity.getJob().getId());
-				preplannedRequestToVehicle.put(preplannedRequest, vehicleId);
+				var preplannedRequest = preplannedRequestByShipmentId.get(((TourActivity.JobActivity)activity).getJob().getId());
+
+				boolean isPickup = activity instanceof PickupShipment;
+				if (isPickup) {
+					preplannedRequestToVehicle.put(preplannedRequest, vehicleId);
+				}
 
 				//act -> preplanned stop
-				var preplannedStop = new PreplannedStop(preplannedRequest, jobActivity instanceof PickupShipment);
+				var preplannedStop = new PreplannedStop(preplannedRequest, isPickup);
 				vehicleToPreplannedStops.get(vehicleId).add(preplannedStop);
 			}
 		}
 
-		return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops);
+		var unassignedRequests = bestSolution.getUnassignedJobs()
+				.stream()
+				.map(job -> preplannedRequestByShipmentId.get(job.getId()))
+				.collect(Collectors.toSet());
+
+		return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops, unassignedRequests);
 
 	}
 
