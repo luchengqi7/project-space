@@ -42,7 +42,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "root output folder", required = true)
     private String output;
 
-    @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "250")
+    @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "50")
     private int fleetSize;
 
     @CommandLine.Option(names = "--steps", description = "number of runs (pushing down from the initial fleet-size)", defaultValue = "1")
@@ -53,6 +53,8 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--iters", description = "jsprit iteraions", defaultValue = "1000")
     private int jspritIterations;
+
+    private final SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
 
     public static void main(String[] args) {
         new RunJspritExperiment().execute(args);
@@ -72,16 +74,22 @@ public class RunJspritExperiment implements MATSimAppCommand {
         tsvWriter.close();
 
         // Run finite fleet sizes
-        fleetSize += stepSize;
-        for (int i = 0; i < steps; i++) {
-            fleetSize -= stepSize;
+        int maxFleetSize = fleetSize + stepSize * (steps - 1);
+        while (fleetSize <= maxFleetSize){
             String outputDirectory = output + "/fleet-size-" + fleetSize;
             runJsprit(temporaryConfig, outputDirectory, false);
+
+            // If the on-time rate is approaching 100%, then we can stop the experiments sequence early
+            double onTimeRate = Double.parseDouble(analysis.getOutputKPIRow().get(4));
+            if (onTimeRate >= 0.99){
+                maxFleetSize = Math.min(maxFleetSize, fleetSize + stepSize * 2); // 2 more runs and then finish
+            }
+            fleetSize += stepSize;
         }
 
-        // Run infinite fleet size
-        fleetSize = 400; //TODO improve this. Currently, using the largest fleet vehicle file we have
-        runJsprit(temporaryConfig, output + "/infinite-fleet", true);
+        // Run infinite fleet size // TODO this will fail (Error: Some schedules are preplanned for vehicles outside the fleet)
+//        fleetSize = 400; //TODO improve this. Currently, using the largest fleet vehicle file we have
+//        runJsprit(temporaryConfig, output + "/infinite-fleet", true);
 
         // Delete the temporary config file for the current run
         Files.delete(Path.of(temporaryConfig));
@@ -116,7 +124,6 @@ public class RunJspritExperiment implements MATSimAppCommand {
         controler.run();
 
         // Post analysis
-        SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
         analysis.analyze(Path.of(outputDirectory));
         CSVPrinter resultsWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv", true), CSVFormat.TDF);
         resultsWriter.printRecord(analysis.getOutputKPIRow());
