@@ -41,6 +41,12 @@ public class RunJspritExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "root output folder", required = true)
     private String output;
 
+    @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2.0")
+    private double alpha;
+
+    @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
+    private double beta;
+
     @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "50")
     private int fleetSize;
 
@@ -135,6 +141,9 @@ public class RunJspritExperiment implements MATSimAppCommand {
     private void modifyDrtConfigs(MultiModeDrtConfigGroup multiModeDrtConfigGroup) {
         for (DrtConfigGroup drtCfg : multiModeDrtConfigGroup.getModalElements()) {
             drtCfg.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
+            drtCfg.setMaxTravelTimeAlpha(alpha);
+            drtCfg.setMaxTravelTimeBeta(beta);
+            drtCfg.setMaxWaitTime(7200); //This constraint is no longer important in the school traffic case
             if (drtCfg.getRebalancingParams().isPresent()) {
                 log.warn("The rebalancing parameter set is defined for drt mode: "
                         + drtCfg.getMode()
