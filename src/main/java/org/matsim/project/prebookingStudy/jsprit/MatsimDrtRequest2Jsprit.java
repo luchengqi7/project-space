@@ -1,7 +1,6 @@
 package org.matsim.project.prebookingStudy.jsprit;
 
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -142,22 +141,17 @@ public class MatsimDrtRequest2Jsprit {
 	}
 
 	VehicleRoutingProblem.Builder matsimVehicleReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType,
-			boolean enableNetworkBasedCosts,
-			RunJspritScenario.MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType) {
-		int vehicleCount = 0;
-
+			boolean enableNetworkBasedCosts) {
 		if (enableNetworkBasedCosts) {
-			if (matsimVrpCostsCalculatorType.equals(RunJspritScenario.MatsimVrpCostsCalculatorType.MatrixBased)) {
-				for (DvrpVehicleSpecification dvrpVehicleSpecification : dvrpFleetSpecification.getVehicleSpecifications()
-						.values()) {
-					Id<Link> startLinkId = dvrpVehicleSpecification.getStartLinkId();
-					if ("oneTaxi".equals(dvrpMode)) {
-						throw new RuntimeException("One Taxi scenario do not have nodes");
-					}
-
-					var startLink = scenario.getNetwork().getLinks().get(startLinkId);
-					collectLocationIfAbsent(startLink);
+			for (DvrpVehicleSpecification dvrpVehicleSpecification : dvrpFleetSpecification.getVehicleSpecifications()
+					.values()) {
+				Id<Link> startLinkId = dvrpVehicleSpecification.getStartLinkId();
+				if ("oneTaxi".equals(dvrpMode)) {
+					throw new RuntimeException("One Taxi scenario do not have nodes");
 				}
+
+				var startLink = scenario.getNetwork().getLinks().get(startLinkId);
+				collectLocationIfAbsent(startLink);
 			}
 		}
 
@@ -179,16 +173,8 @@ public class MatsimDrtRequest2Jsprit {
 			VehicleImpl.Builder vehicleBuilder = VehicleImpl.Builder.newInstance(
 					dvrpVehicleSpecification.getId().toString());
 			if (enableNetworkBasedCosts) {
-				if (matsimVrpCostsCalculatorType.equals(RunJspritScenario.MatsimVrpCostsCalculatorType.MatrixBased)) {
-					var startLink = scenario.getNetwork().getLinks().get(startLinkId);
-					vehicleBuilder.setStartLocation(locationByLinkId.get(startLink.getId()));
-				} else if (matsimVrpCostsCalculatorType.equals(
-						RunJspritScenario.MatsimVrpCostsCalculatorType.NetworkBased)) {
-					vehicleBuilder.setStartLocation(Location.Builder.newInstance()
-							.setId(scenario.getNetwork().getLinks().get(startLinkId).getId().toString())
-							.setCoordinate(Coordinate.newInstance(startLinkLocationX, startLinkLocationY))
-							.build());
-				}
+				var startLink = scenario.getNetwork().getLinks().get(startLinkId);
+				vehicleBuilder.setStartLocation(locationByLinkId.get(startLink.getId()));
 			} else {
 				vehicleBuilder.setStartLocation(Location.Builder.newInstance()
 						.setId(scenario.getNetwork().getLinks().get(startLinkId).getId().toString())
@@ -201,7 +187,6 @@ public class MatsimDrtRequest2Jsprit {
 
 			VehicleImpl vehicle = vehicleBuilder.build();
 			vrpBuilder.addVehicle(vehicle);
-			vehicleCount++;
 		}
 
 		return vrpBuilder;
@@ -210,29 +195,26 @@ public class MatsimDrtRequest2Jsprit {
 	// ================ REQUEST Reader
 	VehicleRoutingProblem.Builder matsimRequestReader(VehicleRoutingProblem.Builder vrpBuilder, VehicleType vehicleType,
 			boolean enableNetworkBasedCosts,
-			RunJspritScenario.MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType,
 			SchoolTrafficUtils.SchoolStartTimeScheme schoolStartTimeScheme) {
 
 		if (enableNetworkBasedCosts) {
-			if (matsimVrpCostsCalculatorType.equals(RunJspritScenario.MatsimVrpCostsCalculatorType.MatrixBased)) {
-				// collect pickup/dropoff locations
-				for (Person person : scenario.getPopulation().getPersons().values()) {
-					if ("oneTaxi".equals(dvrpMode)) {
-						throw new RuntimeException("One Taxi scenario do not have nodes");
-					}
+			// collect pickup/dropoff locations
+			for (Person person : scenario.getPopulation().getPersons().values()) {
+				if ("oneTaxi".equals(dvrpMode)) {
+					throw new RuntimeException("One Taxi scenario do not have nodes");
+				}
 
-					List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
-					for (TripStructureUtils.Trip trip : trips) {
-						Preconditions.checkState(trip.getLegsOnly().size() == 1, "A trip has more than one leg.");
+				List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+				for (TripStructureUtils.Trip trip : trips) {
+					Preconditions.checkState(trip.getLegsOnly().size() == 1, "A trip has more than one leg.");
 
-						var originActivity = trip.getOriginActivity();
-						var originLink = NetworkUtils.getNearestLink(network, originActivity.getCoord());
-						collectLocationIfAbsent(originLink);
+					var originActivity = trip.getOriginActivity();
+					var originLink = NetworkUtils.getNearestLink(network, originActivity.getCoord());
+					collectLocationIfAbsent(originLink);
 
-						var destinationActivity = trip.getDestinationActivity();
-						var destinationLink = NetworkUtils.getNearestLink(network, destinationActivity.getCoord());
-						collectLocationIfAbsent(destinationLink);
-					}
+					var destinationActivity = trip.getDestinationActivity();
+					var destinationLink = NetworkUtils.getNearestLink(network, destinationActivity.getCoord());
+					collectLocationIfAbsent(destinationLink);
 				}
 			}
 		}
@@ -342,21 +324,8 @@ public class MatsimDrtRequest2Jsprit {
 				double travelTime;
 				double speed = vehicleType.getMaxVelocity();
 				if (enableNetworkBasedCosts) {
-					if (matsimVrpCostsCalculatorType.equals(
-							RunJspritScenario.MatsimVrpCostsCalculatorType.MatrixBased)) {
-						originLocation = locationByLinkId.get(pickupLink.getId());
-						destinationLocation = locationByLinkId.get(deliveryLink.getId());
-					} else if (matsimVrpCostsCalculatorType.equals(
-							RunJspritScenario.MatsimVrpCostsCalculatorType.NetworkBased)) {
-						originLocation = Location.Builder.newInstance()
-								.setId(pickupLocationId)
-								.setCoordinate(Coordinate.newInstance(pickupLocationX, pickupLocationY))
-								.build();
-						destinationLocation = Location.Builder.newInstance()
-								.setId(deliveryLocationId)
-								.setCoordinate(Coordinate.newInstance(deliveryLocationX, deliveryLocationY))
-								.build();
-					}
+					originLocation = locationByLinkId.get(pickupLink.getId());
+					destinationLocation = locationByLinkId.get(deliveryLink.getId());
 					travelTime = router.calcLeastCostPath(
 							network.getLinks().get(Id.createLinkId(pickupLocationId)).getToNode(),
 							network.getLinks().get(Id.createLinkId(deliveryLocationId)).getToNode(), pickupTime, null,

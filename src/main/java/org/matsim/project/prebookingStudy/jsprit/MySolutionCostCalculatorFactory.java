@@ -13,9 +13,7 @@ import com.graphhopper.jsprit.core.util.EuclideanCosts;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.gbl.Gbl;
-import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForOF;
 
 import java.nio.file.Path;
@@ -38,7 +36,7 @@ public class MySolutionCostCalculatorFactory {
             serviceTimeInMatsim = drtCfg.getStopDuration();
         }
         StatisticCollectorForOF statisticCollectorForOF;
-        if (transportCosts instanceof NetworkBasedDrtVrpCosts | transportCosts instanceof MatrixBasedVrpCosts) {
+        if (transportCosts instanceof MatrixBasedVrpCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
 /*            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
             statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/

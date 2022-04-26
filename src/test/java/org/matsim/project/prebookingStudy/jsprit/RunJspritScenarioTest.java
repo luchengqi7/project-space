@@ -9,13 +9,11 @@ public class RunJspritScenarioTest {
     public void testMain() {
         try {
             RunJspritScenario runJspritScenario = new RunJspritScenario();
-            String[] arg = new String[]{" ", " ", " ", " ", " ", " ", " ", " "};
             String [] args = {
                     "--config", "scenarios/vulkaneifel/school-childrem.config.xml",
                     "--mode", "drt",
                     "--nr-iter", "100",
                     "--stats-output-path", "output_jsprit/school-traffic/euclidian-distance/JspritDefault",
-                    "--cache-size", "10000000",
                     "--print-memory-interval", "60",
                     "--max-velocity", "15",
                     "--OF", "JspritDefault",
