@@ -72,9 +72,6 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-network-based-costs", description = "enable network-based transportCosts", defaultValue = "false")
     private static boolean enableNetworkBasedCosts;
 
-    @CommandLine.Option(names = "--cache-size", description = "set the cache size limit of network-based transportCosts if network-based transportCosts is enabled!", defaultValue = "10000")
-    private static int cacheSizeLimit;
-
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
 
@@ -149,7 +146,7 @@ public class RunJspritScenario implements MATSimAppCommand {
                 //.setCostPerServiceTime()
                 ;
         VehicleType vehicleType = vehicleTypeBuilder.build();
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimVehicleReader(vrpBuilder, vehicleType, enableNetworkBasedCosts);
 
 
         //use Service to create requests
@@ -157,7 +154,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         //vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader("useService", vrpBuilder);
 
         //use Shipment to create requests
-        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, matsimVrpCostsCalculatorType, schoolStartTimeScheme);
+        vrpBuilder = matsimDrtRequest2Jsprit.matsimRequestReader(vrpBuilder, vehicleType, enableNetworkBasedCosts, schoolStartTimeScheme);
 
 
         /*
@@ -165,20 +162,9 @@ public class RunJspritScenario implements MATSimAppCommand {
          */
         StatisticUtils statisticUtils;
         if (enableNetworkBasedCosts) {
-            if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.NetworkBased)) {
-                NetworkBasedDrtVrpCosts.Builder networkBasedDrtVrpCostsBuilder = new NetworkBasedDrtVrpCosts.Builder(matsimDrtRequest2Jsprit.getNetwork())
-                        .enableCache(true)
-                        .setCacheSizeLimit(cacheSizeLimit);
-                if (cacheSizeLimit != 10000) {
-                    LOG.info("The cache size limit of network-based transportCosts is (not the default value) and set to " + cacheSizeLimit);
-                }
-                transportCosts = networkBasedDrtVrpCostsBuilder.build();
-                LOG.info("NetworkBased VrpCosts Calculator enabled!");
-            } else if(matsimVrpCostsCalculatorType.equals(MatsimVrpCostsCalculatorType.MatrixBased)){
-                // compute matrix
-                transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByLinkId());
-                LOG.info("MatrixBased VrpCosts Calculator enabled!");
-            }
+            // compute matrix
+            transportCosts = MatrixBasedVrpCosts.calculateVrpCosts(matsimDrtRequest2Jsprit.getNetwork(), matsimDrtRequest2Jsprit.getLocationByLinkId());
+            LOG.info("MatrixBased VrpCosts costs computed.");
             vrpBuilder.setRoutingCost(transportCosts);
             statisticUtils = new StatisticUtils(matsimDrtRequest2Jsprit.getConfig(), transportCosts, matsimDrtRequest2Jsprit.getServiceTimeInMatsim());
         } else {
