@@ -75,7 +75,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--print-memory-interval", description = "set the time interval(s) for printing the memory usage in the log", defaultValue = "60")
     private static int memoryObserverInterval;
 
-    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity (m/s) for the fleet vehicle type", defaultValue = "0x1.fffffffffffffP+1023")
+    @CommandLine.Option(names = "--max-velocity", description = "set the maximal velocity (m/s) for the fleet vehicle type", defaultValue = "10000000")
     private static int maxVelocity;
 
     @CommandLine.Option(names = "--OF", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "JspritDefault")
@@ -95,7 +95,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
     private static boolean enableInfiniteFleet;
 
-    @CommandLine.Option(names = "--random-seed", description = "set the random seed for the simulation", defaultValue = "4711L")
+    @CommandLine.Option(names = "--random-seed", description = "set the random seed for the simulation", defaultValue = "4711")
     private static long randomSeed;
 
     @CommandLine.Option(names = "--enable-multi-thread", description = "enable multi-thread computing", defaultValue = "false")
@@ -198,6 +198,8 @@ public class RunJspritScenario implements MATSimAppCommand {
         int threads = enableMultithread ? Runtime.getRuntime().availableProcessors() : 1;
         VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).setRandom(random).setProperty(Jsprit.Parameter.THREADS, threads + "").buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
+        LOG.info("The random seed used is " + randomSeed);
+        LOG.info("The thread number used is " + threads);
         algorithm.setMaxIterations(numberOfIterations);
         if(isRunningTest){
             reasonTracker = new UnassignedJobReasonTracker();
