@@ -95,11 +95,6 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
     private static boolean enableInfiniteFleet;
 
-    public enum MatsimVrpCostsCalculatorType {NetworkBased, MatrixBased}
-
-    @CommandLine.Option(names = "--vrp-costs-calculator", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "MatrixBased")
-    private MatsimVrpCostsCalculatorType matsimVrpCostsCalculatorType;
-
     @CommandLine.Option(names = "--random-seed", description = "set the random seed for the simulation", defaultValue = "4711L")
     private static long randomSeed;
 
