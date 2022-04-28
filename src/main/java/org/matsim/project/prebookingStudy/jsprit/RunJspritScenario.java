@@ -30,6 +30,7 @@ import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
 import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.EuclideanCosts;
+import com.graphhopper.jsprit.core.util.RandomNumberGeneration;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
@@ -43,6 +44,7 @@ import picocli.CommandLine;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Random;
 
 @CommandLine.Command(
         name = "run",
@@ -92,6 +94,12 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--enable-infinite-fleet", description = "enable infinite fleet size based on the input vehicle start locations(depots)", defaultValue = "false")
     private static boolean enableInfiniteFleet;
+
+    @CommandLine.Option(names = "--random-seed", description = "set the random seed for the simulation", defaultValue = "4711L")
+    private static long randomSeed;
+
+    @CommandLine.Option(names = "--enable-multi-thread", description = "enable multi-thread computing", defaultValue = "false")
+    private static boolean enableMultithread;
 
     private VehicleRoutingTransportCosts transportCosts;
 
@@ -185,7 +193,10 @@ public class RunJspritScenario implements MATSimAppCommand {
         double maxCosts = TransportCostUtils.getRequestRejectionCosts();
         MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
         SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, objectiveFunctionType, matsimDrtRequest2Jsprit.getConfig(), transportCosts);
-        VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).buildAlgorithm();
+        Random random = RandomNumberGeneration.getRandom();
+        random.setSeed(randomSeed);
+        int threads = enableMultithread ? Runtime.getRuntime().availableProcessors() : 1;
+        VehicleRoutingAlgorithm algorithm = Jsprit.Builder.newInstance(problem).setObjectiveFunction(objectiveFunction).setRandom(random).setProperty(Jsprit.Parameter.THREADS, threads + "").buildAlgorithm();
         LOG.info("The objective function used is " + objectiveFunctionType.toString());
         algorithm.setMaxIterations(numberOfIterations);
         if(isRunningTest){
@@ -212,7 +223,7 @@ public class RunJspritScenario implements MATSimAppCommand {
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
         StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(matsimDrtRequest2Jsprit.getConfig());
-        statisticCollectorForIterationEndsListener.writeOutputTrips(statsOutputPath.toString());
+        statisticCollectorForIterationEndsListener.writeOutputStats(statsOutputPath.toString());
 
         /*
          * print the MATSim-related stats

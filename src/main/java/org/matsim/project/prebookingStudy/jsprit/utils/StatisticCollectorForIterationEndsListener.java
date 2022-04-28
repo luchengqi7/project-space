@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 public class StatisticCollectorForIterationEndsListener {
+
     final private static Map<Integer, Integer> fleetSizeMap = new HashMap<>();
     final private static Map<Integer, Double> costsMap = new HashMap<>();
     public static Map<Integer, Integer> getFleetSizeMap() {
@@ -25,18 +26,45 @@ public class StatisticCollectorForIterationEndsListener {
         return costsMap;
     }
 
+    final private static Map<Integer, Integer> bestFleetSizeMap = new HashMap<>();
+    final private static Map<Integer, Double> bestCostsMap = new HashMap<>();
+    public static Map<Integer, Integer> getBestFleetSizeMap() {
+        return bestFleetSizeMap;
+    }
+    public static Map<Integer, Double> getBestCostsMap() {
+        return bestCostsMap;
+    }
+
+    private static int bestFleetSize;
+    public static void setBestFleetSize(int bestFleetSize) {
+        StatisticCollectorForIterationEndsListener.bestFleetSize = bestFleetSize;
+    }
+    public static int getBestFleetSize() {
+        return bestFleetSize;
+    }
+
+    private static double bestCosts;
+    public static void setBestCosts(double bestCosts) {
+        StatisticCollectorForIterationEndsListener.bestCosts = bestCosts;
+    }
+    public static double getBestCosts() {
+        return bestCosts;
+    }
+
     final String separator;
 
     public StatisticCollectorForIterationEndsListener(Config config) {
         this.separator = config.global().getDefaultDelimiter();
     }
 
-    public void writeOutputTrips(String outputFilename) {
+    public void writeOutputStats(String outputFilename) {
 
         List<String> strList = new ArrayList<String>() {{
             add("iteration");
             add("costs");
             add("fleet_size");
+            add("best_costs");
+            add("best_fleet_size");
         }};
         String[] tripsHeader = strList.toArray(new String[strList.size()]);
 
@@ -56,7 +84,9 @@ public class StatisticCollectorForIterationEndsListener {
                     //add records
                     tripRecord.add(Integer.toString(entry.getKey()));
                     tripRecord.add(Double.toString(entry.getValue()));
-                    tripRecord.add(Double.toString(fleetSizeMap.get(entry.getKey())));
+                    tripRecord.add(Integer.toString(fleetSizeMap.get(entry.getKey())));
+                    tripRecord.add(Double.toString(bestCostsMap.get(entry.getKey())));
+                    tripRecord.add(Integer.toString(bestFleetSizeMap.get(entry.getKey())));
 
 
                     if (tripsHeader.length != tripRecord.size()) {
