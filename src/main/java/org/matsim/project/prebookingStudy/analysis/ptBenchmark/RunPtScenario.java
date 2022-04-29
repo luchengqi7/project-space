@@ -37,7 +37,6 @@ public class RunPtScenario implements MATSimAppCommand {
         Config config = ConfigUtils.loadConfig(configPath);
         config.controler().setOutputDirectory(outputDirectory);
         config.planCalcScore().setWriteExperiencedPlans(true);
-        config.controler().setLastIteration(1);
 
         Scenario scenario = ScenarioUtils.loadScenario(config);
         modifyPopulation(scenario.getPopulation());
