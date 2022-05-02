@@ -125,7 +125,13 @@ public class CreateFleetVehicles implements MATSimAppCommand {
             System.out.println("Creating fleet: " + fleetSize);
             List<DvrpVehicleSpecification> vehicleSpecifications = new ArrayList<>();
             for (int i = 0; i < fleetSize; i++) {
-                Id<Link> startLinkId = links.get(random.nextInt(links.size())).getId();
+                Id<Link> startLinkId;
+                if (depotsPath.equals("")) {
+                    startLinkId = links.get(random.nextInt(links.size())).getId();
+                } else {
+                    startLinkId = links.get(i % links.size()).getId(); // Even distribution of the vehcles
+                }
+
                 DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
                         id(Id.create(operator + "_" + i, DvrpVehicle.class)).
                         startLinkId(startLinkId).
