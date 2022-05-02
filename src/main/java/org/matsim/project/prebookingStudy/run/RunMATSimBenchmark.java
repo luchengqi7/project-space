@@ -45,10 +45,16 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     private String output;
 
     @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2.0")
-    private double alpha;
+    private String alpha;
 
     @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
-    private double beta;
+    private String beta;
+
+    @CommandLine.Option(names = "--school-starting-time", description = "school starting time", defaultValue = "UNIFORM")
+    private CaseStudyTool.SchoolStartingTime schoolStartingTime;
+
+    @CommandLine.Option(names = "--service-scheme", description = "Service scheme", defaultValue = "DOOR_TO_DOOR")
+    private CaseStudyTool.ServiceScheme serviceScheme;
 
     @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "250")
     private int fleetSize;
@@ -56,7 +62,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     @CommandLine.Option(names = "--steps", description = "number of runs (pushing down from the initial fleet-size)", defaultValue = "1")
     private int steps;
 
-    @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "10")
+    @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "5")
     private int stepSize;
 
     public static void main(String[] args) {
@@ -65,10 +71,6 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        if (!Files.exists(Path.of(output))) {
-            Files.createDirectory(Path.of(output));
-        }
-
         // Create a temporary config file in the same folder, so that multiple runs can be run in the cluster at the same time
         int taskId = (int) (System.currentTimeMillis() / 1000);
         File originalConfig = new File(configPath.toString());
@@ -80,27 +82,28 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             e.printStackTrace();
         }
 
+        CaseStudyTool caseStudyTool = new CaseStudyTool(alpha, beta, schoolStartingTime, serviceScheme);
         SchoolTripsAnalysis schoolTripsAnalysis = new SchoolTripsAnalysis();
-        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv"), CSVFormat.TDF);
+        output = output + "-alpha_" + alpha + "-beta_" + beta + "-" + schoolStartingTime.toString() + "-" + serviceScheme.toString();
+
+        if (!Files.exists(Path.of(output))) {
+            Files.createDirectory(Path.of(output));
+        }
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv", true), CSVFormat.TDF);
         tsvWriter.printRecord(SchoolTripsAnalysis.TITLE_ROW_KPI);
         tsvWriter.close();
 
-        fleetSize += stepSize;
-        for (int i = 0; i < steps; i++) {
-            fleetSize -= stepSize;
+        int maxFleetSize = fleetSize + stepSize * (steps - 1);
+        while (fleetSize <= maxFleetSize) {
             String outputDirectory = output + "/fleet-size-" + fleetSize;
 
+            // prepare config
             Config config = ConfigUtils.loadConfig(temporaryConfig, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
             MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
             DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
-
             DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next(); // By default, the first drt config group is the one we are using
-            drtConfigGroup.setMaxTravelTimeAlpha(alpha);
-            drtConfigGroup.setMaxTravelTimeBeta(beta);
-            drtConfigGroup.setMaxWaitTime(7200); //This constraint is no longer important in the school traffic case
-
+            caseStudyTool.prepareCaseStudy(config, drtConfigGroup);
             drtConfigGroup.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
-
             config.controler().setOutputDirectory(outputDirectory);
 
             Scenario scenario = ScenarioUtils.loadScenario(config);
@@ -125,6 +128,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
             controler.run();
 
+            // Analysis
             schoolTripsAnalysis.analyze(Path.of(outputDirectory));
             CSVPrinter resultsWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv", true), CSVFormat.TDF);
             resultsWriter.printRecord(schoolTripsAnalysis.getOutputKPIRow());
@@ -132,6 +136,15 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
             String[] input = new String[]{outputDirectory};
             DrtVehicleStoppingTaskWriter.main(input);
+
+            // If the all requests are served and on-time rate is approaching 100%, then we can stop the experiments sequence early
+            double onTimeRate = Double.parseDouble(schoolTripsAnalysis.getOutputKPIRow().get(4));
+            int numRequests = Integer.parseInt(schoolTripsAnalysis.getOutputKPIRow().get(1));
+            int numServedRequests = Integer.parseInt(schoolTripsAnalysis.getOutputKPIRow().get(2));
+            if (onTimeRate >= 0.99 && numServedRequests == numRequests) {
+                maxFleetSize = Math.min(maxFleetSize, fleetSize + stepSize * 2); // max 2 more runs and then stop
+            }
+            fleetSize += stepSize;
         }
 
         // Delete the temporary config file for the current run
