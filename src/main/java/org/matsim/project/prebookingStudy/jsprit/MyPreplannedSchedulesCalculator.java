@@ -179,11 +179,11 @@ public class MyPreplannedSchedulesCalculator {
 						null);
 
 				double earliestDeliveryTime = earliestPickupTime + travelTime;
-/*				double latestDeliveryTime = earliestPickupTime
+                double latestDeliveryTime = earliestPickupTime
 						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();*/
-				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
-						destinationActivityType);
+						+ drtCfg.getMaxTravelTimeBeta();
+//				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
+//						destinationActivityType);  //TODO
 
 				var shipmentId = person.getId()
 						+ "_"
