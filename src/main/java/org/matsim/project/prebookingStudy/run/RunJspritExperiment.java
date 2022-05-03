@@ -7,7 +7,6 @@ import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
@@ -20,7 +19,6 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.jsprit.MyPreplannedSchedulesCalculator;
-import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -83,19 +81,17 @@ public class RunJspritExperiment implements MATSimAppCommand {
         int maxFleetSize = fleetSize + stepSize * (steps - 1);
         while (fleetSize <= maxFleetSize){
             String outputDirectory = output + "/fleet-size-" + fleetSize;
-            runJsprit(temporaryConfig, outputDirectory, false);
+            runJsprit(temporaryConfig, outputDirectory);
 
             // If the on-time rate is approaching 100%, then we can stop the experiments sequence early
             double onTimeRate = Double.parseDouble(analysis.getOutputKPIRow().get(4));
-            if (onTimeRate >= 0.99){
+            int numRequests = Integer.parseInt(analysis.getOutputKPIRow().get(1));
+            int numServedRequests = Integer.parseInt(analysis.getOutputKPIRow().get(2));
+            if (onTimeRate >= 0.99 && numServedRequests == numRequests){
                 maxFleetSize = Math.min(maxFleetSize, fleetSize + stepSize * 2); // 2 more runs and then finish
             }
             fleetSize += stepSize;
         }
-
-        // Run infinite fleet size // TODO this will fail (Error: Some schedules are preplanned for vehicles outside the fleet)
-//        fleetSize = 400; //TODO improve this. Currently, using the largest fleet vehicle file we have
-//        runJsprit(temporaryConfig, output + "/infinite-fleet", true);
 
         // Delete the temporary config file for the current run
         Files.delete(Path.of(temporaryConfig));
@@ -103,7 +99,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
         return 0;
     }
 
-    private void runJsprit(String configPath, String outputDirectory, boolean infiniteFleetSize) throws IOException {
+    private void runJsprit(String configPath, String outputDirectory) throws IOException {
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         config.controler().setOutputDirectory(outputDirectory);
         config.controler().setLastIteration(0);
@@ -111,7 +107,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
 
-        var options = new MyPreplannedSchedulesCalculator.Options(infiniteFleetSize, false, jspritIterations);
+        var options = new MyPreplannedSchedulesCalculator.Options(false, false, jspritIterations);
 
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
