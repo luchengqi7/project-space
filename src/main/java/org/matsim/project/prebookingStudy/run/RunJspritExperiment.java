@@ -19,6 +19,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.jsprit.MyPreplannedSchedulesCalculator;
+import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -46,17 +47,20 @@ public class RunJspritExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
     private double beta;
 
-    @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "50")
+    @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "100")
     private int fleetSize;
 
     @CommandLine.Option(names = "--steps", description = "number of runs (pushing down from the initial fleet-size)", defaultValue = "1")
     private int steps;
 
-    @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "10")
+    @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "5")
     private int stepSize;
 
     @CommandLine.Option(names = "--iters", description = "jsprit iteraions", defaultValue = "1000")
     private int jspritIterations;
+
+    @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading to increase computation speed")
+    private boolean multiThread;
 
     private final SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
 
@@ -107,7 +111,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
 
-        var options = new MyPreplannedSchedulesCalculator.Options(false, false, jspritIterations);
+        var options = new PreplannedSchedulesCalculator.Options(false, false, jspritIterations, multiThread);
 
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
@@ -116,7 +120,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
                             @Override
                             protected void configureQSim() {
                                 bindModal(PreplannedDrtOptimizer.PreplannedSchedules.class).toProvider(modalProvider(
-                                        getter -> new MyPreplannedSchedulesCalculator(config, drtConfig,
+                                        getter -> new PreplannedSchedulesCalculator(drtConfig,
                                                 getter.getModal(FleetSpecification.class),
                                                 getter.getModal(Network.class), getter.get(Population.class),
                                                 options).calculate())).asEagerSingleton();

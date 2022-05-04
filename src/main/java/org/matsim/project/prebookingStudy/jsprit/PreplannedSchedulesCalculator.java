@@ -71,11 +71,13 @@ public class PreplannedSchedulesCalculator {
 		public final boolean infiniteFleet;
 		public final boolean printProgressStatistics;
 		public final int maxIterations;
+		public final boolean multiThread;
 
-		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations) {
+		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread) {
 			this.infiniteFleet = infiniteFleet;
 			this.printProgressStatistics = printProgressStatistics;
 			this.maxIterations = maxIterations;
+			this.multiThread = multiThread;
 		}
 	}
 
@@ -200,9 +202,13 @@ public class PreplannedSchedulesCalculator {
 
 		// run jsprit
 		var problem = vrpBuilder.setFleetSize(options.infiniteFleet ? FleetSize.INFINITE : FleetSize.FINITE).build();
+		String numOfThreads = "1";
+		if (options.multiThread) {
+			numOfThreads = Runtime.getRuntime().availableProcessors() + "";
+		}
 		var algorithm = Jsprit.Builder.newInstance(problem)
 				.setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, options))
-				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
+				.setProperty(Jsprit.Parameter.THREADS, numOfThreads)
 				.buildAlgorithm();
 		algorithm.setMaxIterations(options.maxIterations);
 		var solutions = algorithm.searchSolutions();
