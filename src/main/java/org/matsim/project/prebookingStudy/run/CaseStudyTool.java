@@ -6,7 +6,7 @@ import org.matsim.core.config.Config;
 public class CaseStudyTool {
     enum SchoolStartingTime {UNIFORM, TWO_SCHOOL_STARTING_TIME}
 
-    enum ServiceScheme {DOOR_TO_DOOR, STOP_BASED}
+    enum ServiceScheme {DOOR_TO_DOOR, STOP_BASED, STOP_BASED_ADAPTED}
 
     private final String alpha;
     private final String beta;
@@ -43,13 +43,33 @@ public class CaseStudyTool {
             case STOP_BASED:
                 drtConfigGroup.setOperationalScheme(DrtConfigGroup.OperationalScheme.stopbased);
                 drtConfigGroup.setTransitStopFile("vulkaneifel-v1.0-drt-stops.xml");
+                break;
+            case STOP_BASED_ADAPTED:
+                drtConfigGroup.setOperationalScheme(DrtConfigGroup.OperationalScheme.stopbased);
+                drtConfigGroup.setTransitStopFile("vulkaneifel-v1.0-drt-stops.xml");
                 inputPlansFile = inputPlansFile.replace(".plans.xml.gz", "-stop_based.plans.xml.gz");
-                // In the stop based plan, some students depart slightly earlier because of the longer walking time
+                // In the stop based adapted case, departure time is modified based on the DRT stops (most students will depart earlier)
                 break;
             default:
                 throw new RuntimeException("Unknown service scheme setting");
         }
 
         config.plans().setInputFile(inputPlansFile);
+    }
+
+    public SchoolStartingTime getSchoolStartingTime() {
+        return schoolStartingTime;
+    }
+
+    public ServiceScheme getServiceScheme() {
+        return serviceScheme;
+    }
+
+    public String getAlpha() {
+        return alpha;
+    }
+
+    public String getBeta() {
+        return beta;
     }
 }
