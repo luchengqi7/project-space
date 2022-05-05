@@ -76,11 +76,13 @@ public class MyPreplannedSchedulesCalculator {
 		public final boolean infiniteFleet;
 		public final boolean printProgressStatistics;
 		public final int maxIterations;
+		public final boolean multiThread;
 
-		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations) {
+		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread) {
 			this.infiniteFleet = infiniteFleet;
 			this.printProgressStatistics = printProgressStatistics;
 			this.maxIterations = maxIterations;
+			this.multiThread = multiThread;
 		}
 	}
 
@@ -179,11 +181,11 @@ public class MyPreplannedSchedulesCalculator {
 						null);
 
 				double earliestDeliveryTime = earliestPickupTime + travelTime;
-/*				double latestDeliveryTime = earliestPickupTime
+                double latestDeliveryTime = earliestPickupTime
 						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();*/
-				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
-						destinationActivityType);
+						+ drtCfg.getMaxTravelTimeBeta();
+//				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
+//						destinationActivityType);  //TODO
 
 				var shipmentId = person.getId()
 						+ "_"
@@ -217,9 +219,13 @@ public class MyPreplannedSchedulesCalculator {
 		double maxCosts = TransportCostUtils.getRequestRejectionCosts();
 		MySolutionCostCalculatorFactory mySolutionCostCalculatorFactory = new MySolutionCostCalculatorFactory();
 		SolutionCostCalculator objectiveFunction = mySolutionCostCalculatorFactory.getObjectiveFunction(problem, maxCosts, MySolutionCostCalculatorFactory.ObjectiveFunctionType.JspritDefault, config, vrpCosts);
+        String numOfThread = "1";
+        if (options.multiThread) {
+            numOfThread = Integer.toString(Runtime.getRuntime().availableProcessors());
+        }
 		var algorithm = Jsprit.Builder.newInstance(problem)
 				.setObjectiveFunction(new SchoolTrafficObjectiveFunction(problem, options))
-				.setProperty(Jsprit.Parameter.THREADS, Runtime.getRuntime().availableProcessors() + "")
+				.setProperty(Jsprit.Parameter.THREADS, numOfThread)
 				.buildAlgorithm();
 		algorithm.setMaxIterations(options.maxIterations);
 		algorithm.getAlgorithmListeners().addListener(new MyIterationEndsListener());

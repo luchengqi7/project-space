@@ -350,7 +350,7 @@ public class MatsimDrtRequest2Jsprit {
 							.getCoordinate()) / speed;
 				}
 				double latestDeliveryTime;
-				if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.Disabled)) {
+				if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.DEFAULT)) {
 					/*
 					 * use Shipment to create request for jsprit
 					 */
@@ -376,7 +376,7 @@ public class MatsimDrtRequest2Jsprit {
 /*					//save the desiredPickupTime and desiredDeliveryTime into maps
 					desiredPickupTimeMap.put(requestId, pickupTime + walkingTime);
 					desiredDeliveryTimeMap.put(requestId, latestDeliveryTime);*/
-				} else if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.SchoolType)) {
+				} else if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.READ_FROM_SCHOOL_ACTIVITY)) {
 					/*
 					 * use Shipment to create request for jsprit
 					 */
@@ -407,7 +407,7 @@ public class MatsimDrtRequest2Jsprit {
 /*					//save the desiredPickupTime and desiredDeliveryTime into maps
 					desiredPickupTimeMap.put(requestId, latestDeliveryTime - timeBetweenPickUpAndLatestDelivery + walkingTime);
 					desiredDeliveryTimeMap.put(requestId, latestDeliveryTime);*/
-				} else if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.Eight)) {
+				} else if (schoolStartTimeScheme.equals(SchoolTrafficUtils.SchoolStartTimeScheme.UNIFORM)) {
 					/*
 					 * use Shipment to create request for jsprit
 					 */
