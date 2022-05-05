@@ -68,7 +68,7 @@ public class RunPreplannedDrtExample {
 
 		Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
 
-		var options = new PreplannedSchedulesCalculator.Options(false, true, 200);
+		var options = new PreplannedSchedulesCalculator.Options(false, true, 200, true);
 
 		// compute PreplannedSchedules before starting QSim
 		MultiModeDrtConfigGroup.get(config)

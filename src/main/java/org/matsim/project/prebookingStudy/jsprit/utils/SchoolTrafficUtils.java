@@ -4,37 +4,31 @@ import org.matsim.core.gbl.Gbl;
 
 public class SchoolTrafficUtils {
 
-    public enum SchoolStartTimeScheme {Disabled, DefaultSchoolStartTime, Eight, SchoolType}
+    public enum SchoolStartTimeScheme {DEFAULT, UNIFORM, READ_FROM_SCHOOL_ACTIVITY}
+    // DEFAULT: Use the travel time alpha and beta to determine the latest arrival time, which will be interpreted as school starting time
+    // (This will work for all Door2door case studies, as the departure time is calculated based on the same alpha and beta)
+    // UNIFORM: All school starts at 08:00 am (28800)
+    // READ_FROM_SCHOOL_ACTIVITY: determine school starting time based on school activity type (format: xxx_starting_at_yyy)
 
-    public static double identifySchoolStartTime (SchoolStartTimeScheme schoolStartTimeScheme, String activityType){
-
+    public static double identifySchoolStartTime(SchoolStartTimeScheme schoolStartTimeScheme, String activityType) {
         switch (schoolStartTimeScheme) {
-            case DefaultSchoolStartTime:
-                return schoolStartTimeIsEight();
-            case Eight:
-                return schoolStartTimeIsEight();
-            case SchoolType:
-                return identifySchoolStartTimeBasedOnSchoolType (activityType);
+            case UNIFORM:
+                return 28800;
+            case READ_FROM_SCHOOL_ACTIVITY:
+                return readSchoolStartingTimeFromActivity(activityType);
             default:
                 throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
         }
     }
 
-    public static double identifySchoolStartTimeBasedOnSchoolType (String activityType){
-        switch (activityType) {
-            case "educ_primary":
-                return 27900.;
-            case "educ_secondary":
-                return 27000.;
-            case "educ_tertiary":
-                return 28800.;
-            case "educ_unknown":
-                return 27900.;
-            default:
-                throw new RuntimeException("Activity Type is not one of the following types: 'educ_primary', 'educ_secondary', 'educ_tertiary', 'educ_unknown'");
+    public static double readSchoolStartingTimeFromActivity(String activityType) {
+        if (activityType.contains("starting_at_")) {
+            String[] activityTypeStrings = activityType.split("_");
+            int size = activityTypeStrings.length;
+            return Double.parseDouble(activityTypeStrings[size - 1]);
+        } else {
+            throw new RuntimeException("The activity type (name) of the school activity does not include starting time. " +
+                    "Please check the input plans or use UNIFORM or DEFAULT school starting scheme");
         }
-    }
-    public static double schoolStartTimeIsEight (){
-        return 28800.;
     }
 }

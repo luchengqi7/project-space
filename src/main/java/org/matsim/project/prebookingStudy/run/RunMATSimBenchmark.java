@@ -59,7 +59,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     @CommandLine.Option(names = "--fleet-size", description = "fleet size", defaultValue = "250")
     private int fleetSize;
 
-    @CommandLine.Option(names = "--steps", description = "number of runs (pushing down from the initial fleet-size)", defaultValue = "1")
+    @CommandLine.Option(names = "--steps", description = "maximum number of runs", defaultValue = "1")
     private int steps;
 
     @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "5")
