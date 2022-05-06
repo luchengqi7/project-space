@@ -119,7 +119,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
 
-        var options = new PreplannedSchedulesCalculator.Options(false, false, jspritIterations, multiThread);
+        var options = new PreplannedSchedulesCalculator.Options(false, false, jspritIterations, multiThread, caseStudyTool);
 
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()

@@ -2,6 +2,7 @@ package org.matsim.project.prebookingStudy.jsprit.utils;
 
 import org.matsim.core.gbl.Gbl;
 
+@Deprecated
 public class SchoolTrafficUtils {
 
     public enum SchoolStartTimeScheme {DEFAULT, UNIFORM, READ_FROM_SCHOOL_ACTIVITY}
@@ -21,7 +22,7 @@ public class SchoolTrafficUtils {
         }
     }
 
-    public static double readSchoolStartingTimeFromActivity(String activityType) {
+    private static double readSchoolStartingTimeFromActivity(String activityType) {
         if (activityType.contains("starting_at_")) {
             String[] activityTypeStrings = activityType.split("_");
             int size = activityTypeStrings.length;
