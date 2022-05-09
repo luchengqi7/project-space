@@ -60,7 +60,7 @@ public class CaseStudyTool {
             case STOP_BASED_ADAPTED:
                 drtConfigGroup.setOperationalScheme(DrtConfigGroup.OperationalScheme.stopbased);
                 drtConfigGroup.setTransitStopFile("vulkaneifel-v1.0-drt-stops.xml");
-                inputPlansFile = inputPlansFile.replace(".plans.xml.gz", "-stop_based.plans.xml.gz");
+                inputPlansFile = inputPlansFile.replace(".plans.xml.gz", "-adapted_to_drt_stops.plans.xml.gz");
                 // In the stop based adapted case, departure time is modified based on the DRT stops (most students will depart earlier)
                 break;
             default:
