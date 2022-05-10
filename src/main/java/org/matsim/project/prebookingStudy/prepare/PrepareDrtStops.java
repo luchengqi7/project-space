@@ -1,18 +1,18 @@
 package org.matsim.project.prebookingStudy.prepare;
 
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.collections.Tuple;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.io.MatsimXmlWriter;
 import org.matsim.core.utils.io.UncheckedIOException;
 import picocli.CommandLine;
@@ -49,42 +49,54 @@ public class PrepareDrtStops implements MATSimAppCommand {
         Population plans = PopulationUtils.readPopulation(inputPlansFile);
         Set<Link> stopLinksToWrite = new HashSet<>();
 
-        // A very simple method to create stops (based home location): if there is no stop nearby, then add a stop to the home link
-        List<Person> personList = new ArrayList<>(plans.getPersons().values());
+        List<Id<Person>> personsNotYetCovered = new ArrayList<>();
+        Map<Id<Person>, Coord> personToHomeCoordMap = new HashMap<>();
+        Map<Id<Person>, Set<Id<Link>>> personIdToLinkIdsMap = new HashMap<>();
+        Map<Id<Link>, Set<Id<Person>>> linkIdToPersonIdsMap = new HashMap<>();
 
-        int numOfStops = Integer.MAX_VALUE;
-        for (int i = 0; i < 100; i++) {
-            Collections.shuffle(personList);
-            Set<Link> stopLinks = new HashSet<>();
+        Map<Id<Link>, Double> linkSignificanceMap = new HashMap<>();
+        for (Id<Link> linkId : network.getLinks().keySet()) {
+            linkSignificanceMap.put(linkId, 0.0);
+        }
 
-            for (Person person : personList) {
-                for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
-                    Activity fromAct = trip.getOriginActivity();
-                    Coord fromCoord = fromAct.getCoord();
-                    Link fromLink = network.getLinks().get(fromAct.getLinkId());
+        for (Person person : plans.getPersons().values()) {
+            TripStructureUtils.Trip trip = TripStructureUtils.getTrips(person.getSelectedPlan()).get(0); // In this project, there is 1 school trip per student
+            Link toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
+            stopLinksToWrite.add(toLink); // add DRT stop for school (if not yet in the set)
 
-                    boolean coveredByAStop = false;
-                    for (Link stopLink : stopLinks) {
-                        if (DistanceUtils.calculateDistance(stopLink.getToNode().getCoord(), fromCoord) < maxDistance) {
-                            coveredByAStop = true;
-                            break;
-                        }
-                    }
+            Coord fromCoord = trip.getOriginActivity().getCoord();
+            personToHomeCoordMap.put(person.getId(), fromCoord);
+            personsNotYetCovered.add(person.getId());
 
-                    if (!coveredByAStop) {
-                        stopLinks.add(fromLink);
-                    }
-
-                    Link toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
-                    stopLinks.add(toLink);  // Add school link directly (when it is not in the set already)
+            for (Link link : network.getLinks().values()) {
+                double distance = CoordUtils.calcEuclideanDistance(fromCoord, link.getToNode().getCoord());
+                if (distance <= maxDistance) {
+                    double normalizedDistance = distance / maxDistance;
+                    personIdToLinkIdsMap.computeIfAbsent(person.getId(), s -> new HashSet<>()).add(link.getId());
+                    linkIdToPersonIdsMap.computeIfAbsent(link.getId(), s -> new HashSet<>()).add(person.getId());
+                    double updatedSignificance = linkSignificanceMap.get(link.getId()) + 2 - Math.pow(normalizedDistance, 2);
+                    linkSignificanceMap.put(link.getId(), updatedSignificance);
                 }
             }
+        }
 
-            if (stopLinks.size() < numOfStops) {
-                numOfStops = stopLinks.size();
-                stopLinksToWrite = stopLinks;
-                System.out.println("Number of stops = " + numOfStops);
+        while (!personsNotYetCovered.isEmpty()) {
+            // Choose the link with the highest score (significance) and set a DRT stop there
+            Id<Link> linkId = linkSignificanceMap.entrySet().stream().
+                    sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).iterator().next().getKey();
+            stopLinksToWrite.add(network.getLinks().get(linkId));
+
+            // Remove the persons from the uncovered persons list and remove the contribution to the links score by those persons
+            Set<Id<Person>> personCovered = linkIdToPersonIdsMap.get(linkId);
+            personCovered.retainAll(personsNotYetCovered);
+            for (Id<Person> personId : personCovered) {
+                for (Id<Link> nearbyLinkId : personIdToLinkIdsMap.get(personId)) {
+                    double normalizedDistance = CoordUtils.calcEuclideanDistance(network.getLinks().get(nearbyLinkId).getToNode().getCoord(), personToHomeCoordMap.get(personId)) / maxDistance;
+                    double updatedSignificance = linkSignificanceMap.get(nearbyLinkId) - (2 - Math.pow(normalizedDistance, 2));
+                    linkSignificanceMap.put(nearbyLinkId, updatedSignificance);
+                }
             }
+            personsNotYetCovered.removeAll(personCovered);
         }
 
         // write down drt stops

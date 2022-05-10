@@ -2,11 +2,14 @@ package org.matsim.project.prebookingStudy.run;
 
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.core.config.Config;
+import org.matsim.core.gbl.Gbl;
 
 public class CaseStudyTool {
-    enum SchoolStartingTime {UNIFORM, TWO_SCHOOL_STARTING_TIME}
+    public enum SchoolStartingTime {UNIFORM, TWO_SCHOOL_STARTING_TIME}
 
-    enum ServiceScheme {DOOR_TO_DOOR, STOP_BASED}
+    public static final double UNIFORM_SCHOOL_STARTING_TIME = 28800;
+
+    public enum ServiceScheme {DOOR_TO_DOOR, STOP_BASED, STOP_BASED_ADAPTED}
 
     private final String alpha;
     private final String beta;
@@ -18,6 +21,16 @@ public class CaseStudyTool {
         this.beta = beta;
         this.schoolStartingTime = schoolStartingTime;
         this.serviceScheme = serviceScheme;
+    }
+
+    /**
+     * Constructor for the default case study setup
+     */
+    public CaseStudyTool() {
+        this.alpha = "2";
+        this.beta = "1200";
+        this.schoolStartingTime = SchoolStartingTime.UNIFORM;
+        this.serviceScheme = ServiceScheme.DOOR_TO_DOOR;
     }
 
     public void prepareCaseStudy(Config config, DrtConfigGroup drtConfigGroup) {
@@ -43,13 +56,55 @@ public class CaseStudyTool {
             case STOP_BASED:
                 drtConfigGroup.setOperationalScheme(DrtConfigGroup.OperationalScheme.stopbased);
                 drtConfigGroup.setTransitStopFile("vulkaneifel-v1.0-drt-stops.xml");
+                break;
+            case STOP_BASED_ADAPTED:
+                drtConfigGroup.setOperationalScheme(DrtConfigGroup.OperationalScheme.stopbased);
+                drtConfigGroup.setTransitStopFile("vulkaneifel-v1.0-drt-stops.xml");
                 inputPlansFile = inputPlansFile.replace(".plans.xml.gz", "-stop_based.plans.xml.gz");
-                // In the stop based plan, some students depart slightly earlier because of the longer walking time
+                // In the stop based adapted case, departure time is modified based on the DRT stops (most students will depart earlier)
                 break;
             default:
                 throw new RuntimeException("Unknown service scheme setting");
         }
 
         config.plans().setInputFile(inputPlansFile);
+    }
+
+    public SchoolStartingTime getSchoolStartingTime() {
+        return schoolStartingTime;
+    }
+
+    public ServiceScheme getServiceScheme() {
+        return serviceScheme;
+    }
+
+    public String getAlpha() {
+        return alpha;
+    }
+
+    public String getBeta() {
+        return beta;
+    }
+
+    public double identifySchoolStartingTime(String schoolActivityType) {
+        switch (schoolStartingTime) {
+            case UNIFORM:
+                return UNIFORM_SCHOOL_STARTING_TIME;
+            case TWO_SCHOOL_STARTING_TIME:
+                return readSchoolStartingTimeFromActivity(schoolActivityType);
+            default:
+                throw new RuntimeException(Gbl.NOT_IMPLEMENTED);
+        }
+    }
+
+    private double readSchoolStartingTimeFromActivity(String activityType) {
+        if (activityType.contains("starting_at_")) {
+            String[] activityTypeStrings = activityType.split("_");
+            int size = activityTypeStrings.length;
+            return Double.parseDouble(activityTypeStrings[size - 1]);
+        } else {
+            throw new RuntimeException("The activity type (name) of the school activity does not include starting time. " +
+                    "Please check the input plans or use UNIFORM or DEFAULT school starting scheme");
+        }
     }
 }

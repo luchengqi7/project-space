@@ -56,6 +56,7 @@ import org.matsim.project.prebookingStudy.jsprit.utils.SchoolTrafficUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticCollectorForIterationEndsListener;
 import org.matsim.project.prebookingStudy.jsprit.utils.StatisticUtils;
 import org.matsim.project.prebookingStudy.jsprit.utils.TransportCostUtils;
+import org.matsim.project.prebookingStudy.run.CaseStudyTool;
 
 import java.io.File;
 import java.util.HashMap;
@@ -77,13 +78,15 @@ public class MyPreplannedSchedulesCalculator {
 		public final boolean printProgressStatistics;
 		public final int maxIterations;
 		public final boolean multiThread;
+        private final CaseStudyTool caseStudyTool;
 
-		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread) {
-			this.infiniteFleet = infiniteFleet;
-			this.printProgressStatistics = printProgressStatistics;
-			this.maxIterations = maxIterations;
-			this.multiThread = multiThread;
-		}
+        public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread, CaseStudyTool caseStudyTool) {
+            this.infiniteFleet = infiniteFleet;
+            this.printProgressStatistics = printProgressStatistics;
+            this.maxIterations = maxIterations;
+            this.multiThread = multiThread;
+            this.caseStudyTool = caseStudyTool;
+        }
 	}
 
 	private final DrtConfigGroup drtCfg;
@@ -162,6 +165,7 @@ public class MyPreplannedSchedulesCalculator {
 		// create shipments
 		for (Person person : population.getPersons().values()) {
 			String destinationActivityType = null;
+            assert TripStructureUtils.getTrips(person.getSelectedPlan()).size() == 1;
 			for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
 				destinationActivityType = trip.getDestinationActivity().getType();
 			}
@@ -181,11 +185,7 @@ public class MyPreplannedSchedulesCalculator {
 						null);
 
 				double earliestDeliveryTime = earliestPickupTime + travelTime;
-                double latestDeliveryTime = earliestPickupTime
-						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();
-//				double latestDeliveryTime = SchoolTrafficUtils.identifySchoolStartTime(SchoolTrafficUtils.SchoolStartTimeScheme.Eight,
-//						destinationActivityType);  //TODO
+                double latestDeliveryTime = options.caseStudyTool.identifySchoolStartingTime(destinationActivityType);
 
 				var shipmentId = person.getId()
 						+ "_"

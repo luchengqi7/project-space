@@ -24,10 +24,7 @@ import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.Builder;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSize;
 import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.*;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.matsim.api.core.v01.Id;
@@ -62,6 +59,7 @@ import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
 
 import one.util.streamex.StreamEx;
+import org.matsim.project.prebookingStudy.run.CaseStudyTool;
 
 /**
  * @author Michal Maciejewski (michalm)
@@ -72,12 +70,22 @@ public class PreplannedSchedulesCalculator {
 		public final boolean printProgressStatistics;
 		public final int maxIterations;
 		public final boolean multiThread;
+		public final CaseStudyTool caseStudyTool;
+
+		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread, CaseStudyTool caseStudyTool) {
+			this.infiniteFleet = infiniteFleet;
+			this.printProgressStatistics = printProgressStatistics;
+			this.maxIterations = maxIterations;
+			this.multiThread = multiThread;
+			this.caseStudyTool = caseStudyTool;
+		}
 
 		public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread) {
 			this.infiniteFleet = infiniteFleet;
 			this.printProgressStatistics = printProgressStatistics;
 			this.maxIterations = maxIterations;
 			this.multiThread = multiThread;
+			this.caseStudyTool = new CaseStudyTool();
 		}
 	}
 
@@ -154,6 +162,9 @@ public class PreplannedSchedulesCalculator {
 		var preplannedRequestByShipmentId = new HashMap<String, PreplannedRequest>();
 		// create shipments
 		for (Person person : population.getPersons().values()) {
+			List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+			assert trips.size() == 1;  // For this study, there is only 1 trip per student
+			String destinationActivityType = trips.get(0).getDestinationActivity().getType();
 			for (var leg : TripStructureUtils.getLegs(person.getSelectedPlan())) {
 				if (!leg.getMode().equals(drtCfg.getMode())) {
 					continue;
@@ -170,9 +181,7 @@ public class PreplannedSchedulesCalculator {
 						null);
 
 				double earliestDeliveryTime = earliestPickupTime + travelTime;
-				double latestDeliveryTime = earliestPickupTime
-						+ travelTime * drtCfg.getMaxTravelTimeAlpha()
-						+ drtCfg.getMaxTravelTimeBeta();
+				double latestDeliveryTime = options.caseStudyTool.identifySchoolStartingTime(destinationActivityType);
 
 				var shipmentId = person.getId()
 						+ "_"
