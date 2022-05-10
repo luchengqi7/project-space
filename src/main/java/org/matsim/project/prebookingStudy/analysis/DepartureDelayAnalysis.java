@@ -48,6 +48,9 @@ public class DepartureDelayAnalysis implements PassengerRequestScheduledEventHan
     }
 
     public double getAverageDelay() {
+        if (delaysMap.isEmpty()) {
+            return Double.NaN;
+        }
         return delaysMap.values().stream().mapToDouble(d -> d).average().orElse(-1);
     }
 }

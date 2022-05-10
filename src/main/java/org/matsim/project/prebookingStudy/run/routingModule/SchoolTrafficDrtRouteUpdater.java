@@ -28,6 +28,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Deprecated
 public class SchoolTrafficDrtRouteUpdater implements ShutdownListener, DrtRouteUpdater {
     private final DrtConfigGroup drtCfg;
     private final Network network;

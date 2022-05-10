@@ -138,6 +138,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
         controler.run();
 
         // Post analysis
+        analysis.setIncludeDepartureDelayAnalysis(false);
         analysis.analyze(Path.of(outputDirectory));
         CSVPrinter resultsWriter = new CSVPrinter(new FileWriter(output + "/result-summary.tsv", true), CSVFormat.TDF);
         resultsWriter.printRecord(analysis.getOutputKPIRow());

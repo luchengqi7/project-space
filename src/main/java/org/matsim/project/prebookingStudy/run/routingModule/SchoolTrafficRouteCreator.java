@@ -25,7 +25,9 @@ public class SchoolTrafficRouteCreator implements DefaultMainLegRouter.RouteCrea
     private final TravelTime travelTime;
     private final LeastCostPathCalculator router;
 
-    public SchoolTrafficRouteCreator(DrtConfigGroup drtCfg, Network modalNetwork, LeastCostPathCalculatorFactory leastCostPathCalculatorFactory, TravelTime travelTime, TravelDisutilityFactory travelDisutilityFactory) {
+    public SchoolTrafficRouteCreator(DrtConfigGroup drtCfg, Network modalNetwork,
+                                     LeastCostPathCalculatorFactory leastCostPathCalculatorFactory,
+                                     TravelTime travelTime, TravelDisutilityFactory travelDisutilityFactory) {
         this.drtCfg = drtCfg;
         this.travelTime = travelTime;
         router = leastCostPathCalculatorFactory.createPathCalculator(modalNetwork,
