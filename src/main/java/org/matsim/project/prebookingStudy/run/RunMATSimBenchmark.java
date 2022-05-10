@@ -146,7 +146,6 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                                 private Population population;
                                 @Inject
                                 private Config config;
-
                                 @Override
                                 public DefaultDrtRouteUpdater get() {
                                     var travelTime = getModalInstance(TravelTime.class);
