@@ -1,8 +1,12 @@
 package org.matsim.project.prebookingStudy.prepare;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -14,7 +18,6 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
-import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
 import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
@@ -28,8 +31,12 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
+import org.matsim.project.prebookingStudy.run.CaseStudyTool;
 import picocli.CommandLine;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -41,8 +48,6 @@ import java.util.Random;
  */
 public class ModifySchoolChildrenPlan implements MATSimAppCommand {
     private static final Logger log = Logger.getLogger(ModifySchoolChildrenPlan.class);
-
-    private enum SchoolStartingTimeType {UNIFORM, TWO_STARTING_TIME}
 
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
@@ -63,7 +68,10 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
     private String outputPath;
 
     @CommandLine.Option(names = "--school-starting-time", description = "path to output plans file", defaultValue = "UNIFORM")
-    private SchoolStartingTimeType schoolStartingTimeType;
+    private CaseStudyTool.SchoolStartingTime schoolStartingTimeType;
+
+    @CommandLine.Option(names = "--drt-stops", description = "DRT stops location csv file", defaultValue = "")
+    private String drtStops;
 
     @CommandLine.Mixin
     private ShpOptions shp = new ShpOptions();
@@ -87,10 +95,27 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
         Network network = NetworkUtils.readNetwork(networkPath);
         Population plans = PopulationUtils.readPopulation(plansPath);
 
+        // For stop-based service, there are 2 types of plan: original plans and adapted plans
+        // In the adapted plan, most people depart earlier to accommodate for the longer walking time
+        boolean adaptToDrtStops = false;
+        List<Link> drtStopLinks = null;
+        if (!drtStops.equals("")) {
+            adaptToDrtStops = true;
+            drtStopLinks = new ArrayList<>();
+            // Read CSV file and add DRT stops links to the list
+            try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(drtStops)),
+                    CSVFormat.DEFAULT.withDelimiter(',').withFirstRecordAsHeader())) {
+                for (CSVRecord record : parser.getRecords()) {
+                    Id<Link> linkId = Id.createLinkId(record.get(1));
+                    drtStopLinks.add(network.getLinks().get(linkId));
+                }
+            }
+        }
+
         SchoolStartingTimeIdentifier schoolStartTimeCalculator;
-        if (schoolStartingTimeType == SchoolStartingTimeType.UNIFORM) {
+        if (schoolStartingTimeType == CaseStudyTool.SchoolStartingTime.UNIFORM) {
             schoolStartTimeCalculator = new UniformSchoolStartingTimeIdentification();
-        } else if (schoolStartingTimeType == SchoolStartingTimeType.TWO_STARTING_TIME) {
+        } else if (schoolStartingTimeType == CaseStudyTool.SchoolStartingTime.TWO_SCHOOL_STARTING_TIME) {
             schoolStartTimeCalculator = new TwoSchoolStartingTimeIdentification(shp.getGeometry());
         } else {
             throw new RuntimeException("Unknown school starting time type!");
@@ -116,11 +141,22 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
 
                 Link toLink = NetworkUtils.getNearestLink(network, schoolActivity.getCoord());
                 double originalDepartureTime = homeActivity.getEndTime().orElseThrow(RuntimeException::new);
-                double estDirectTravelTime = VrpPaths.calcAndCreatePath(homeLink, toLink, originalDepartureTime, router, travelTime).getTravelTime();
+
+                double estDirectTravelTime;
+                double walkingTime;
+                if (adaptToDrtStops) {
+                    Link closestDrtStopLink = findClosestDrtStopLink(homeActivity.getCoord(), drtStopLinks);
+                    Link schoolDrtStopLink = findClosestDrtStopLink(schoolActivity.getCoord(), drtStopLinks);
+                    walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), closestDrtStopLink.getToNode().getCoord()) / walkingSpeed);
+                    estDirectTravelTime = VrpPaths.calcAndCreatePath(closestDrtStopLink, schoolDrtStopLink, originalDepartureTime + walkingTime, router, travelTime).getTravelTime();
+                } else {
+                    walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed);
+                    estDirectTravelTime = VrpPaths.calcAndCreatePath(homeLink, toLink, originalDepartureTime + walkingTime, router, travelTime).getTravelTime();
+                }
+
                 double schoolStartingTime = schoolStartTimeCalculator.getSchoolStartingTime(schoolActivity);
                 schoolActivity.setStartTime(schoolStartingTime);
 
-                double walkingTime = Math.floor(DistanceUtils.calculateDistance(homeActivity.getCoord(), homeLink.getToNode().getCoord()) / walkingSpeed);
                 double travelTimeAllowance = alpha * estDirectTravelTime + beta + walkingTime + stopDuration;
                 double updatedDepartureTime = schoolStartingTime - travelTimeAllowance;
                 homeActivity.setEndTime(updatedDepartureTime);
@@ -131,6 +167,20 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
         populationWriter.write(outputPath);
 
         return 0;
+    }
+
+    private Link findClosestDrtStopLink(Coord homeCoord, List<Link> drtStopLinks) {
+        double minDistance = Double.MAX_VALUE;
+        Link closestDrtStopLink = null;
+        for (Link link : drtStopLinks) {
+            Coord stopCoord = link.getToNode().getCoord();
+            double distance = DistanceUtils.calculateDistance(homeCoord, stopCoord);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDrtStopLink = link;
+            }
+        }
+        return closestDrtStopLink;
     }
 
     interface SchoolStartingTimeIdentifier {

@@ -14,11 +14,15 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.drt.util.DrtEventsReaders;
 import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
 import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
+import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.events.EventsUtils;
+import org.matsim.core.events.MatsimEventsReader;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
@@ -46,11 +50,14 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--directory", description = "path to output directory", required = true)
     private Path directory;
 
+    @CommandLine.Option(names = "--departure-delay-analysis", description = "enable departure delay analysis", defaultValue = "false")
+    private boolean includeDepartureDelayAnalysis;
+
     public static final List<String> TITLE_ROW_KPI = Arrays.asList
             ("fleet_size", "total_requests", "served_requests", "punctual_arrivals", "service_satisfaction_rate",
                     "actual_in_vehicle_time_mean", "estimated_direct_in_vehicle_time_mean", "onboard_delay_ratio_mean",
                     "actual_travel_distance_mean", "estimated_direct_network_distance_mean", "detour_distance_ratio_mean",
-                    "fleet_total_distance", "fleet_efficiency");
+                    "fleet_total_distance", "normalized_total_distance", "average_departure_delay");
     private final List<String> outputKPIRow = new ArrayList<>();
 
     public static void main(String[] args) {
@@ -59,6 +66,10 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
     public List<String> getOutputKPIRow() {
         return outputKPIRow;
+    }
+
+    public void setIncludeDepartureDelayAnalysis(boolean includeDepartureDelayAnalysis) {
+        this.includeDepartureDelayAnalysis = includeDepartureDelayAnalysis;
     }
 
     public void analyze(Path directory) throws IOException {
@@ -78,7 +89,6 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
         Config config = ConfigUtils.loadConfig(configPath.toString());
         int lastIteration = config.controler().getLastIteration();
-        String runId = config.controler().getRunId();
         Path folderOfLastIteration = Path.of(directory + "/ITERS/it." + lastIteration);
         MultiModeDrtConfigGroup multiModeDrtConfigGroup = ConfigUtils.addOrGetModule(config, MultiModeDrtConfigGroup.class);
         List<String> modes = new ArrayList<>();
@@ -86,13 +96,25 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             modes.add(drtCfg.getMode());
         }
 
-        Network network = NetworkUtils.readNetwork(networkPath.toString());
-//        TravelTime travelTime = TrafficAnalysis.analyzeTravelTimeFromEvents(network, eventPath.toString());
+        // Analyze departure delay
+        DepartureDelayAnalysis departureDelayAnalysis = new DepartureDelayAnalysis();
+        //TODO this is a temporary solution. Wait until the "Wait for stop" events have been added to the activity types
+        if (includeDepartureDelayAnalysis){
+            EventsManager eventsManager = EventsUtils.createEventsManager();
+            eventsManager.addHandler(departureDelayAnalysis);
+            MatsimEventsReader eventsReader = DrtEventsReaders.createEventsReader(eventsManager);
+            eventsReader.readFile(eventPath.toString());
+        }
+        Map<Id<Person>, Double> initialDepartureMap = departureDelayAnalysis.getInitialScheduledPickupTimeMap();
+
+        // Construct router
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1);  // Free speed travel time used for this study // TODO update this when traffic congestion is included
         TravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
+        Network network = NetworkUtils.readNetwork(networkPath.toString());
         LeastCostPathCalculator router = new SpeedyALTFactory().
                 createPathCalculator(network, travelDisutility, travelTime);
 
+        assert modes.size() == 1; // Only 1 mode in this project
         for (String mode : modes) {
             Path tripsFile = globFile(folderOfLastIteration, "*drt_legs_" + mode + ".*");
             Path distanceStatsFile = globFile(directory, "*drt_vehicle_stats_" + mode + ".*");
@@ -106,12 +128,11 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             List<Double> estimatedDirectTravelDistances = new ArrayList<>();
             List<Double> onboardDelayRatios = new ArrayList<>();
             List<Double> detourDistanceRatios = new ArrayList<>();
-//            List<Double> arrivalTimes = new ArrayList<>();
             Map<String, Double> arrivalTimes = new HashMap<>();
 
             CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputTripsPath.toString()), CSVFormat.TDF);
             List<String> tripsTitleRow = Arrays.asList
-                    ("earliest_boarding_time", "actual_boarding_time", "actual_arrival_time",
+                    ("earliest_boarding_time", "initial_scheduled_boarding_time", "actual_boarding_time", "actual_arrival_time",
                             "actual_in_vehicle_time", "est_direct_in_vehicle_time", "onboard_delay_ratio",
                             "actual_travel_distance", "est_direct_network_distance", "detour_distance_ratio",
                             "from_x", "from_y", "to_x", "to_y", "euclidean_distance");
@@ -121,11 +142,13 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
             try (CSVParser parser = new CSVParser(Files.newBufferedReader(tripsFile),
                     CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
                 for (CSVRecord record : parser.getRecords()) {
+                    String personIdString = record.get(1);
                     Link fromLink = network.getLinks().get(Id.createLinkId(record.get(3)));
                     Coord fromCoord = fromLink.getToNode().getCoord();
                     Link toLink = network.getLinks().get(Id.createLinkId(record.get(6)));
                     Coord toCoord = toLink.getToNode().getCoord();
                     double departureTime = Double.parseDouble(record.get(0));
+                    double initialScheduledBoardingTime = initialDepartureMap.getOrDefault(Id.createPersonId(personIdString), Double.NaN);
                     VrpPathWithTravelData path = VrpPaths.calcAndCreatePath(fromLink, toLink, departureTime, router, travelTime);
                     double estimatedDirectInVehicleTime = path.getTravelTime();
                     double estimatedDirectTravelDistance = VrpPaths.calcDistance(path);
@@ -138,7 +161,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                     double onboardDelayRatio = actualInVehicleTime / estimatedDirectInVehicleTime - 1;
                     double detourRatioDistance = actualTravelDistance / estimatedDirectTravelDistance - 1;
                     double arrivalTime = departureTime + totalTravelTime;
-                    String personIdString = record.get(1);
+
 
                     arrivalTimes.put(personIdString, arrivalTime);
                     inVehicleTimes.add(actualInVehicleTime);
@@ -151,6 +174,7 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
                     List<String> outputRow = new ArrayList<>();
 
                     outputRow.add(Double.toString(departureTime));
+                    outputRow.add(Double.toString(initialScheduledBoardingTime));
                     outputRow.add(Double.toString(boardingTime));
                     outputRow.add(Double.toString(arrivalTime));
 
@@ -236,6 +260,8 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
             outputKPIRow.add(Double.toString(totalFleetDistance));
             outputKPIRow.add(fleetEfficiency);  // Total fleet distance / sum est direct travel distance   (if > 1 --> better than private cars)
+
+            outputKPIRow.add(Double.toString(departureDelayAnalysis.getAverageDelay()));
 
             tsvWriterKPI.printRecord(outputKPIRow);
 

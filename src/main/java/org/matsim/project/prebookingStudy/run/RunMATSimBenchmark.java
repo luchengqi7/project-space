@@ -14,7 +14,10 @@ import org.matsim.contrib.drt.routing.DefaultDrtRouteUpdater;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
 import org.matsim.contrib.drt.routing.DrtRouteUpdater;
-import org.matsim.contrib.drt.run.*;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
+import org.matsim.contrib.drt.run.DrtConfigs;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.drt.run.MultiModeDrtModule;
 import org.matsim.contrib.dvrp.benchmark.DvrpBenchmarkTravelTimeModule;
 import org.matsim.contrib.dvrp.router.DefaultMainLegRouter;
 import org.matsim.contrib.dvrp.run.*;
@@ -25,11 +28,11 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.modal.ModalProviders;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
+import org.matsim.core.router.util.LeastCostPathCalculatorFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.run.rebalancing.RuralScenarioRebalancingTCModule;
-import org.matsim.project.prebookingStudy.run.routingModule.SchoolTrafficDrtRouteUpdater;
 import org.matsim.project.prebookingStudy.run.routingModule.SchoolTrafficRouteCreator;
 import picocli.CommandLine;
 
@@ -38,6 +41,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Function;
 
 @CommandLine.Command(
         name = "run",
@@ -90,6 +94,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
         CaseStudyTool caseStudyTool = new CaseStudyTool(alpha, beta, schoolStartingTime, serviceScheme);
         SchoolTripsAnalysis schoolTripsAnalysis = new SchoolTripsAnalysis();
+        schoolTripsAnalysis.setIncludeDepartureDelayAnalysis(true);
         output = output + "-alpha_" + alpha + "-beta_" + beta + "-" + schoolStartingTime.toString() + "-" + serviceScheme.toString();
 
         if (!Files.exists(Path.of(output))) {
@@ -136,19 +141,6 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                         public void install() {
                             bindModal(DefaultMainLegRouter.RouteCreator.class).toProvider(
                                     new SchoolTrafficRouteCreator.SchoolTripsDrtRouteCreatorProvider(drtCfg));// not singleton
-                            bindModal(DrtRouteUpdater.class).toProvider(new ModalProviders.AbstractProvider<>(getMode(), DvrpModes::mode) {
-                                @Inject
-                                private Population population;
-                                @Inject
-                                private Config config;
-                                @Override
-                                public SchoolTrafficDrtRouteUpdater get() {
-                                    var travelTime = getModalInstance(TravelTime.class);
-                                    Network network = getModalInstance(Network.class);
-                                    return new SchoolTrafficDrtRouteUpdater(drtCfg, network, travelTime,
-                                            getModalInstance(TravelDisutilityFactory.class), population, config);
-                                }
-                            }).asEagerSingleton();
                         }
                     });
                 }
