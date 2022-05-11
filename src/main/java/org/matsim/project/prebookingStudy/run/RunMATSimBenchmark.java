@@ -141,21 +141,6 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                         public void install() {
                             bindModal(DefaultMainLegRouter.RouteCreator.class).toProvider(
                                     new SchoolTrafficRouteCreator.SchoolTripsDrtRouteCreatorProvider(drtCfg));// not singleton
-                            bindModal(DrtRouteUpdater.class).toProvider(new ModalProviders.AbstractProvider<>(getMode(), DvrpModes::mode) {
-                                @Inject
-                                private Population population;
-                                @Inject
-                                private Config config;
-                                @Override
-                                public DefaultDrtRouteUpdater get() {
-                                    var travelTime = getModalInstance(TravelTime.class);
-                                    Network network = getModalInstance(Network.class);
-                                    Function<LeastCostPathCalculatorFactory, DefaultMainLegRouter.RouteCreator> drtRouteCreatorFactory =
-                                            leastCostPathCalculatorFactory -> new SchoolTrafficRouteCreator(drtCfg, network, leastCostPathCalculatorFactory, travelTime,
-                                                    getModalInstance(TravelDisutilityFactory.class));
-                                    return new DefaultDrtRouteUpdater(drtCfg, network, population, config, drtRouteCreatorFactory);
-                                }
-                            }).asEagerSingleton();
                         }
                     });
                 }
