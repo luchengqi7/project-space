@@ -12,6 +12,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.common.util.DistanceUtils;
+import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.util.DrtEventsReaders;
@@ -98,11 +99,10 @@ public class SchoolTripsAnalysis implements MATSimAppCommand {
 
         // Analyze departure delay
         DepartureDelayAnalysis departureDelayAnalysis = new DepartureDelayAnalysis();
-        //TODO this is a temporary solution. Wait until the "Wait for stop" events have been added to the activity types
         if (includeDepartureDelayAnalysis){
             EventsManager eventsManager = EventsUtils.createEventsManager();
             eventsManager.addHandler(departureDelayAnalysis);
-            MatsimEventsReader eventsReader = DrtEventsReaders.createEventsReader(eventsManager);
+            MatsimEventsReader eventsReader = DrtEventsReaders.createEventsReader(eventsManager, WaitForStopTask.TYPE);
             eventsReader.readFile(eventPath.toString());
         }
         Map<Id<Person>, Double> initialDepartureMap = departureDelayAnalysis.getInitialScheduledPickupTimeMap();

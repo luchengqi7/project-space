@@ -17,7 +17,6 @@ import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
-import org.matsim.core.network.NetworkUtils;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
 import picocli.CommandLine;
