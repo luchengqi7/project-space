@@ -13,7 +13,6 @@ import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
-import org.matsim.contrib.dvrp.benchmark.DvrpBenchmarkTravelTimeModule;
 import org.matsim.contrib.dvrp.router.DefaultMainLegRouter;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
@@ -26,6 +25,7 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
+import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import org.matsim.project.prebookingStudy.run.rebalancing.RuralScenarioRebalancingTCModule;
 import org.matsim.project.prebookingStudy.run.routingModule.SchoolTrafficRouteCreator;
 import picocli.CommandLine;
@@ -68,6 +68,15 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "5")
     private int stepSize;
 
+    @CommandLine.Option(names = "--seed", description = "number of vehicles reduced for each step", defaultValue = "4711")
+    private long seed;
+
+    @CommandLine.Option(names = "--network-change-events", description = "Path to network change events file", defaultValue = "")
+    private String networkChangeEvents;
+
+    @CommandLine.Option(names = "--travel-time-over-estimation", description = "For traffic simulation case, over estimate travel time to improve on-time arrival rate", defaultValue = "0.0")
+    private double travelTimeOverEstimation;
+
     public static void main(String[] args) {
         new RunMATSimBenchmark().execute(args);
     }
@@ -109,13 +118,19 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             caseStudyTool.prepareCaseStudy(config, drtConfigGroup);
             drtConfigGroup.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
             config.controler().setOutputDirectory(outputDirectory);
+            config.global().setRandomSeed(seed);
+
+            if (!networkChangeEvents.equals("")){
+                config.network().setChangeEventsInputFile(networkChangeEvents);
+                config.network().setTimeVariantNetwork(true);
+            }
 
             Scenario scenario = ScenarioUtils.loadScenario(config);
             scenario.getPopulation().getFactory().getRouteFactories().setRouteFactory(DrtRoute.class, new DrtRouteFactory());
 
             Controler controler = new Controler(scenario);
 
-            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
+            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(travelTimeOverEstimation)));
             controler.addOverridingModule(new MultiModeDrtModule());
             controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
             controler.addOverridingModule(new AbstractModule() {
