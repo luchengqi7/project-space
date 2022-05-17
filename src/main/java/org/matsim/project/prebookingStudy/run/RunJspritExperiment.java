@@ -67,6 +67,9 @@ public class RunJspritExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
     private boolean multiThread;
 
+    @CommandLine.Option(names = "--network-change-events", description = "Path to network change events file", defaultValue = "")
+    private String networkChangeEvents;
+
     private final SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
 
     public static void main(String[] args) {
@@ -115,6 +118,11 @@ public class RunJspritExperiment implements MATSimAppCommand {
         config.controler().setOutputDirectory(outputDirectory);
         config.controler().setLastIteration(0);
         modifyConfig(config, caseStudyTool);
+
+        if (!networkChangeEvents.equals("")){
+            config.network().setChangeEventsInputFile(networkChangeEvents);
+            config.network().setTimeVariantNetwork(true);
+        }
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
 
