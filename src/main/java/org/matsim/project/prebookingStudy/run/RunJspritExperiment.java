@@ -14,11 +14,13 @@ import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
+import org.matsim.contrib.dvrp.run.DvrpModule;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
+import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -142,6 +144,7 @@ public class RunJspritExperiment implements MATSimAppCommand {
                             }
                         }));
 
+        controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
         controler.run();
 
         // Post analysis
