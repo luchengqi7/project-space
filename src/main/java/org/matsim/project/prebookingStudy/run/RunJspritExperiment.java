@@ -9,16 +9,22 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
+import org.matsim.contrib.drt.optimizer.insertion.IncrementalStopDurationEstimator;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.drt.schedule.StopDurationEstimator;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
+import org.matsim.contrib.dvrp.run.AbstractDvrpModeModule;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
+import org.matsim.contrib.dvrp.run.DvrpModule;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.prebookingStudy.jsprit.PreplannedSchedulesCalculator;
+import org.matsim.project.prebookingStudy.run.drtStopDuration.LinearDrtStopDurationEstimator;
+import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -67,6 +73,12 @@ public class RunJspritExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
     private boolean multiThread;
 
+    @CommandLine.Option(names = "--network-change-events", description = "Path to network change events file", defaultValue = "")
+    private String networkChangeEvents;
+
+    @CommandLine.Option(names = "--buffer", description = "Add buffer to the plans by reducing the max travel time", defaultValue = "0.0")
+    private double bufferForTraffic;
+
     private final SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
 
     public static void main(String[] args) {
@@ -112,14 +124,25 @@ public class RunJspritExperiment implements MATSimAppCommand {
 
     private void runJsprit(String configPath, String outputDirectory, CaseStudyTool caseStudyTool) throws IOException {
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+        MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
+        DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next(); // By default, the first drt config group is the one we are using
         config.controler().setOutputDirectory(outputDirectory);
         config.controler().setLastIteration(0);
         modifyConfig(config, caseStudyTool);
 
+        if (!networkChangeEvents.equals("")){
+            config.network().setChangeEventsInputFile(networkChangeEvents);
+            config.network().setTimeVariantNetwork(true);
+            double modifiedAlpha = drtConfigGroup.getMaxTravelTimeAlpha() * (1 - bufferForTraffic);
+            double modifiedBeta = drtConfigGroup.getMaxTravelTimeBeta() * (1 - bufferForTraffic);
+            drtConfigGroup.setMaxTravelTimeAlpha(modifiedAlpha);
+            drtConfigGroup.setMaxTravelTimeBeta(modifiedBeta);
+        }
+
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
+        controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
 
         var options = new PreplannedSchedulesCalculator.Options(false, false, jspritIterations, multiThread, caseStudyTool);
-
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
                 .forEach(drtConfig -> controler.addOverridingQSimModule(

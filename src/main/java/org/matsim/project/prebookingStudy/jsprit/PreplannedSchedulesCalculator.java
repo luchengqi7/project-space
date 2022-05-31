@@ -194,8 +194,8 @@ public class PreplannedSchedulesCalculator {
 				var shipment = Shipment.Builder.newInstance(shipmentId)
 						.setPickupLocation(pickupLocation)
 						.setDeliveryLocation(dropoffLocation)
-						.setPickupServiceTime(1)
-						.setDeliveryServiceTime(1)
+						.setPickupServiceTime(drtCfg.getStopDuration())
+						.setDeliveryServiceTime(drtCfg.getStopDuration())
 						.setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestPickupTime))
 						.setDeliveryTimeWindow(new TimeWindow(earliestDeliveryTime, latestDeliveryTime))
 						.addSizeDimension(0, 1)
@@ -264,7 +264,8 @@ public class PreplannedSchedulesCalculator {
 
 	private static class SchoolTrafficObjectiveFunction implements SolutionCostCalculator {
 		private final double unassignedPenalty = 10000; // Most important objective
-		private final double costPerVehicle = 200; // Second most important objective
+		private final double costPerVehicle = 200; // Second most important objective (--> 0 when finite fleet is used)
+		private final double arrivalTimeCostPerHour = 18.0; // When possible, passengers should arrive as early as possible to maximize on-time arrival rate
 		private final double drivingCostPerHour = 6.0; // Less important objective
 		private final VehicleRoutingProblem problem;
 		private final Options options;
@@ -282,23 +283,27 @@ public class PreplannedSchedulesCalculator {
 			double numVehiclesUsed = solution.getRoutes().size();
 			double costForFleet = numVehiclesUsed * costPerVehicle;
 			if (!options.infiniteFleet) {
-				costForFleet = 0;
+				costForFleet = 0; // (when finite fleet is used, we can use all the vehicle as they are already there)
 			}
 
 			VehicleRoutingTransportCosts costMatrix = problem.getTransportCosts();
-			double totalTransportCost = 0;
-			for (VehicleRoute route : solution.getRoutes()) {
-				TourActivity prevAct = route.getStart();
-				for (TourActivity activity : route.getActivities()) {
-					totalTransportCost += costMatrix.getTransportCost(prevAct.getLocation(), activity.getLocation(),
-							prevAct.getEndTime(), route.getDriver(), route.getVehicle());
-					prevAct = activity;
-				}
-			}
+            double totalTransportCost = 0;
+            double totalArrivalTime = 0; // The absolute value doesn't matter. We just want to minimize the sum arrival time (i.e., arrive early)
+            for (VehicleRoute route : solution.getRoutes()) {
+                TourActivity prevAct = route.getStart();
+                for (TourActivity activity : route.getActivities()) {
+                    if (activity.getName().equals("deliverShipment")) {
+                        totalArrivalTime += activity.getArrTime();
+                    }
+                    totalTransportCost += costMatrix.getTransportCost(prevAct.getLocation(), activity.getLocation(),
+                            prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    prevAct = activity;
+                }
+            }
 
-			totalTransportCost = totalTransportCost / 3600
-					* drivingCostPerHour;  // In current setup, transport cost = driving time
-			double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost;
+            totalTransportCost = totalTransportCost / 3600 * drivingCostPerHour;  // In current setup, transport cost = driving time
+            double totalArrivalTimeCost = totalArrivalTime / 3600 * arrivalTimeCostPerHour;
+			double totalCost = costForUnassignedRequests + costForFleet + totalTransportCost + totalArrivalTimeCost;
 			if (options.printProgressStatistics) {
 				System.out.println("Number of unassigned jobs: " + numUnassignedJobs);
 				System.out.println("Number of vehicles used: " + numVehiclesUsed);
