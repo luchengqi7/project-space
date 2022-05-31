@@ -7,12 +7,14 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
+import org.matsim.contrib.drt.optimizer.insertion.IncrementalStopDurationEstimator;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
+import org.matsim.contrib.drt.schedule.StopDurationEstimator;
 import org.matsim.contrib.dvrp.router.DefaultMainLegRouter;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
@@ -25,6 +27,7 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.project.prebookingStudy.analysis.SchoolTripsAnalysis;
+import org.matsim.project.prebookingStudy.run.drtStopDuration.LinearDrtStopDurationEstimator;
 import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import org.matsim.project.prebookingStudy.run.rebalancing.RuralScenarioRebalancingTCModule;
 import org.matsim.project.prebookingStudy.run.routingModule.SchoolTrafficRouteCreator;
@@ -74,8 +77,8 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
     @CommandLine.Option(names = "--network-change-events", description = "Path to network change events file", defaultValue = "")
     private String networkChangeEvents;
 
-    @CommandLine.Option(names = "--travel-time-over-estimation", description = "For traffic simulation case, over estimate travel time to improve on-time arrival rate", defaultValue = "0.0")
-    private double travelTimeOverEstimation;
+    @CommandLine.Option(names = "--buffer", description = "Add buffer to the plans by reducing the max travel time", defaultValue = "0.0")
+    private double bufferForTraffic;
 
     public static void main(String[] args) {
         new RunMATSimBenchmark().execute(args);
@@ -120,9 +123,13 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
             config.controler().setOutputDirectory(outputDirectory);
             config.global().setRandomSeed(seed);
 
-            if (!networkChangeEvents.equals("")){
+            if (!networkChangeEvents.equals("")) {
                 config.network().setChangeEventsInputFile(networkChangeEvents);
                 config.network().setTimeVariantNetwork(true);
+                double modifiedAlpha = drtConfigGroup.getMaxTravelTimeAlpha() * (1 - bufferForTraffic);
+                double modifiedBeta = drtConfigGroup.getMaxTravelTimeBeta() * (1 - bufferForTraffic);
+                drtConfigGroup.setMaxTravelTimeAlpha(modifiedAlpha);
+                drtConfigGroup.setMaxTravelTimeBeta(modifiedBeta);
             }
 
             Scenario scenario = ScenarioUtils.loadScenario(config);
@@ -130,7 +137,7 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
 
             Controler controler = new Controler(scenario);
 
-            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(travelTimeOverEstimation)));
+            controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
             controler.addOverridingModule(new MultiModeDrtModule());
             controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
             controler.addOverridingModule(new AbstractModule() {
@@ -140,9 +147,20 @@ public class RunMATSimBenchmark implements MATSimAppCommand {
                 }
             });
 
-            // Adding the custom rebalancing target calculator
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
+                // Use the rebalancing strategy for this rural area scenario
                 controler.addOverridingQSimModule(new RuralScenarioRebalancingTCModule(drtCfg, 300));
+                // Use linear incremental stop duration
+                controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
+                    @Override
+                    public void install() {
+                        bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
+                        bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.getStopDuration()));
+                    }
+                });
+
+                // If stop based (without adaptation of the plans) service is used,
+                // we need to update the latest arrival time of the trips, so that it is still 8:00am
                 if (caseStudyTool.getServiceScheme() == CaseStudyTool.ServiceScheme.STOP_BASED) {
                     controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
                         @Override
