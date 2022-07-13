@@ -4,9 +4,10 @@ import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
+import org.matsim.contrib.drt.optimizer.QSimScopeForkJoinPoolHolder;
+import org.matsim.contrib.drt.optimizer.VehicleDataEntryFactoryImpl;
 import org.matsim.contrib.drt.optimizer.VehicleEntry;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
@@ -26,7 +27,6 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
 
-import java.nio.file.Path;
 import java.util.concurrent.ForkJoinPool;
 
 @CommandLine.Command(
@@ -62,6 +62,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
 
         var options = new PDPTWSolverJsprit.Options(maxIterations, true);
 
+        // TODO move these bindings to one module
         controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
             @Override
             protected void configureQSim() {
@@ -69,11 +70,16 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
                         getter.getModal(Network.class), getter.getModal(TravelTime.class),
                         getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)),
                         getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class), getter.get(EventsManager.class), getter.getModal(Fleet.class),
-                        getter.getModal(ScheduleTimingUpdater.class), getter.getModal(ForkJoinPool.class), getter.getModal(VehicleEntry.EntryFactory.class),
+                        getter.getModal(ScheduleTimingUpdater.class), getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
+                        getter.getModal(VehicleEntry.EntryFactory.class),
                         getter.get(PDPTWSolverJsprit.class), getter.get(Population.class))));
 
                 bind(PDPTWSolverJsprit.class).toProvider(modalProvider(
                         getter -> new PDPTWSolverJsprit(drtConfigGroup, getter.get(Network.class), options)));
+
+                addModalComponent(QSimScopeForkJoinPoolHolder.class,
+                        () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.getNumberOfThreads()));
+                bindModal(VehicleEntry.EntryFactory.class).toInstance(new VehicleDataEntryFactoryImpl(drtConfigGroup));
             }
         });
 
