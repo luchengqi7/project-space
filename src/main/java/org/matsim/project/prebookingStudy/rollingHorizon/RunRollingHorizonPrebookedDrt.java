@@ -1,4 +1,4 @@
-package org.matsim.project.prebookingStudy.roolingHorizon;
+package org.matsim.project.prebookingStudy.rollingHorizon;
 
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
@@ -26,8 +26,6 @@ import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.prebookingStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
-
-import java.util.concurrent.ForkJoinPool;
 
 @CommandLine.Command(
         name = "rolling-horizon-test",

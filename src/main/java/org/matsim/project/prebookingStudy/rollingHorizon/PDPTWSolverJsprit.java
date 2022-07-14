@@ -1,4 +1,4 @@
-package org.matsim.project.prebookingStudy.roolingHorizon;
+package org.matsim.project.prebookingStudy.rollingHorizon;
 
 import com.graphhopper.jsprit.core.algorithm.box.Jsprit;
 import com.graphhopper.jsprit.core.problem.Location;
@@ -10,6 +10,7 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
+import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
 import org.matsim.api.core.v01.Id;
@@ -21,8 +22,15 @@ import org.matsim.contrib.drt.optimizer.VehicleEntry;
 import org.matsim.contrib.drt.passenger.AcceptedDrtRequest;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
+import org.matsim.contrib.drt.schedule.DrtStayTask;
+import org.matsim.contrib.drt.schedule.DrtStopTask;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.optimizer.Request;
+import org.matsim.contrib.dvrp.schedule.DriveTask;
+import org.matsim.contrib.dvrp.schedule.Schedule;
+import org.matsim.contrib.dvrp.schedule.Task;
+import org.matsim.contrib.dvrp.tracker.OnlineDriveTaskTracker;
+import org.matsim.contrib.dvrp.util.LinkTimePair;
 import org.matsim.project.prebookingStudy.jsprit.MatrixBasedVrpCosts;
 
 import java.util.*;
@@ -43,7 +51,7 @@ public class PDPTWSolverJsprit {
         this.options = options;
     }
 
-    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Set<VehicleEntry> vehicleEntries,
+    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Collection<RollingHorizonDrtOptimizer.OnlineVehicleInfo> onlineVehicleInfos,
                                                                     List<DrtRequest> newRequests,
                                                                     Map<VehicleEntry, List<AcceptedDrtRequest>> requestsOnboard,
                                                                     List<AcceptedDrtRequest> acceptedWaitingRequests,
@@ -52,23 +60,23 @@ public class PDPTWSolverJsprit {
         // Create PDPTW problem
         var vrpBuilder = new VehicleRoutingProblem.Builder();
         // 1. Vehicle
-        for (VehicleEntry vehicleEntry : vehicleEntries) {
-            Link currentLink = vehicleEntry.start.link; //TODO Current divertable location for driving vehicles. Is this correct?
-            double divertableTime = vehicleEntry.start.time; // TODO Is this correct?
-            int capacity = vehicleEntry.vehicle.getCapacity();
-            double serviceEndTime = vehicleEntry.vehicle.getServiceEndTime();
+        for (RollingHorizonDrtOptimizer.OnlineVehicleInfo vehicleInfo : onlineVehicleInfos) {
+            DvrpVehicle vehicle = vehicleInfo.vehicle();
+            Link currentLink = vehicleInfo.currentLink();
+            double divertableTime = vehicleInfo.divertableTime();
+
+            int capacity = vehicle.getCapacity();
+            double serviceEndTime = vehicle.getServiceEndTime();
             var vehicleType = VehicleTypeImpl.Builder.newInstance(drtCfg.getMode() + "-vehicle")
                     .addCapacityDimension(0, capacity)
                     .build();
 
-            var vehicleBuilder = VehicleImpl.Builder.newInstance(vehicleEntry.vehicle.getId() + "");
+            var vehicleBuilder = VehicleImpl.Builder.newInstance(vehicle.getId() + "");
             vehicleBuilder.setEarliestStart(divertableTime);
             vehicleBuilder.setLatestArrival(serviceEndTime);
             vehicleBuilder.setStartLocation(collectLocationIfAbsent(currentLink));
             vehicleBuilder.setType(vehicleType);
-            vehicleBuilder.addSkill(vehicleEntry.vehicle.getId().toString());
-            // Vehicle skills can be used to make sure the request already onboard will be matched to the same vehicle
-
+            vehicleBuilder.addSkill(vehicle.getId().toString()); // Vehicle skills can be used to make sure the request already onboard will be matched to the same vehicle
             vrpBuilder.addVehicle(vehicleBuilder.build());
         }
 
@@ -183,6 +191,8 @@ public class PDPTWSolverJsprit {
         algorithm.setMaxIterations(options.maxIterations);
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
+
+        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();
