@@ -2,10 +2,10 @@ package org.matsim.project.prebookingStudy.roolingHorizon;
 
 import com.google.common.base.Preconditions;
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
-import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.optimizer.VehicleEntry;
@@ -66,7 +66,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
 
     private final List<DrtRequest> prebookedRequests = new ArrayList<>();
 
-    private PreplannedDrtOptimizer.PreplannedSchedules preplannedSchedules;
+    private PreplannedSchedules preplannedSchedules;
 
     public RollingHorizonDrtOptimizer(DrtConfigGroup drtCfg, Network network, TravelTime travelTime,
                                       TravelDisutility travelDisutility, MobsimTimer timer, DrtTaskFactory taskFactory,
@@ -125,11 +125,11 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         DrtRequest drtRequest = (DrtRequest) request;
         openRequests.put(drtRequest.getPassengerId(), drtRequest);
 
-        var preplannedRequest = PreplannedDrtOptimizer.PreplannedRequest.createFromRequest(drtRequest);
+        var preplannedRequest = createFromRequest(drtRequest);
         var vehicleId = preplannedSchedules.preplannedRequestToVehicle.get(preplannedRequest);
 
         if (vehicleId == null) {
-            Preconditions.checkState(preplannedSchedules.unassignedRequests.contains(preplannedRequest),
+            Preconditions.checkState(preplannedSchedules.unassignedRequests.containsValue(preplannedRequest),
                     "Pre-planned request (%s) not assigned to any vehicle and not marked as unassigned.",
                     preplannedRequest);
             eventsManager.processEvent(new PassengerRequestRejectedEvent(timer.getTimeOfDay(), mode, request.getId(),
@@ -194,11 +194,11 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
 
             var stopTask = taskFactory.createStopTask(vehicle, currentTime, currentTime + stopDuration, currentLink);
             if (nextStop.pickup) {
-                var request = Preconditions.checkNotNull(openRequests.get(nextStop.preplannedRequest.getPassengerId()),
+                var request = Preconditions.checkNotNull(openRequests.get(nextStop.preplannedRequest.key().passengerId()),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
             } else {
-                var request = Preconditions.checkNotNull(openRequests.remove(nextStop.preplannedRequest.getPassengerId()),
+                var request = Preconditions.checkNotNull(openRequests.remove(nextStop.preplannedRequest.key().passengerId()),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
             }
@@ -278,4 +278,30 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         prebookedRequests.removeAll(newRequests);
         return newRequests;
     }
+
+    public record PreplannedRequest(PreplannedRequestKey key, double earliestStartTime,
+                                    double latestStartTime, double latestArrivalTime) {
+    }
+
+    public record PreplannedRequestKey(Id<Person> passengerId, Id<Link> fromLinkId, Id<Link> toLinkId) {
+        // TODO (long-term) consider using request ID
+    }
+
+    public record PreplannedStop(PreplannedRequest preplannedRequest, boolean pickup) {
+        private Id<Link> getLinkId() {
+            return pickup ? preplannedRequest.key.fromLinkId : preplannedRequest.key.toLinkId;
+        }
+    }
+
+    public record PreplannedSchedules(Map<PreplannedRequestKey, Id<DvrpVehicle>> preplannedRequestToVehicle,
+                                      Map<Id<DvrpVehicle>, Queue<PreplannedStop>> vehicleToPreplannedStops,
+                                      Map<PreplannedRequestKey, PreplannedRequest> unassignedRequests) {
+    }
+
+    static PreplannedRequest createFromRequest(DrtRequest request) {
+        return new PreplannedRequest(new PreplannedRequestKey(request.getPassengerId(), request.getFromLink().getId(),
+                request.getToLink().getId()), request.getEarliestStartTime(), request.getLatestStartTime(),
+                request.getLatestArrivalTime());
+    }
+
 }
