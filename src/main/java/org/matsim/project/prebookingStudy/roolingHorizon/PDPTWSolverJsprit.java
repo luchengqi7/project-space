@@ -29,14 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PDPTWSolverJsprit {
-    public static class Options {
-        public final int maxIterations;
-        public final boolean multiThread;
-
-        public Options(int maxIterations, boolean multiThread) {
-            this.maxIterations = maxIterations;
-            this.multiThread = multiThread;
-        }
+    public record Options(int maxIterations, boolean multiThread) {
     }
 
     private final Options options;
