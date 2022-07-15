@@ -158,6 +158,11 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         scheduleTimingUpdater.updateBeforeNextTask(vehicle);
         var schedule = vehicle.getSchedule();
 
+        if (schedule.getStatus() == Schedule.ScheduleStatus.PLANNED) {
+            schedule.nextTask();
+            return;
+        }
+
         var currentTask = schedule.getCurrentTask();
         var currentLink = Tasks.getEndLink(currentTask);
         double currentTime = timer.getTimeOfDay();
@@ -256,8 +261,8 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                     divertableTime = currentTask.getEndTime();
                 }
 
-                assert currentLink != null;
-                assert !Double.isNaN(divertableTime);
+                Preconditions.checkState(currentLink != null, "Current link should not be null! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
+                Preconditions.checkState(!Double.isNaN(divertableTime), "Divertable time should not be NaN! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
                 OnlineVehicleInfo onlineVehicleInfo = new OnlineVehicleInfo(vehicleEntry.vehicle, currentLink, divertableTime);
                 realTimeVehicleInfoMap.put(vehicleEntry.vehicle, onlineVehicleInfo);
             }
