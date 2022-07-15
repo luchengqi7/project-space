@@ -51,16 +51,16 @@ public class PDPTWSolverJsprit {
         this.options = options;
     }
 
-    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Collection<RollingHorizonDrtOptimizer.OnlineVehicleInfo> onlineVehicleInfos,
+    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Map<DvrpVehicle, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
                                                                     List<DrtRequest> newRequests,
-                                                                    Map<VehicleEntry, List<AcceptedDrtRequest>> requestsOnboard,
+                                                                    Map<RollingHorizonDrtOptimizer.OnlineVehicleInfo, List<AcceptedDrtRequest>> requestsOnboard,
                                                                     List<AcceptedDrtRequest> acceptedWaitingRequests,
                                                                     Map<Id<Request>, Double> updatedLatestPickUpTimeMap,
                                                                     Map<Id<Request>, Double> updatedLatestDropOffTimeMap) {
         // Create PDPTW problem
         var vrpBuilder = new VehicleRoutingProblem.Builder();
         // 1. Vehicle
-        for (RollingHorizonDrtOptimizer.OnlineVehicleInfo vehicleInfo : onlineVehicleInfos) {
+        for (RollingHorizonDrtOptimizer.OnlineVehicleInfo vehicleInfo : realTimeVehicleInfoMap.values()) {
             DvrpVehicle vehicle = vehicleInfo.vehicle();
             Link currentLink = vehicleInfo.currentLink();
             double divertableTime = vehicleInfo.divertableTime();
@@ -96,11 +96,11 @@ public class PDPTWSolverJsprit {
         vrpBuilder.setRoutingCost(vrpCosts);
 
         // 2.1 Passengers onboard
-        for (VehicleEntry vehicleEntry : requestsOnboard.keySet()) {
-            Link startLink = vehicleEntry.start.link;
-            double time = vehicleEntry.start.time;
-            String skill = vehicleEntry.vehicle.getId().toString(); // We use skill to lock the vehicle and request already onboard
-            for (AcceptedDrtRequest requestOnboard : requestsOnboard.get(vehicleEntry)) {
+        for (RollingHorizonDrtOptimizer.OnlineVehicleInfo vehicleInfo : requestsOnboard.keySet()) {
+            Link startLink = vehicleInfo.currentLink();
+            double time = vehicleInfo.divertableTime();
+            String skill = vehicleInfo.vehicle().getId().toString(); // We use skill to lock the vehicle and request already onboard
+            for (AcceptedDrtRequest requestOnboard : requestsOnboard.get(vehicleInfo)) {
                 double latestArrivalTime = requestOnboard.getLatestArrivalTime();
                 if (updatedLatestDropOffTimeMap.containsKey(requestOnboard.getId())) {
                     latestArrivalTime = updatedLatestDropOffTimeMap.get(requestOnboard.getId());
