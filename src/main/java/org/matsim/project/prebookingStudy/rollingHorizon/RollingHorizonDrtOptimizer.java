@@ -23,6 +23,7 @@ import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.optimizer.Request;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestRejectedEvent;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestScheduledEvent;
+import org.matsim.contrib.dvrp.path.DivertedVrpPath;
 import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
 import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.schedule.*;
@@ -146,16 +147,14 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             return;
         }
 
-        var preplannedStops = preplannedSchedules.vehicleToPreplannedStops.get(vehicleId);
-
-        Preconditions.checkState(!preplannedStops.isEmpty(),
-                "Expected to contain at least preplanned stops for request (%s)", request.getId());
+//        var preplannedStops = preplannedSchedules.vehicleToPreplannedStops.get(vehicleId);
+//        Preconditions.checkState(!preplannedStops.isEmpty(),
+//                "Expected to contain at least preplanned stops for request (%s)", request.getId());
 
         //TODO in the current implementation we do not know the scheduled pickup and dropoff times
         eventsManager.processEvent(
                 new PassengerRequestScheduledEvent(timer.getTimeOfDay(), drtRequest.getMode(), drtRequest.getId(),
                         drtRequest.getPassengerId(), vehicleId, Double.NaN, Double.NaN));
-
     }
 
     @Override
@@ -163,6 +162,20 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         scheduleTimingUpdater.updateBeforeNextTask(vehicle);
         vehicle.getSchedule().nextTask();
 
+        if (vehicle.getSchedule().getCurrentTask() instanceof DrtStopTask stopTask){
+            var stopsToVisit = preplannedSchedules.vehicleToPreplannedStops.get(vehicle.getId());
+            RollingHorizonDrtOptimizer.PreplannedStop nextStopToVisit = stopsToVisit.poll();
+            assert nextStopToVisit != null;
+            if (nextStopToVisit.pickup) {
+                var request = Preconditions.checkNotNull(openRequests.get(nextStopToVisit.preplannedRequest.key().passengerId()),
+                        "Request (%s) has not been yet submitted", nextStopToVisit.preplannedRequest);
+                stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+            } else {
+                var request = Preconditions.checkNotNull(openRequests.remove(nextStopToVisit.preplannedRequest.key().passengerId()),
+                        "Request (%s) has not been yet submitted", nextStopToVisit.preplannedRequest);
+                stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+            }
+        }
     }
 
     @Override
@@ -188,11 +201,11 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             List<DrtRequest> newRequests = readRequestsFromTimeBin(now);
 
             //TODO delete begin
-            System.err.println("At time = " + now + ", there are " + newRequests.size() + " new requests");
-            for (DrtRequest request : newRequests) {
-                System.err.println("Request ID: " + request.getId().toString() + " to be submitted at "
-                        + request.getSubmissionTime() + " earliest departure time = " + request.getEarliestStartTime());
-            }
+//            System.err.println("At time = " + now + ", there are " + newRequests.size() + " new requests");
+//            for (DrtRequest request : newRequests) {
+//                System.err.println("Request ID: " + request.getId().toString() + " to be submitted at "
+//                        + request.getSubmissionTime() + " earliest departure time = " + request.getEarliestStartTime());
+//            }
             // TODO delete end
 
             // Begin reading data
@@ -281,61 +294,54 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                     for (int i = 0; i < tasksToRemove; i++) {
                         schedule.removeLastTask();
                     }
+                    if (currentTask instanceof DrtDriveTask){
+                        // stop the vehicle at the divertable link and time
+                        var dummyPath = VrpPaths.calcAndCreatePath(currentLink, currentLink, divertableTime, router, travelTime);
+                        ((DrtDriveTask) currentTask).pathDiverted((DivertedVrpPath) dummyPath, divertableTime);
+                    }
                 } else {
                     currentTask.setEndTime(now); // end current stay task
                 }
 
                 // Add new tasks based on preplanned schedule
                 Queue<PreplannedStop> stopsToVisit = preplannedSchedules.vehicleToPreplannedStops.get(vehicle.getId());
-                boolean finished = false;
-                while (!finished) {
-                    PreplannedStop nextStopToVisit = stopsToVisit.poll();
-                    if (nextStopToVisit != null) {
-                        // Add Drive task or Stop task
-                        if (!nextStopToVisit.getLinkId().equals(currentLink.getId())) {
-                            // Add a drive task
-                            var nextLink = network.getLinks().get(nextStopToVisit.getLinkId());
-                            VrpPathWithTravelData path =
-                                    VrpPaths.calcAndCreatePath(currentLink, nextLink, divertableTime, router, travelTime);
-                            schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
+                for (PreplannedStop nextStopToVisit : stopsToVisit) {
+                    // Add tasks based on stops
+                    // Does the vehicle need to move? --> If yes, then add a drive task
+                    if (!nextStopToVisit.getLinkId().equals(currentLink.getId())) {
+                        var nextLink = network.getLinks().get(nextStopToVisit.getLinkId());
+                        VrpPathWithTravelData path =
+                                VrpPaths.calcAndCreatePath(currentLink, nextLink, divertableTime, router, travelTime);
+                        schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
 
-                            // "move" the vehicle to the new location and update the time
-                            currentLink = path.getToLink();
-                            divertableTime = path.getArrivalTime();
-
-                        } else if (nextStopToVisit.preplannedRequest.earliestStartTime >= divertableTime) {
-                            // Add a wait task
-                            schedule.addTask(new WaitForStopTask(divertableTime, nextStopToVisit.preplannedRequest.earliestStartTime, currentLink));
-                            divertableTime = nextStopToVisit.preplannedRequest.earliestStartTime;
-                        } else {
-                            // Add stop task
-                            var stopTask = taskFactory.createStopTask(vehicle, divertableTime, divertableTime + stopDuration, currentLink);
-                            // TODO the request should not have been submitted by now
-                            if (nextStopToVisit.pickup) {
-                                var request = Preconditions.checkNotNull(openRequests.get(nextStopToVisit.preplannedRequest.key().passengerId()),
-                                        "Request (%s) has not been yet submitted", nextStopToVisit.preplannedRequest);
-                                stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
-                            } else {
-                                var request = Preconditions.checkNotNull(openRequests.remove(nextStopToVisit.preplannedRequest.key().passengerId()),
-                                        "Request (%s) has not been yet submitted", nextStopToVisit.preplannedRequest);
-                                stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
-                            }
-                            schedule.addTask(stopTask);
-                            divertableTime = divertableTime + stopDuration;
-                        }
-                    } else {
-                        // Add a stay task
-                        if (divertableTime < vehicle.getServiceEndTime()) {
-                            // fill the time gap with STAY
-                            schedule.addTask(
-                                    taskFactory.createStayTask(vehicle, divertableTime, vehicle.getServiceEndTime(), currentLink));
-                        } else if (!STAY.isBaseTypeOf(currentTask)) {
-                            // always end with STAY even if delayed
-                            schedule.addTask(
-                                    taskFactory.createStayTask(vehicle, vehicle.getServiceEndTime(), vehicle.getServiceEndTime(), currentLink));
-                        }
-                        finished = true;
+                        // "move" the vehicle to the new location and update the time
+                        currentLink = path.getToLink();
+                        divertableTime = path.getArrivalTime();
                     }
+
+                    // Does the vehicle need to wait? --> If yes, then add a wait task
+                    if (nextStopToVisit.preplannedRequest.earliestStartTime > divertableTime) {
+                        // Add a wait task
+                        schedule.addTask(new WaitForStopTask(divertableTime, nextStopToVisit.preplannedRequest.earliestStartTime, currentLink));
+                        divertableTime = nextStopToVisit.preplannedRequest.earliestStartTime;
+                    }
+
+                    // Finally, add stop task
+                    var stopTask = taskFactory.createStopTask(vehicle, divertableTime, divertableTime + stopDuration, currentLink);
+                    // The request will be added to the stop task in the "nextTask" section. Because the request has not yet been submitted at this point.
+                    schedule.addTask(stopTask);
+                    divertableTime = divertableTime + stopDuration;
+                }
+
+                // Finally, add a stay task at the end
+                if (divertableTime < vehicle.getServiceEndTime()) {
+                    // fill the time gap with STAY
+                    schedule.addTask(
+                            taskFactory.createStayTask(vehicle, divertableTime, vehicle.getServiceEndTime(), currentLink));
+                } else if (!STAY.isBaseTypeOf(currentTask)) {
+                    // always end with STAY even if delayed
+                    schedule.addTask(
+                            taskFactory.createStayTask(vehicle, vehicle.getServiceEndTime(), vehicle.getServiceEndTime(), currentLink));
                 }
             }
         }
@@ -345,7 +351,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         List<DrtRequest> newRequests = new ArrayList<>();
         for (DrtRequest prebookedRequest : prebookedRequests) {
             double latestDepartureTime = now + horizon;
-            if (prebookedRequest.getEarliestStartTime() <= latestDepartureTime) {
+            if (prebookedRequest.getEarliestStartTime() < latestDepartureTime) {
                 newRequests.add(prebookedRequest);
             }
         }

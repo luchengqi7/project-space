@@ -196,9 +196,9 @@ public class PDPTWSolverJsprit {
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();
-        List<AcceptedDrtRequest> acceptedDrtRequests = new ArrayList<>();
-        requestsOnboard.values().forEach(acceptedDrtRequests::addAll);
-        acceptedDrtRequests.forEach(r -> personsOnboard.add(r.getPassengerId()));
+        List<AcceptedDrtRequest> listOfRequestsOnboard = new ArrayList<>();
+        requestsOnboard.values().forEach(listOfRequestsOnboard::addAll);
+        listOfRequestsOnboard.forEach(r -> personsOnboard.add(r.getPassengerId()));
 
         Map<RollingHorizonDrtOptimizer.PreplannedRequestKey, Id<DvrpVehicle>> preplannedRequestToVehicle = new HashMap<>();
         Map<Id<DvrpVehicle>, Queue<RollingHorizonDrtOptimizer.PreplannedStop>> vehicleToPreplannedStops = problem.getVehicles()
