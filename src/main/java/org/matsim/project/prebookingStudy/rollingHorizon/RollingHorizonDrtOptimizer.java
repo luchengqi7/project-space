@@ -112,7 +112,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 double earliestPickupTime = leg.getDepartureTime().seconds();
                 double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
                 double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(startLink, endLink, earliestPickupTime, router, travelTime).getTravelTime();
-                double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta();
+                double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta(); //TODO this maybe different from the value in the submitted request!
                 DrtRequest drtRequest = DrtRequest.newBuilder()
                         .id(Id.create(person.getId().toString() + "_" + counter, Request.class))
                         .submissionTime(earliestPickupTime)
@@ -139,7 +139,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         var vehicleId = preplannedSchedules.preplannedRequestToVehicle.get(preplannedRequest.key);
 
         if (vehicleId == null) {
-            Preconditions.checkState(preplannedSchedules.unassignedRequests.containsValue(preplannedRequest),
+            Preconditions.checkState(preplannedSchedules.unassignedRequests.containsKey(preplannedRequest.key),
                     "Pre-planned request (%s) not assigned to any vehicle and not marked as unassigned.",
                     preplannedRequest);
             eventsManager.processEvent(new PassengerRequestRejectedEvent(timer.getTimeOfDay(), mode, request.getId(),
@@ -147,10 +147,10 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             return;
         }
 
-        //TODO in the current implementation we do not know the scheduled pickup and dropoff times
         eventsManager.processEvent(
                 new PassengerRequestScheduledEvent(timer.getTimeOfDay(), drtRequest.getMode(), drtRequest.getId(),
                         drtRequest.getPassengerId(), vehicleId, Double.NaN, Double.NaN));
+        //Current implementation we do not know the scheduled pickup and drop off times
     }
 
     @Override
@@ -186,7 +186,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
         } else if (nextStop.preplannedRequest.earliestStartTime >= timer.getTimeOfDay()) {
             // We are at the stop location. But we are too early. --> Add a wait for stop task
-            // TODO currently assuming the mobsim time step is 1 s
+            // Currently assuming the mobsim time step is 1 s
             schedule.addTask(
                     new WaitForStopTask(currentTime, nextStop.preplannedRequest.earliestStartTime + 1, currentLink));
         } else {
@@ -197,10 +197,12 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 var request = Preconditions.checkNotNull(openRequests.get(nextStop.preplannedRequest.key.passengerId),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+                System.err.println("Pick up: vehicle = " + vehicle.getId().toString() + " request = " + request.getPassengerId().toString()); //TODO delete
             } else {
                 var request = Preconditions.checkNotNull(openRequests.remove(nextStop.preplannedRequest.key.passengerId),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+                System.err.println("Drop off: vehicle = " + vehicle.getId().toString() + " request = " + request.getPassengerId().toString()); // TODO delete
             }
             schedule.addTask(stopTask);
         }
@@ -220,8 +222,9 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
 
             // Information to be passed to the Solver
             Map<DvrpVehicle, OnlineVehicleInfo> realTimeVehicleInfoMap = new HashMap<>();
-            Map<OnlineVehicleInfo, List<AcceptedDrtRequest>> requestsOnboard = new HashMap<>();
-            List<AcceptedDrtRequest> acceptedWaitingRequests = new ArrayList<>(); //TODO merge this 3 information into one single record
+            Map<OnlineVehicleInfo, List<PreplannedRequest>> requestsOnboard = new HashMap<>();
+
+            List<PreplannedRequest> acceptedWaitingRequests = new ArrayList<>(); //TODO merge this 3 information into one single record
             Map<Id<Request>, Double> updatedLatestPickUpTimeMap = new HashMap<>(); //TODO merge this 3 information into one single record
             Map<Id<Request>, Double> updatedLatestDropOffTimeMap = new HashMap<>(); //TODO merge this 3 information into one single record
 
@@ -267,36 +270,26 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 realTimeVehicleInfoMap.put(vehicleEntry.vehicle, onlineVehicleInfo);
             }
 
-            // Read requests that are already assigned (already picked up and waiting to be picked up)
-            for (Id<DvrpVehicle> vehicleId : vehicleEntries.keySet()) {
-                VehicleEntry vehicleEntry = vehicleEntries.get(vehicleId);
-
-                // Get persons onboard the vehicle and accepted waiting requests (accepted but not yet picked up)
-                List<AcceptedDrtRequest> passengersOnboard = new ArrayList<>();
-                List<AcceptedDrtRequest> requestsToBePickedUp = new ArrayList<>();
-
-                for (Waypoint.Stop stop : vehicleEntry.stops) {
-                    double updatedTime = stop.task.getBeginTime(); //TODO double check: is the begin time of the task updated by scheduleTimingUpdater?
-                    for (AcceptedDrtRequest acceptedDrtRequest : stop.task.getDropoffRequests().values()) {
-                        passengersOnboard.add(acceptedDrtRequest); // Intermediate result (to be processed with remove all operation below)
-                        double latestArrivalTime = acceptedDrtRequest.getLatestArrivalTime();
-                        if (latestArrivalTime < updatedTime) {
-                            updatedLatestDropOffTimeMap.put(acceptedDrtRequest.getId(), updatedTime);
+            // Read requests that are already assigned (already picked up and to be picked up)
+            if (preplannedSchedules != null) {
+                for (Id<DvrpVehicle> vehicleId : vehicleEntries.keySet()) {
+                    DvrpVehicle vehicle = vehicleEntries.get(vehicleId).vehicle;
+                    var stopsToVisit = preplannedSchedules.vehicleToPreplannedStops.get(vehicleId);
+                    List<PreplannedRequest> passengersOnboard = new ArrayList<>();
+                    List<PreplannedRequest> acceptedPickups = new ArrayList<>();
+                    for (PreplannedStop stopToVisit : stopsToVisit) {
+                        if (!stopToVisit.pickup) {
+                            passengersOnboard.add(stopToVisit.preplannedRequest); // Intermediate results (see removeAll operation below)
+                        } else {
+                            acceptedPickups.add(stopToVisit.preplannedRequest);
                         }
                     }
+                    passengersOnboard.removeAll(acceptedPickups);
 
-                    for (AcceptedDrtRequest acceptedDrtRequest : stop.task.getPickupRequests().values()) {
-                        requestsToBePickedUp.add(acceptedDrtRequest);
-                        double latestPickUpTime = acceptedDrtRequest.getLatestStartTime();
-                        if (latestPickUpTime < updatedTime) {
-                            updatedLatestPickUpTimeMap.put(acceptedDrtRequest.getId(), updatedTime);
-                        }
-                    }
+                    acceptedWaitingRequests.addAll(acceptedPickups);
+                    requestsOnboard.put(realTimeVehicleInfoMap.get(vehicle), passengersOnboard);
+                    // TODO we need to consider the possible delays, that may make the accepted requests infeasible in the next optimization process!!!
                 }
-                passengersOnboard.removeAll(requestsToBePickedUp);
-
-                requestsOnboard.computeIfAbsent(realTimeVehicleInfoMap.get(vehicleEntry.vehicle), p -> new ArrayList<>()).addAll(passengersOnboard);
-                acceptedWaitingRequests.addAll(requestsToBePickedUp);
             }
 
             // Read new requests
@@ -403,5 +396,6 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
     public record OnlineVehicleInfo(DvrpVehicle vehicle, Link currentLink, double divertableTime) {
 
     }
+
 
 }

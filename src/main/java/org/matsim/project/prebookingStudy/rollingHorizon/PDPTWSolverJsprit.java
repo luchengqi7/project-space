@@ -53,8 +53,8 @@ public class PDPTWSolverJsprit {
 
     public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Map<DvrpVehicle, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
                                                                     List<DrtRequest> newRequests,
-                                                                    Map<RollingHorizonDrtOptimizer.OnlineVehicleInfo, List<AcceptedDrtRequest>> requestsOnboard,
-                                                                    List<AcceptedDrtRequest> acceptedWaitingRequests,
+                                                                    Map<RollingHorizonDrtOptimizer.OnlineVehicleInfo, List<RollingHorizonDrtOptimizer.PreplannedRequest>> requestsOnboard,
+                                                                    List<RollingHorizonDrtOptimizer.PreplannedRequest> acceptedWaitingRequests,
                                                                     Map<Id<Request>, Double> updatedLatestPickUpTimeMap,
                                                                     Map<Id<Request>, Double> updatedLatestDropOffTimeMap) {
         // Create PDPTW problem
@@ -86,10 +86,10 @@ public class PDPTWSolverJsprit {
         // 2.0 collect requests locations and compute the matrix
         newRequests.forEach(drtRequest -> collectLocationIfAbsent(drtRequest.getFromLink()));
         newRequests.forEach(drtRequest -> collectLocationIfAbsent(drtRequest.getToLink()));
-        acceptedWaitingRequests.forEach(acceptedDrtRequest -> collectLocationIfAbsent(acceptedDrtRequest.getFromLink()));
-        acceptedWaitingRequests.forEach(acceptedDrtRequest -> collectLocationIfAbsent(acceptedDrtRequest.getToLink()));
-        for (List<AcceptedDrtRequest> acceptedDrtRequests : requestsOnboard.values()) {
-            acceptedDrtRequests.forEach(acceptedDrtRequest -> collectLocationIfAbsent(acceptedDrtRequest.getToLink()));
+        acceptedWaitingRequests.forEach(acceptedDrtRequest -> collectLocationIfAbsent(network.getLinks().get(acceptedDrtRequest.key().fromLinkId())));
+        acceptedWaitingRequests.forEach(acceptedDrtRequest -> collectLocationIfAbsent(network.getLinks().get(acceptedDrtRequest.key().toLinkId())));
+        for (List<RollingHorizonDrtOptimizer.PreplannedRequest> requestOnboard : requestsOnboard.values()) {
+            requestOnboard.forEach(acceptedDrtRequest -> collectLocationIfAbsent(network.getLinks().get(acceptedDrtRequest.key().toLinkId())));
         }
 
         var vrpCosts = MatrixBasedVrpCosts.calculateVrpCosts(network, locationByLinkId);
@@ -100,15 +100,15 @@ public class PDPTWSolverJsprit {
             Link startLink = vehicleInfo.currentLink();
             double time = vehicleInfo.divertableTime();
             String skill = vehicleInfo.vehicle().getId().toString(); // We use skill to lock the vehicle and request already onboard
-            for (AcceptedDrtRequest requestOnboard : requestsOnboard.get(vehicleInfo)) {
-                double latestArrivalTime = requestOnboard.getLatestArrivalTime();
-                if (updatedLatestDropOffTimeMap.containsKey(requestOnboard.getId())) {
-                    latestArrivalTime = updatedLatestDropOffTimeMap.get(requestOnboard.getId());
+            for (RollingHorizonDrtOptimizer.PreplannedRequest requestOnboard : requestsOnboard.get(vehicleInfo)) {
+                double latestArrivalTime = requestOnboard.latestArrivalTime();
+                if (updatedLatestDropOffTimeMap.containsKey(requestOnboard.key().passengerId())) {
+                    latestArrivalTime = updatedLatestDropOffTimeMap.get(requestOnboard.key().passengerId());
                 }
-                var shipmentId = requestOnboard.getId() + "_dummy_" + time;
+                var shipmentId = requestOnboard.key().passengerId().toString() + "_dummy_" + time;
                 var shipment = Shipment.Builder.newInstance(shipmentId).
                         setPickupLocation(collectLocationIfAbsent(startLink)).
-                        setDeliveryLocation(collectLocationIfAbsent(requestOnboard.getToLink())).
+                        setDeliveryLocation(collectLocationIfAbsent(network.getLinks().get(requestOnboard.key().toLinkId()))).
                         setPickupTimeWindow(new TimeWindow(time, time)).
                         setPickupServiceTime(0).
                         setDeliveryServiceTime(drtCfg.getStopDuration()).
@@ -121,30 +121,30 @@ public class PDPTWSolverJsprit {
                 vrpBuilder.addJob(shipment);
 
                 var preplannedRequest = new RollingHorizonDrtOptimizer.PreplannedRequest(
-                        new RollingHorizonDrtOptimizer.PreplannedRequestKey(requestOnboard.getPassengerId(), startLink.getId(), requestOnboard.getToLink().getId()),
+                        new RollingHorizonDrtOptimizer.PreplannedRequestKey(requestOnboard.key().passengerId(), startLink.getId(), requestOnboard.key().toLinkId()),
                         time, time, latestArrivalTime);
                 preplannedRequestByShipmentId.put(shipmentId, preplannedRequest);
             }
         }
 
         // 2.2 Already accepted requests (not yet picked up)
-        for (AcceptedDrtRequest acceptedWaitingRequest : acceptedWaitingRequests) {
-            double latestPickUpTime = acceptedWaitingRequest.getLatestStartTime();
-            double latestArrivalTime = acceptedWaitingRequest.getLatestArrivalTime();
-            if (updatedLatestPickUpTimeMap.containsKey(acceptedWaitingRequest.getId())) {
-                latestPickUpTime = updatedLatestPickUpTimeMap.get(acceptedWaitingRequest.getId());
+        for (RollingHorizonDrtOptimizer.PreplannedRequest acceptedWaitingRequest : acceptedWaitingRequests) {
+            double latestPickUpTime = acceptedWaitingRequest.latestStartTime();
+            double latestArrivalTime = acceptedWaitingRequest.latestArrivalTime();
+            if (updatedLatestPickUpTimeMap.containsKey(acceptedWaitingRequest.key().passengerId())) {
+                latestPickUpTime = updatedLatestPickUpTimeMap.get(acceptedWaitingRequest.key().passengerId());
             }
-            if (updatedLatestDropOffTimeMap.containsKey(acceptedWaitingRequest.getId())) {
-                latestArrivalTime = updatedLatestDropOffTimeMap.get(acceptedWaitingRequest.getId());
+            if (updatedLatestDropOffTimeMap.containsKey(acceptedWaitingRequest.key().passengerId())) {
+                latestArrivalTime = updatedLatestDropOffTimeMap.get(acceptedWaitingRequest.key().passengerId());
             }
-            var shipmentId = acceptedWaitingRequest.getId() + "_repeat"; //TODO add a unique identification element?
+            var shipmentId = acceptedWaitingRequest.key().passengerId() + "_repeat";
             var shipment = Shipment.Builder.newInstance(shipmentId).
-                    setPickupLocation(collectLocationIfAbsent(acceptedWaitingRequest.getFromLink())).
-                    setDeliveryLocation(collectLocationIfAbsent(acceptedWaitingRequest.getToLink())).
-                    setPickupTimeWindow(new TimeWindow(acceptedWaitingRequest.getEarliestStartTime(), latestPickUpTime)).
+                    setPickupLocation(collectLocationIfAbsent(network.getLinks().get(acceptedWaitingRequest.key().fromLinkId()))).
+                    setDeliveryLocation(collectLocationIfAbsent(network.getLinks().get(acceptedWaitingRequest.key().toLinkId()))).
+                    setPickupTimeWindow(new TimeWindow(acceptedWaitingRequest.earliestStartTime(), latestPickUpTime)).
                     setPickupServiceTime(drtCfg.getStopDuration()).
                     setDeliveryServiceTime(drtCfg.getStopDuration()).
-                    setDeliveryTimeWindow(new TimeWindow(acceptedWaitingRequest.getEarliestStartTime(), latestArrivalTime)).
+                    setDeliveryTimeWindow(new TimeWindow(acceptedWaitingRequest.latestStartTime(), latestArrivalTime)).
                     addSizeDimension(0, 1).
                     setPriority(1).
                     build();
@@ -152,8 +152,9 @@ public class PDPTWSolverJsprit {
             vrpBuilder.addJob(shipment);
 
             var preplannedRequest = new RollingHorizonDrtOptimizer.PreplannedRequest(
-                    new RollingHorizonDrtOptimizer.PreplannedRequestKey(acceptedWaitingRequest.getPassengerId(), acceptedWaitingRequest.getFromLink().getId(), acceptedWaitingRequest.getToLink().getId()),
-                    acceptedWaitingRequest.getEarliestStartTime(), latestPickUpTime, latestArrivalTime);
+                    new RollingHorizonDrtOptimizer.PreplannedRequestKey(acceptedWaitingRequest.key().passengerId(),
+                            acceptedWaitingRequest.key().fromLinkId(), acceptedWaitingRequest.key().toLinkId()),
+                    acceptedWaitingRequest.earliestStartTime(), latestPickUpTime, latestArrivalTime);
             preplannedRequestByShipmentId.put(shipmentId, preplannedRequest);
         }
 
@@ -172,10 +173,7 @@ public class PDPTWSolverJsprit {
                     build();
             vrpBuilder.addJob(shipment);
 
-            var preplannedRequest = new RollingHorizonDrtOptimizer.PreplannedRequest(
-                    new RollingHorizonDrtOptimizer.PreplannedRequestKey(newRequest.getPassengerId(), newRequest.getFromLink().getId(), newRequest.getToLink().getId()),
-                    newRequest.getEarliestStartTime(), newRequest.getLatestStartTime(),
-                    newRequest.getLatestArrivalTime());
+            var preplannedRequest = RollingHorizonDrtOptimizer.createFromRequest(newRequest);
             preplannedRequestByShipmentId.put(shipmentId, preplannedRequest);
         }
 
@@ -196,9 +194,9 @@ public class PDPTWSolverJsprit {
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();
-        List<AcceptedDrtRequest> listOfRequestsOnboard = new ArrayList<>();
+        List<RollingHorizonDrtOptimizer.PreplannedRequest> listOfRequestsOnboard = new ArrayList<>();
         requestsOnboard.values().forEach(listOfRequestsOnboard::addAll);
-        listOfRequestsOnboard.forEach(r -> personsOnboard.add(r.getPassengerId()));
+        listOfRequestsOnboard.forEach(r -> personsOnboard.add(r.key().passengerId()));
 
         Map<RollingHorizonDrtOptimizer.PreplannedRequestKey, Id<DvrpVehicle>> preplannedRequestToVehicle = new HashMap<>();
         Map<Id<DvrpVehicle>, Queue<RollingHorizonDrtOptimizer.PreplannedStop>> vehicleToPreplannedStops = problem.getVehicles()
