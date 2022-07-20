@@ -51,7 +51,8 @@ public class PDPTWSolverJsprit {
         this.options = options;
     }
 
-    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(Map<DvrpVehicle, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
+    public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(RollingHorizonDrtOptimizer.PreplannedSchedules oldSchedule,
+                                                                    Map<DvrpVehicle, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
                                                                     List<DrtRequest> newRequests,
                                                                     Map<RollingHorizonDrtOptimizer.OnlineVehicleInfo, List<RollingHorizonDrtOptimizer.PreplannedRequest>> requestsOnboard,
                                                                     List<RollingHorizonDrtOptimizer.PreplannedRequest> acceptedWaitingRequests,

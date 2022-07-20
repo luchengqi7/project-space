@@ -10,7 +10,6 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.optimizer.VehicleEntry;
-import org.matsim.contrib.drt.optimizer.Waypoint;
 import org.matsim.contrib.drt.passenger.AcceptedDrtRequest;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
@@ -23,7 +22,6 @@ import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.optimizer.Request;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestRejectedEvent;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestScheduledEvent;
-import org.matsim.contrib.dvrp.path.DivertedVrpPath;
 import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
 import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.schedule.*;
@@ -197,12 +195,10 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 var request = Preconditions.checkNotNull(openRequests.get(nextStop.preplannedRequest.key.passengerId),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
-                System.err.println("Pick up: vehicle = " + vehicle.getId().toString() + " request = " + request.getPassengerId().toString()); //TODO delete
             } else {
                 var request = Preconditions.checkNotNull(openRequests.remove(nextStop.preplannedRequest.key.passengerId),
                         "Request (%s) has not been yet submitted", nextStop.preplannedRequest);
                 stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
-                System.err.println("Drop off: vehicle = " + vehicle.getId().toString() + " request = " + request.getPassengerId().toString()); // TODO delete
             }
             schedule.addTask(stopTask);
         }
@@ -299,7 +295,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             double endTime = now + horizon;
             log.info("Calculating the plan for t =" + now + " to t = " + endTime);
             log.info("There are " + newRequests.size() + " new request within this horizon");
-            preplannedSchedules = solver.calculate(realTimeVehicleInfoMap, newRequests,
+            preplannedSchedules = solver.calculate(preplannedSchedules, realTimeVehicleInfoMap, newRequests,
                     requestsOnboard, acceptedWaitingRequests, updatedLatestPickUpTimeMap, updatedLatestDropOffTimeMap);
 
             // Update vehicles schedules
