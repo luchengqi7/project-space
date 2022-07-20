@@ -14,8 +14,7 @@ https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/vulk
 The scripts are avialbe on GitHub: https://github.com/luchengqi7/project-space
 
 ## Additional Documents
-\\TODO link to the document adapted from the Master Thesis
-
+\\TODO link to the additional document
 
 For more details on MATSim, please visit [https://matsim.org/](https://matsim.org/)
 
