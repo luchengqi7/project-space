@@ -13,33 +13,11 @@ https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/vulk
 ## Scripts
 The scripts are avialbe on GitHub: https://github.com/luchengqi7/project-space
 
-## Documents
+## Additional Documents
 \\TODO link to the document adapted from the Master Thesis
 
 
-### Markdown
-How to run the scenario: 
-\\ TODO
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
 For more details on MATSim, please visit [https://matsim.org/](https://matsim.org/)
-
 
 ### Contact
 If you have any questions, please feel free to contact us:
