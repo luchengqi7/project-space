@@ -217,12 +217,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             }
 
             // Information to be passed to the Solver
-            Map<DvrpVehicle, OnlineVehicleInfo> realTimeVehicleInfoMap = new HashMap<>();
-            Map<OnlineVehicleInfo, List<PreplannedRequest>> requestsOnboard = new HashMap<>();
-
-            List<PreplannedRequest> acceptedWaitingRequests = new ArrayList<>(); //TODO merge this 3 information into one single record
-            Map<Id<Request>, Double> updatedLatestPickUpTimeMap = new HashMap<>(); //TODO merge this 3 information into one single record
-            Map<Id<Request>, Double> updatedLatestDropOffTimeMap = new HashMap<>(); //TODO merge this 3 information into one single record
+            Map<Id<DvrpVehicle>, OnlineVehicleInfo> realTimeVehicleInfoMap = new HashMap<>();
 
             // Begin reading data
             // Analyze vehicle current information
@@ -263,29 +258,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 Preconditions.checkState(currentLink != null, "Current link should not be null! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
                 Preconditions.checkState(!Double.isNaN(divertableTime), "Divertable time should not be NaN! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
                 OnlineVehicleInfo onlineVehicleInfo = new OnlineVehicleInfo(vehicleEntry.vehicle, currentLink, divertableTime);
-                realTimeVehicleInfoMap.put(vehicleEntry.vehicle, onlineVehicleInfo);
-            }
-
-            // Read requests that are already assigned (already picked up and to be picked up)
-            if (preplannedSchedules != null) {
-                for (Id<DvrpVehicle> vehicleId : vehicleEntries.keySet()) {
-                    DvrpVehicle vehicle = vehicleEntries.get(vehicleId).vehicle;
-                    var stopsToVisit = preplannedSchedules.vehicleToPreplannedStops.get(vehicleId);
-                    List<PreplannedRequest> passengersOnboard = new ArrayList<>();
-                    List<PreplannedRequest> acceptedPickups = new ArrayList<>();
-                    for (PreplannedStop stopToVisit : stopsToVisit) {
-                        if (!stopToVisit.pickup) {
-                            passengersOnboard.add(stopToVisit.preplannedRequest); // Intermediate results (see removeAll operation below)
-                        } else {
-                            acceptedPickups.add(stopToVisit.preplannedRequest);
-                        }
-                    }
-                    passengersOnboard.removeAll(acceptedPickups);
-
-                    acceptedWaitingRequests.addAll(acceptedPickups);
-                    requestsOnboard.put(realTimeVehicleInfoMap.get(vehicle), passengersOnboard);
-                    // TODO we need to consider the possible delays, that may make the accepted requests infeasible in the next optimization process!!!
-                }
+                realTimeVehicleInfoMap.put(vehicleEntry.vehicle.getId(), onlineVehicleInfo);
             }
 
             // Read new requests
@@ -295,8 +268,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             double endTime = now + horizon;
             log.info("Calculating the plan for t =" + now + " to t = " + endTime);
             log.info("There are " + newRequests.size() + " new request within this horizon");
-            preplannedSchedules = solver.calculate(preplannedSchedules, realTimeVehicleInfoMap, newRequests,
-                    requestsOnboard, acceptedWaitingRequests, updatedLatestPickUpTimeMap, updatedLatestDropOffTimeMap);
+            preplannedSchedules = solver.calculate(preplannedSchedules, realTimeVehicleInfoMap, newRequests);
 
             // Update vehicles schedules
             for (OnlineVehicleInfo onlineVehicleInfo : realTimeVehicleInfoMap.values()) {
@@ -369,7 +341,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
     }
 
     public record PreplannedRequestKey(Id<Person> passengerId, Id<Link> fromLinkId, Id<Link> toLinkId) {
-        // TODO (long-term) consider using request ID
+        // TODO (long-term) consider using request ID?
     }
 
     public record PreplannedStop(PreplannedRequest preplannedRequest, boolean pickup) {
