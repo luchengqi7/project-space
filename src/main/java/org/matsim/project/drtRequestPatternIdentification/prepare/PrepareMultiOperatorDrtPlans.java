@@ -1,4 +1,4 @@
-package org.matsim.project.multiOperatorStudy.prepare;
+package org.matsim.project.drtRequestPatternIdentification.prepare;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
@@ -9,10 +9,8 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
-import org.matsim.project.utils.ExtractDrtOnlyPlans;
 import picocli.CommandLine;
 
-import java.nio.file.Path;
 import java.util.List;
 
 public class PrepareMultiOperatorDrtPlans implements MATSimAppCommand {

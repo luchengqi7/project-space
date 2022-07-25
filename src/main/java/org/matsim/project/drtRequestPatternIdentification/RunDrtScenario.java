@@ -1,4 +1,4 @@
-package org.matsim.project.multiOperatorStudy;
+package org.matsim.project.drtRequestPatternIdentification;
 
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.run.DrtControlerCreator;
@@ -15,12 +15,12 @@ import java.nio.file.Path;
 		name = "run",
 		description = "run drt multi-operator study"
 )
-public class RunDrtMultiOperatorStudy implements MATSimAppCommand {
+public class RunDrtScenario implements MATSimAppCommand {
 	@CommandLine.Option(names = "--config", description = "path to config file", required = true)
 	private Path configPath;
 
 	public static void main(String[] args) {
-		new RunDrtMultiOperatorStudy().execute(args);
+		new RunDrtScenario().execute(args);
 	}
 
 	@Override
