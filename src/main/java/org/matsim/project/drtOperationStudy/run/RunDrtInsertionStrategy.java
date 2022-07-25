@@ -2,17 +2,22 @@ package org.matsim.project.drtOperationStudy.run;
 
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimApplication;
+import org.matsim.contrib.drt.optimizer.insertion.IncrementalStopDurationEstimator;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtConfigs;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtModule;
+import org.matsim.contrib.drt.schedule.StopDurationEstimator;
+import org.matsim.contrib.dvrp.run.AbstractDvrpModeModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.run.DvrpModule;
 import org.matsim.contrib.dvrp.run.DvrpQSimComponents;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
+import org.matsim.project.utils.LinearDrtStopDurationEstimator;
 import picocli.CommandLine;
 
 import javax.annotation.Nullable;
@@ -49,6 +54,18 @@ public class RunDrtInsertionStrategy extends MATSimApplication {
         controler.addOverridingModule(new DvrpModule());
         controler.addOverridingModule(new MultiModeDrtModule());
         controler.configureQSimComponents(DvrpQSimComponents.activateAllModes(multiModeDrtConfig));
+
+        MultiModeDrtConfigGroup multiModeDrtConfigGroup = MultiModeDrtConfigGroup.get(config);
+        for (DrtConfigGroup drtCfg : multiModeDrtConfigGroup.getModalElements()) {
+            // Add linear stop duration module
+            controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
+                @Override
+                public void install() {
+                    bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
+                    bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.getStopDuration()));
+                }
+            });
+        }
     }
 
 }
