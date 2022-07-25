@@ -278,7 +278,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 Link currentLink = onlineVehicleInfo.currentLink;
                 double divertableTime = onlineVehicleInfo.divertableTime;
 
-                // Stay task or stop task --> end now (then vehicle will find next task in the nextTask section)
+                // "Stay" task or "Wait for stop" task --> end now (then vehicle will find next task in the nextTask section)
                 if (currentTask instanceof DrtStayTask) {
                     currentTask.setEndTime(now);
                 }
