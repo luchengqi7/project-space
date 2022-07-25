@@ -30,7 +30,7 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
-public class NetworkValidation implements MATSimAppCommand {
+public class SchoolTransportNetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--api", description = "path to network file", defaultValue = "GOOGLE_MAP")
     private API api;
 
@@ -60,7 +60,7 @@ public class NetworkValidation implements MATSimAppCommand {
     private final String mode = "car";
 
     public static void main(String[] args) {
-        new NetworkValidation().execute(args);
+        new SchoolTransportNetworkValidation().execute(args);
     }
 
     @Override
