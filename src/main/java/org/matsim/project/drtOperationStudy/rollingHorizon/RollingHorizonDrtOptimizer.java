@@ -105,12 +105,12 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 if (!leg.getMode().equals(mode)) {
                     continue;
                 }
-                var startLink = network.getLinks().get(leg.getRoute().getStartLinkId()); // TODO does this work? Where is the walking to link calculated
+                var startLink = network.getLinks().get(leg.getRoute().getStartLinkId());
                 var endLink = network.getLinks().get(leg.getRoute().getEndLinkId());
-                double earliestPickupTime = leg.getDepartureTime().seconds();
+                double earliestPickupTime = leg.getDepartureTime().seconds() - 1; //TODO the departure time of the "leg" is always 1 second later than the departure in events file!!!
                 double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
                 double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(startLink, endLink, earliestPickupTime, router, travelTime).getTravelTime();
-                double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta(); //TODO this maybe different from the value in the submitted request!
+                double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta();
                 DrtRequest drtRequest = DrtRequest.newBuilder()
                         .id(Id.create(person.getId().toString() + "_" + counter, Request.class))
                         .submissionTime(earliestPickupTime)
