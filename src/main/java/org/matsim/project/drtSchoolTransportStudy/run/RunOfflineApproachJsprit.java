@@ -19,7 +19,7 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
 import org.matsim.project.drtSchoolTransportStudy.analysis.SchoolTripsAnalysis;
-import org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculator;
+import org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculatorForSchoolTransport;
 import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
 
@@ -138,7 +138,7 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
 
-        var options = new PreplannedSchedulesCalculator.Options(false, false, jspritIterations, multiThread, caseStudyTool);
+        var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, false, jspritIterations, multiThread, caseStudyTool);
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
                 .forEach(drtConfig -> controler.addOverridingQSimModule(
@@ -146,7 +146,7 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
                             @Override
                             protected void configureQSim() {
                                 bindModal(PreplannedDrtOptimizer.PreplannedSchedules.class).toProvider(modalProvider(
-                                        getter -> new PreplannedSchedulesCalculator(drtConfig,
+                                        getter -> new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
                                                 getter.getModal(FleetSpecification.class),
                                                 getter.getModal(Network.class), getter.get(Population.class),
                                                 options).calculate())).asEagerSingleton();

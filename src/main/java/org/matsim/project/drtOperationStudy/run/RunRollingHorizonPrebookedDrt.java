@@ -1,5 +1,6 @@
 package org.matsim.project.drtOperationStudy.run;
 
+import com.google.common.base.Preconditions;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
@@ -49,12 +50,20 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
     @CommandLine.Option(names = "--iterations", description = "path to output directory", defaultValue = "1000")
     private int maxIterations;
 
+    @CommandLine.Option(names = "--horizon", description = "path to output directory", defaultValue = "1800")
+    private double horizon;
+
+    @CommandLine.Option(names = "--interval", description = "path to output directory", defaultValue = "1800")
+    private double interval;
+
     public static void main(String[] args) {
         new RunRollingHorizonPrebookedDrt().execute(args);
     }
 
     @Override
     public Integer call() throws Exception {
+        Preconditions.checkArgument(interval <= horizon, "The interval must be smaller than or equal to the horizon!");
+
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
         DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next();
@@ -75,7 +84,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
                         getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class), getter.get(EventsManager.class), getter.getModal(Fleet.class),
                         getter.getModal(ScheduleTimingUpdater.class), getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
                         getter.getModal(VehicleEntry.EntryFactory.class),
-                        getter.get(PDPTWSolverJsprit.class), getter.get(Population.class))));
+                        getter.get(PDPTWSolverJsprit.class), getter.get(Population.class), horizon, interval)));
 
                 bind(PDPTWSolverJsprit.class).toProvider(modalProvider(
                         getter -> new PDPTWSolverJsprit(drtConfigGroup, getter.get(Network.class), options)));

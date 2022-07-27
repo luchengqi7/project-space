@@ -68,7 +68,7 @@ public class RunPreplannedDrtExample {
 
 		Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
 
-		var options = new PreplannedSchedulesCalculator.Options(false, true, 200, true);
+		var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, true, 200, true);
 
 		// compute PreplannedSchedules before starting QSim
 		MultiModeDrtConfigGroup.get(config)
@@ -78,7 +78,7 @@ public class RunPreplannedDrtExample {
 							@Override
 							protected void configureQSim() {
 								bindModal(PreplannedSchedules.class).toProvider(modalProvider(
-										getter -> new PreplannedSchedulesCalculator(drtConfig,
+										getter -> new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
 												getter.getModal(FleetSpecification.class),
 												getter.getModal(Network.class), getter.get(Population.class),
 												options).calculate())).asEagerSingleton();

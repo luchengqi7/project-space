@@ -65,8 +65,8 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
 
     private final PDPTWSolverJsprit solver; // TODO make an interface for this
 
-    private final double horizon = 1800; // TODO make it configurable
-    private final double interval = 1800; // Smaller than or equal to the horizon TODO make it configurable
+    private final double horizon;
+    private final double interval; // Must be smaller than or equal to the horizon
     private double serviceStartTime = Double.MAX_VALUE;
     private double serviceEndTime = 0;
 
@@ -78,7 +78,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                                       TravelDisutility travelDisutility, MobsimTimer timer, DrtTaskFactory taskFactory,
                                       EventsManager eventsManager, Fleet fleet, ScheduleTimingUpdater scheduleTimingUpdater,
                                       ForkJoinPool forkJoinPool, VehicleEntry.EntryFactory vehicleEntryFactory,
-                                      PDPTWSolverJsprit pdptwSolverJsprit, Population plans) {
+                                      PDPTWSolverJsprit pdptwSolverJsprit, Population plans, double horizon, double interval) {
         this.network = network;
         this.travelTime = travelTime;
         this.timer = timer;
@@ -93,9 +93,13 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         this.vehicleEntryFactory = vehicleEntryFactory;
         this.drtCfg = drtCfg;
         this.mode = drtCfg.getMode();
+        this.horizon = horizon;
+        this.interval = interval;
 
         readPrebookedRequests(plans);
         initSchedules(fleet);
+
+        assert interval <= horizon : "Interval of optimization must be smaller than or equal to the horizon length!";
     }
 
     private void readPrebookedRequests(Population plans) {

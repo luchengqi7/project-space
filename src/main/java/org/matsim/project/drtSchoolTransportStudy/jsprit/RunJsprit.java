@@ -20,7 +20,7 @@
 
 package org.matsim.project.drtSchoolTransportStudy.jsprit;
 
-import static org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculator.Options;
+import static org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculatorForSchoolTransport.Options;
 
 import java.util.Map;
 
@@ -77,7 +77,7 @@ public class RunJsprit implements MATSimAppCommand {
 		var fleetSpecification = new FleetSpecificationImpl();
 		new FleetReader(fleetSpecification).parse(drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext()));
 
-		new PreplannedSchedulesCalculator(drtCfg, fleetSpecification, network, population,
+		new PreplannedSchedulesCalculatorForSchoolTransport(drtCfg, fleetSpecification, network, population,
 				new Options(infiniteFleet, printProgressStatistics, 200, true)).calculate();
 	}
 }
