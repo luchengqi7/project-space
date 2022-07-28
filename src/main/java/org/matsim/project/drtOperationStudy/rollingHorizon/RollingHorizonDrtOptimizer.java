@@ -42,8 +42,6 @@ import java.util.stream.Collectors;
 
 import static org.matsim.contrib.drt.schedule.DrtTaskBaseType.STAY;
 
-//TODO In this implementation vehicle only have 1 task in the schedule. It will calculate for the next task when the current task ends.
-// This requires the permission for the schedule to be temporarily not ending with Stay task!
 public class RollingHorizonDrtOptimizer implements DrtOptimizer {
     private static final Logger log = Logger.getLogger(RollingHorizonDrtOptimizer.class);
     private final Network network;
@@ -111,7 +109,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 }
                 var startLink = network.getLinks().get(leg.getRoute().getStartLinkId());
                 var endLink = network.getLinks().get(leg.getRoute().getEndLinkId());
-                double earliestPickupTime = leg.getDepartureTime().seconds() - 1; //TODO the departure time of the "leg" is always 1 second later than the departure in events file!!!
+                double earliestPickupTime = leg.getDepartureTime().seconds();
                 double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
                 double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(startLink, endLink, earliestPickupTime, router, travelTime).getTravelTime();
                 double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta();
