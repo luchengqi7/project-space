@@ -65,7 +65,7 @@ import org.matsim.project.drtSchoolTransportStudy.run.CaseStudyTool;
 /**
  * @author Michal Maciejewski (michalm)
  */
-public class PreplannedSchedulesCalculator {
+public class PreplannedSchedulesCalculatorForSchoolTransport {
     public static class Options {
         public final boolean infiniteFleet;
         public final boolean printProgressStatistics;
@@ -99,8 +99,8 @@ public class PreplannedSchedulesCalculator {
     private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
     //infinite fleet - set to false when calculating plans inside the mobsim (the fleet is finite)
-    public PreplannedSchedulesCalculator(DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
-                                         Population population, Options options) {
+    public PreplannedSchedulesCalculatorForSchoolTransport(DrtConfigGroup drtCfg, FleetSpecification fleetSpecification, Network network,
+                                                           Population population, Options options) {
         this.drtCfg = drtCfg;
         this.fleetSpecification = fleetSpecification;
         this.network = network;
