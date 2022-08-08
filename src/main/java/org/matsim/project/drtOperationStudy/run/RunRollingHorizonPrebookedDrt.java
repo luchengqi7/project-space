@@ -28,11 +28,14 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.project.drtOperationStudy.analysis.RollingHorizonResultsQuantification;
 import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
 import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
 import org.matsim.project.utils.LinearDrtStopDurationEstimator;
 import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
 import picocli.CommandLine;
+
+import java.nio.file.Path;
 
 @CommandLine.Command(
         name = "rolling-horizon-test",
@@ -62,6 +65,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        long startTime = System.currentTimeMillis();
         Preconditions.checkArgument(interval <= horizon, "The interval must be smaller than or equal to the horizon!");
 
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
@@ -105,6 +109,15 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         });
 
         controler.run();
+
+        // Compute time used
+        long endTime = System.currentTimeMillis();
+        long timeUsed = (endTime - startTime) / 1000;
+        // Compute the score based on the objective function of the VRP solver
+        RollingHorizonResultsQuantification resultsQuantification = new RollingHorizonResultsQuantification();
+        resultsQuantification.analyze(Path.of(outputDirectory), timeUsed);
+        resultsQuantification.writeResults(Path.of(outputDirectory));
+
         return 0;
     }
 }

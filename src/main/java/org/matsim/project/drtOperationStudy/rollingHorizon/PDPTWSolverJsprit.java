@@ -5,6 +5,8 @@ import com.graphhopper.jsprit.core.problem.Location;
 import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
 import com.graphhopper.jsprit.core.problem.job.Job;
 import com.graphhopper.jsprit.core.problem.job.Shipment;
+import com.graphhopper.jsprit.core.problem.solution.SolutionCostCalculator;
+import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolution;
 import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.PickupShipment;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
@@ -23,6 +25,7 @@ import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.MatrixBasedVrpCosts;
+import org.matsim.project.drtSchoolTransportStudy.jsprit.listener.IterationScoreInfo;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +38,8 @@ public class PDPTWSolverJsprit {
     private final DrtConfigGroup drtCfg;
     private final Network network;
     private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
+
+    public static final double REJECTION_COST = 100000;
 
     public PDPTWSolverJsprit(DrtConfigGroup drtCfg, Network network, Options options) {
         this.drtCfg = drtCfg;
@@ -55,15 +60,15 @@ public class PDPTWSolverJsprit {
             double divertableTime = vehicleInfo.divertableTime();
 
             int capacity = vehicle.getCapacity();
-            double serviceEndTime = vehicle.getServiceEndTime();
-            var vehicleType = VehicleTypeImpl.Builder.newInstance(drtCfg.getMode() + "-vehicle")
+            var vehicleType = VehicleTypeImpl.Builder.newInstance(drtCfg.getMode() + "-vehicle-" + capacity + "-seats")
                     .addCapacityDimension(0, capacity)
                     .build();
-
+            double serviceEndTime = vehicle.getServiceEndTime();
             var vehicleBuilder = VehicleImpl.Builder.newInstance(vehicle.getId() + "");
             vehicleBuilder.setEarliestStart(divertableTime);
             vehicleBuilder.setLatestArrival(serviceEndTime);
             vehicleBuilder.setStartLocation(collectLocationIfAbsent(currentLink));
+            vehicleBuilder.setReturnToDepot(false);
             vehicleBuilder.setType(vehicleType);
             vehicleBuilder.addSkill(vehicle.getId().toString()); // Vehicle skills can be used to make sure the request already onboard will be matched to the same vehicle
             VehicleImpl jSpritVehicle = vehicleBuilder.build();
@@ -219,8 +224,10 @@ public class PDPTWSolverJsprit {
         }
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
+                .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
+//        algorithm.addListener(new IterationScoreInfo()); // TODO delete this after debugging!!!!!
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
@@ -270,6 +277,28 @@ public class PDPTWSolverJsprit {
                 .setIndex(locationByLinkId.size())
                 .setCoordinate(Coordinate.newInstance(link.getCoord().getX(), link.getCoord().getY()))
                 .build());
+    }
+
+    private record DefaultRollingHorizonObjectiveFunction(VehicleRoutingProblem vrp) implements SolutionCostCalculator {
+        @Override
+        public double getCosts(VehicleRoutingProblemSolution solution) {
+            double costs = 0;
+            for (VehicleRoute route : solution.getRoutes()) {
+                costs += route.getVehicle().getType().getVehicleCostParams().fix;
+                TourActivity prevAct = route.getStart();
+                for (TourActivity act : route.getActivities()) {
+                    costs += vrp.getTransportCosts().getTransportCost(prevAct.getLocation(), act.getLocation(), prevAct.getEndTime(), route.getDriver(), route.getVehicle());
+                    costs += vrp.getActivityCosts().getActivityCost(act, act.getArrTime(), route.getDriver(), route.getVehicle());
+                    prevAct = act;
+                }
+            }
+
+            for (Job j : solution.getUnassignedJobs()) {
+                costs += REJECTION_COST * (11 - j.getPriority());
+            }
+
+            return costs;
+        }
     }
 
 }

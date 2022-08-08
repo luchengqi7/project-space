@@ -18,12 +18,14 @@ import org.matsim.contrib.otfvis.OTFVisLiveModule;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
+import org.matsim.project.drtOperationStudy.analysis.RollingHorizonResultsQuantification;
 import org.matsim.project.drtOperationStudy.vrpSolver.JspritOfflineCalculator;
 import org.matsim.project.utils.LinearDrtStopDurationEstimator;
 import org.matsim.vis.otfvis.OTFVisConfigGroup;
 import picocli.CommandLine;
 
 import java.io.IOException;
+import java.nio.file.Path;
 
 // TODO maybe we don't need this at all. Just run the rolling horizon solver with the horizon and interval set to 24 hours.
 // Maybe use this as a verification for the rolling horizon approach (interval and horizon = 24h / whole service time)
@@ -51,6 +53,7 @@ public class RunOfflineOptimizationStrategy implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        long startTime = System.currentTimeMillis();
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup(),
                 new OTFVisConfigGroup());
         config.controler().setLastIteration(0);
@@ -101,6 +104,13 @@ public class RunOfflineOptimizationStrategy implements MATSimAppCommand {
         }
 
         controler.run();
+
+        long endTime = System.currentTimeMillis();
+        long timeUsed = (endTime - startTime) / 1000;
+        // Compute the score based on the objective function of the VRP solver
+        RollingHorizonResultsQuantification resultsQuantification = new RollingHorizonResultsQuantification();
+        resultsQuantification.analyze(Path.of(outputDirectory), timeUsed);
+        resultsQuantification.writeResults(Path.of(outputDirectory));
 
         return 0;
     }
