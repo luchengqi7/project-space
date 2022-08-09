@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
@@ -11,6 +12,7 @@ import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.NetworkCleaner;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
@@ -18,10 +20,7 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 @CommandLine.Command(
         name = "generate-plans-simple",
@@ -121,15 +120,32 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                         }
                     }
 
-                    // now we create a drt person based on this trip
+                    // Now,  we create a drt person based on this trip
+                    // We don't want the request to start on very long links
+                    List<Link> linksToRemove = new ArrayList<>();
+                    for (Link link : outputNetwork.getLinks().values()) {
+                        if (link.getLength() >= 1000) {
+                            linksToRemove.add(link);
+                        }
+                    }
+                    for (Link link : linksToRemove) {
+                        outputNetwork.removeLink(link.getId());
+                    }
+
+                    var cleaner = new NetworkCleaner();
+                    cleaner.run(outputNetwork);
+
+                    // Then we create the plans
                     Person dummyPerson = populationFactory.createPerson(Id.createPersonId("drt_person_" + counter));
                     Plan plan = populationFactory.createPlan();
                     Activity fromAct = populationFactory.createActivityFromCoord("dummy", fromCoord);
                     fromAct.setEndTime(trip.getOriginActivity().getEndTime().orElse(-1));
                     fromAct.setLinkId(NetworkUtils.getNearestLink(outputNetwork, fromCoord).getId());
+                    fromAct.setCoord(null); // This may be not necessary
                     Leg leg = populationFactory.createLeg(TransportMode.drt);
                     Activity toAct = populationFactory.createActivityFromCoord("dummy", toCoord);
                     toAct.setLinkId(NetworkUtils.getNearestLink(outputNetwork, toCoord).getId());
+                    toAct.setCoord(null); // This may be not necessary
 
                     plan.addActivity(fromAct);
                     plan.addLeg(leg);
