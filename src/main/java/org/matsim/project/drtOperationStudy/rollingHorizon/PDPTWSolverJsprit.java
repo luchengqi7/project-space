@@ -25,7 +25,6 @@ import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.MatrixBasedVrpCosts;
-import org.matsim.project.drtSchoolTransportStudy.jsprit.listener.IterationScoreInfo;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -227,7 +226,6 @@ public class PDPTWSolverJsprit {
                 .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
-//        algorithm.addListener(new IterationScoreInfo()); // TODO delete this after debugging!!!!!
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
