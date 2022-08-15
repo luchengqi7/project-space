@@ -68,7 +68,6 @@ public class StatisticCollectorForIterationEndsListener {
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
         try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "iteration_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
-
         ) {
             for (Map.Entry<Integer, Double> entry : costsMap.entrySet()) {
                 List<List<String>> tripRecords = new ArrayList<>();

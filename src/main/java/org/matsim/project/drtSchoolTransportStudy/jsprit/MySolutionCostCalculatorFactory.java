@@ -37,12 +37,8 @@ public class MySolutionCostCalculatorFactory {
         StatisticCollectorForOF statisticCollectorForOF;
         if (transportCosts instanceof MatrixBasedVrpCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(transportCosts, serviceTimeInMatsim);
-/*            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/
         } else if(transportCosts instanceof EuclideanCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
-/*            statisticCollectorForOF.setDesiredPickupTimeMap(matsimDrtRequest2Jsprit.getDesiredPickupTimeMap());
-            statisticCollectorForOF.setDesiredDeliveryTimeMap(matsimDrtRequest2Jsprit.getDesiredDeliveryTimeMap());*/
         } else{
             throw new RuntimeException("MatsimVrpCostsCaculatorType can either be EuclideanCosts or NetworkBased/MatrixBased!");
         }
@@ -964,7 +960,6 @@ public class MySolutionCostCalculatorFactory {
 
     private static double getDefaultCosts(VehicleRoutingProblemSolution solution, double maxCosts) {
         double costs = 0.;
-
         for (VehicleRoute route : solution.getRoutes()) {
             //costs += route.getVehicle().getType().getVehicleCostParams().fix;
             boolean hasBreak = false;
