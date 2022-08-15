@@ -80,8 +80,7 @@ public class StatisticUtils {
         Map<String, Job> jobs = problem.getJobs();
 
         for (Job j : problem.getJobs().values()) {
-            if (j instanceof Shipment) {
-                Shipment jShipment = (Shipment) j;
+            if (j instanceof Shipment jShipment) {
                 shipments.put(jShipment.getId(),jShipment);
 
                 //extract desiredPickupTime and desiredDeliveryTime

@@ -33,7 +33,7 @@ import java.util.Set;
 )
 public class ScenarioReducer implements MATSimAppCommand {
 
-    @CommandLine.Option(names = "--networkInputPath", description = "path to inpyt network", defaultValue = "scenarios/cottbus/network.xml.gz")
+    @CommandLine.Option(names = "--networkInputPath", description = "path to input network", defaultValue = "scenarios/cottbus/network.xml.gz")
     private static Path networkInputPath;
 
     @CommandLine.Option(names = "--planInputPath", description = "path to input plan", defaultValue = "scenarios/cottbus/drt-test-plans.xml.gz")
@@ -122,7 +122,7 @@ public class ScenarioReducer implements MATSimAppCommand {
                 }
 
 
-                //check if this person's trips contains a activity's location that already included in other person's trip
+                //check if this person's trips contains an activity's location that already included in other person's trip
                 if(coordList.contains(trip.getOriginActivity().getCoord())|coordList.contains(trip.getDestinationActivity().getCoord())) {
                     personToRemoveList.add(person);
                     break;
