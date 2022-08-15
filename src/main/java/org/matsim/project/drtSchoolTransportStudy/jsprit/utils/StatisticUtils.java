@@ -12,7 +12,6 @@ import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
 
 import java.util.*;
-
 //regarding printing csv
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,12 +52,6 @@ public class StatisticUtils {
 
     Map<String, Double> desiredPickupTimeMap = new HashMap<>();
     Map<String, Double> desiredDeliveryTimeMap = new HashMap<>();
-/*    public void setDesiredPickupTimeMap(Map<String, Double> desiredPickupTimeMap) {
-        this.desiredPickupTimeMap = desiredPickupTimeMap;
-    }
-    public void setDesiredDeliveryTimeMap(Map<String, Double> desiredDeliveryTimeMap) {
-        this.desiredDeliveryTimeMap = desiredDeliveryTimeMap;
-    }*/
 
 
     public StatisticUtils(Config config, VehicleRoutingTransportCosts transportCosts, double ServiceTimeInMatsim) {
@@ -149,7 +142,6 @@ public class StatisticUtils {
                         //time-related:
                         double pickupTime = act.getArrTime();
                         pickupTimeMap.put(jobId, pickupTime);
-
                         /*
                          * calculatedRealWaitingTime does not include the serviceTime of pickup and delivery.
                          */
@@ -158,7 +150,6 @@ public class StatisticUtils {
                         waitingTimeMap.put(jobId, realWaitingTime);
                         //realPickupArrivalTimeMap.put(jobId, act.getArrTime());
                         realPickupDepartureTimeMap.put(jobId, act.getEndTime());
-
 
                         //distance-related:
                         if (routeTravelDistanceMap.containsKey(jobId)) {
@@ -174,20 +165,16 @@ public class StatisticUtils {
                         //time-related:
                         double deliveryTime = act.getArrTime();
                         deliveryTimeMap.put(jobId, deliveryTime);
-
                         /*
                          * realInVehicleTime does not include the serviceTime of pickup and delivery.
                          */
                         double realInVehicleTime = act.getArrTime() - realPickupDepartureTimeMap.get(jobId);
                         inVehicleTimeMap.put(jobId, realInVehicleTime);
-
-
                         /*
                          * realTravelTime includes only the service time of pickup which is consistent with MATSim.
                          */
                         double realTravelTime = waitingTimeMap.get(jobId) + serviceTimeInMatsim + realInVehicleTime;
                         travelTimeMap.put(jobId, realTravelTime);
-
 
                         //distance-related:
                         if (routeTravelDistanceMap.containsKey(jobId)) {
@@ -248,9 +235,7 @@ public class StatisticUtils {
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
         try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "output_trips.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
-
         ) {
-
             //ToDo: check the order of assignedShipments <- .values()
             for (Shipment shipment : assignedShipments.values()) {
                 List<List<String>> tripRecords = new ArrayList<>();
@@ -353,9 +338,7 @@ public class StatisticUtils {
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
         try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "customer_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
-
         ) {
-
             DescriptiveStatistics waitStats = new DescriptiveStatistics();
             DescriptiveStatistics rideStats = new DescriptiveStatistics();
             DescriptiveStatistics distanceStats = new DescriptiveStatistics();
@@ -508,9 +491,7 @@ public class StatisticUtils {
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
         try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "vehicle_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
-
         ) {
-
             DescriptiveStatistics driven = new DescriptiveStatistics();
             DescriptiveStatistics passengerTraveledDistance = new DescriptiveStatistics();
             DescriptiveStatistics occupied = new DescriptiveStatistics();
@@ -600,9 +581,7 @@ public class StatisticUtils {
         if (!outputFilename.endsWith("/")) outputFilename = outputFilename + "/";
         try (CSVPrinter tripsCsvPrinter = new CSVPrinter(IOUtils.getBufferedWriter(outputFilename + "summary_stats.csv"),
                 CSVFormat.DEFAULT.withDelimiter(separator.charAt(0)).withHeader(tripsHeader))
-
         ) {
-
             DescriptiveStatistics inVehicleTimes = new DescriptiveStatistics();
             DescriptiveStatistics directInVehicleTimes = new DescriptiveStatistics();
             DescriptiveStatistics onboardDelayRatioStats = new DescriptiveStatistics();
