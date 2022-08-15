@@ -40,7 +40,7 @@ public class MySolutionCostCalculatorFactory {
         } else if(transportCosts instanceof EuclideanCosts) {
             statisticCollectorForOF = new StatisticCollectorForOF(serviceTimeInMatsim);
         } else{
-            throw new RuntimeException("MatsimVrpCostsCaculatorType can either be EuclideanCosts or NetworkBased/MatrixBased!");
+            throw new RuntimeException("MatsimVrpCostsCalculatorType can either be EuclideanCosts or NetworkBased/MatrixBased!");
         }
 
         switch (objectiveFunctionType) {
@@ -144,7 +144,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -187,7 +187,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -230,7 +230,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -282,7 +282,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -335,7 +335,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -379,7 +379,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -423,7 +423,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -482,7 +482,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    //throw new RuntimeException("There exists unassgndJobs.");
+                    //throw new RuntimeException("There exists unassignedJobs.");
                     LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
                 }
                 for(Job j : solution.getUnassignedJobs()){
@@ -538,7 +538,7 @@ public class MySolutionCostCalculatorFactory {
                     }
                 }
                 if (solution.getUnassignedJobs().size() != 0){
-                    throw new RuntimeException("There exists unassgndJobs.");
+                    throw new RuntimeException("There exists unassignedJobs.");
                 }
                 for(Job j : solution.getUnassignedJobs()){
                     costs += maxCosts * 2 * (11 - j.getPriority());
@@ -983,7 +983,7 @@ public class MySolutionCostCalculatorFactory {
             }
         }
         if (solution.getUnassignedJobs().size() != 0){
-            //throw new RuntimeException("There exists unassgndJobs.");
+            //throw new RuntimeException("There exists unassignedJobs.");
             LOG.info("************This solution has unassigned jobs! The number of unassigned jobs is: " + solution.getUnassignedJobs().size() + "************");
         }
         for(Job j : solution.getUnassignedJobs()){

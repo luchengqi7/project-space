@@ -101,6 +101,7 @@ public class MatsimDrtRequest2Jsprit {
 
 			this.serviceTimeInMatsim = drtCfg.getStopDuration();
 		}
+		assert fleetSpecificationUrl != null;
 		new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);
 
 		TravelTime travelTime = new FreeSpeedTravelTime();
