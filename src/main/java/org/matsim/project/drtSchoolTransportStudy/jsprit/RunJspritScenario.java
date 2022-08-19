@@ -221,7 +221,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);
 
-        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath.toString() + "/problem-with-solution.xml" : statsOutputPath.toString() + "problem-with-solution.xml";
+        String solutionOutputFilename = (!statsOutputPath.toString().endsWith("/")) ? statsOutputPath + "/problem-with-solution.xml" : statsOutputPath + "problem-with-solution.xml";
         new VrpXMLWriter(problem, solutions).write(solutionOutputFilename);
 
         StatisticCollectorForIterationEndsListener statisticCollectorForIterationEndsListener = new StatisticCollectorForIterationEndsListener(matsimDrtRequest2Jsprit.getConfig());
