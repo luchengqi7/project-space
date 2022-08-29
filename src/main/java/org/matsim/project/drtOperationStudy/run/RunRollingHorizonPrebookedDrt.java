@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.optimizer.QSimScopeForkJoinPoolHolder;
@@ -29,6 +30,7 @@ import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.drtOperationStudy.analysis.RollingHorizonResultsQuantification;
+import org.matsim.project.drtOperationStudy.analysis.UpdatedDrtTaskWriter;
 import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
 import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
 import org.matsim.project.utils.LinearDrtStopDurationEstimator;
@@ -117,6 +119,9 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         RollingHorizonResultsQuantification resultsQuantification = new RollingHorizonResultsQuantification();
         resultsQuantification.analyze(Path.of(outputDirectory), timeUsed);
         resultsQuantification.writeResults(Path.of(outputDirectory));
+
+        // Plot DRT stopping tasks
+        new UpdatedDrtTaskWriter(Path.of(outputDirectory)).run(WaitForStopTask.TYPE);
 
         return 0;
     }

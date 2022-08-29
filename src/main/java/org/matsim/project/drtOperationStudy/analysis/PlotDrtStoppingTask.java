@@ -1,6 +1,5 @@
 package org.matsim.project.drtOperationStudy.analysis;
 
-import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 
 import java.io.IOException;
