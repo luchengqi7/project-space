@@ -179,13 +179,13 @@ public class PDPTWSolverJsprit {
                 for (RollingHorizonDrtOptimizer.PreplannedRequest requestOnboardThisVehicle : requestsOnboardThisVehicle) {
                     iniRouteBuilder.addPickup(requestToShipmentMap.get(requestOnboardThisVehicle));
                 }
-                // Then pick up and delver the requests based on the stop plans
+                // Then deliver those requests based on the previous stop plans
                 for (RollingHorizonDrtOptimizer.PreplannedStop stop : previousSchedule.vehicleToPreplannedStops().get(vehicleId)) {
-                    Shipment shipment = requestToShipmentMap.get(stop.preplannedRequest());
-                    if (stop.pickup()) {
-                        iniRouteBuilder.addPickup(shipment);
-                    } else {
-                        iniRouteBuilder.addDelivery(shipment);
+                    if (requestsOnboardThisVehicle.contains(stop.preplannedRequest())) {
+                        Shipment shipment = requestToShipmentMap.get(stop.preplannedRequest());
+                        if (!stop.pickup()) {
+                            iniRouteBuilder.addDelivery(shipment);
+                        }
                     }
                 }
                 VehicleRoute iniRoute = iniRouteBuilder.build();
@@ -207,7 +207,7 @@ public class PDPTWSolverJsprit {
                     setPickupServiceTime(drtCfg.getStopDuration()).
                     setDeliveryServiceTime(drtCfg.getStopDuration()).
                     addSizeDimension(0, 1).
-                    setPriority(2).
+                    setPriority(10).
                     build();
             vrpBuilder.addJob(shipment);
 
