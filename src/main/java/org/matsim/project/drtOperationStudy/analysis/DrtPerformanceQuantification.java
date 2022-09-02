@@ -27,6 +27,8 @@ public class DrtPerformanceQuantification {
     private final RejectionStatistics rejectionStatistics = new RejectionStatistics();
     private String computationalTimeString = "unknown";
     private String iterationsString = "unknown";
+    private String horizonString = "not_applicable";
+    private String intervalString = "not_applicable";
 
     /**
      * Offline post analysis, to be called from the main method of this class.
@@ -51,6 +53,25 @@ public class DrtPerformanceQuantification {
 
         computationalTimeString = Long.toString(computationalTime);
         iterationsString = iterations;
+        Path eventPath = globFile(outputDirectory, "*output_events.*");
+        EventsManager eventsManager = EventsUtils.createEventsManager();
+        eventsManager.addHandler(vehicleDrivingTimeStatistics);
+        eventsManager.addHandler(rejectionStatistics);
+        MatsimEventsReader eventsReader = DrtEventsReaders.createEventsReader(eventsManager, WaitForStopTask.TYPE);
+        eventsReader.readFile(eventPath.toString());
+    }
+
+    /**
+     * Online post analysis for Rolling Horizon optimizer, to be attached to the run script
+     */
+    public void analyzeRollingHorizon(Path outputDirectory, long computationalTime, String iterations, String horizon, String interval) {
+        vehicleDrivingTimeStatistics.reset(0);
+        rejectionStatistics.reset(0);
+
+        computationalTimeString = Long.toString(computationalTime);
+        this.iterationsString = iterations;
+        this.intervalString = interval;
+        this.horizonString = horizon;
         Path eventPath = globFile(outputDirectory, "*output_events.*");
         EventsManager eventsManager = EventsUtils.createEventsManager();
         eventsManager.addHandler(vehicleDrivingTimeStatistics);
@@ -84,6 +105,23 @@ public class DrtPerformanceQuantification {
     }
 
     /**
+     * Write the title and result in the output directory for Rolling Horizon run
+     */
+    public void writeResultsRollingHorizon(Path outputDirectory) throws IOException {
+        Path outputStatsPath = Path.of(outputDirectory + "/drt-result-quantification.tsv");
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputStatsPath.toString()), CSVFormat.TDF);
+        List<String> titleRow = Arrays.asList("horizon", "interval", "iterations", "total_driving_time", "rejections", "computational_time");
+        tsvWriter.printRecord(titleRow);
+        tsvWriter.printRecord(Arrays.asList(horizonString, intervalString, iterationsString,
+                Double.toString(getTotalDrivingTime()), Long.toString(getRejections()), computationalTimeString));
+        tsvWriter.close();
+        System.out.println("Horizon = " + horizonString + ", Interval = " + intervalString + ", Iterations = " + iterationsString);
+        System.out.println("Computational time = " + computationalTimeString);
+        System.out.println("Total driving time = " + getTotalDrivingTime());
+        System.out.println("Number of rejections = " + getRejections());
+    }
+
+    /**
      * Print title row (for sequential runs)
      */
     public void writeTitle(Path outputDirectory) throws IOException {
@@ -95,14 +133,41 @@ public class DrtPerformanceQuantification {
     }
 
     /**
+     * Print title row (for sequential runs, Rolling Horizon)
+     */
+    public void writeTitleForRollingHorizon(Path outputDirectory) throws IOException {
+        Path outputStatsPath = Path.of(outputDirectory + "/drt-result-quantification.tsv");
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputStatsPath.toString()), CSVFormat.TDF);
+        List<String> titleRow = Arrays.asList("horizon", "interval", "iterations", "total_driving_time", "rejections", "computational_time");
+        tsvWriter.printRecord(titleRow);
+        tsvWriter.close();
+    }
+
+    /**
      * Print single entry (for sequential runs)
      */
     public void writeResultEntry(Path outputDirectory) throws IOException {
         Path outputStatsPath = Path.of(outputDirectory + "/drt-result-quantification.tsv");
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputStatsPath.toString(), true), CSVFormat.TDF);
-        tsvWriter.printRecord(Arrays.asList(iterationsString, Double.toString(getTotalDrivingTime()), Long.toString(getRejections()), computationalTimeString));
+        tsvWriter.printRecord(Arrays.asList(iterationsString,
+                Double.toString(getTotalDrivingTime()), Long.toString(getRejections()), computationalTimeString));
         tsvWriter.close();
         System.out.println("No. iterations = " + iterationsString);
+        System.out.println("Computational time = " + computationalTimeString);
+        System.out.println("Total driving time = " + getTotalDrivingTime());
+        System.out.println("Number of rejections = " + getRejections());
+    }
+
+    /**
+     * Print single entry (for sequential runs, Rolling Horizon)
+     */
+    public void writeResultEntryRollingHorizon(Path outputDirectory) throws IOException {
+        Path outputStatsPath = Path.of(outputDirectory + "/drt-result-quantification.tsv");
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputStatsPath.toString(), true), CSVFormat.TDF);
+        tsvWriter.printRecord(Arrays.asList(horizonString, intervalString, iterationsString,
+                Double.toString(getTotalDrivingTime()), Long.toString(getRejections()), computationalTimeString));
+        tsvWriter.close();
+        System.out.println("Horizon = " + horizonString + ", Interval = " + intervalString + ", Iterations = " + iterationsString);
         System.out.println("Computational time = " + computationalTimeString);
         System.out.println("Total driving time = " + getTotalDrivingTime());
         System.out.println("Number of rejections = " + getRejections());

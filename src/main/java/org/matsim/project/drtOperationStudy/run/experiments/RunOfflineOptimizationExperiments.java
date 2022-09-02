@@ -1,4 +1,4 @@
-package org.matsim.project.drtOperationStudy.run;
+package org.matsim.project.drtOperationStudy.run.experiments;
 
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
@@ -26,7 +26,7 @@ import picocli.CommandLine;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class RunOfflineSequential implements MATSimAppCommand {
+public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
 
@@ -39,10 +39,10 @@ public class RunOfflineSequential implements MATSimAppCommand {
     @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
     private boolean multiThread;
 
-    private static final Logger log = Logger.getLogger(RunOfflineSequential.class);
+    private static final Logger log = Logger.getLogger(RunOfflineOptimizationExperiments.class);
 
     public static void main(String[] args) throws IOException {
-        new RunOfflineSequential().execute(args);
+        new RunOfflineOptimizationExperiments().execute(args);
     }
 
     @Override

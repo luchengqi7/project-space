@@ -117,8 +117,9 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         long timeUsed = (endTime - startTime) / 1000;
         // Compute the score based on the objective function of the VRP solver
         DrtPerformanceQuantification resultsQuantification = new DrtPerformanceQuantification();
-        resultsQuantification.analyze(Path.of(outputDirectory), timeUsed, Integer.toString(maxIterations));
-        resultsQuantification.writeResults(Path.of(outputDirectory));
+        resultsQuantification.analyzeRollingHorizon(Path.of(outputDirectory), timeUsed, Integer.toString(maxIterations),
+                Double.toString(horizon), Double.toString(interval));
+        resultsQuantification.writeResultsRollingHorizon(Path.of(outputDirectory));
 
         // Plot DRT stopping tasks
         new UpdatedDrtTaskWriter(Path.of(outputDirectory)).run(WaitForStopTask.TYPE);

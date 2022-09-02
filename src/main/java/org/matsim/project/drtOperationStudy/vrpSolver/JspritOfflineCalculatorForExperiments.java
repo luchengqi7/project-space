@@ -87,13 +87,21 @@ public class JspritOfflineCalculatorForExperiments {
             vrpCommonPart.setVrpCommonPartRecord(new VrpCommonPartRecord(problem, algorithm, initialSolution, preplannedRequestByShipmentId, timeUsed));
         }
 
-        this.algorithm = vrpCommonPart.vrpCommonPartRecord.algorithm;
         this.initialSolution = vrpCommonPart.vrpCommonPartRecord.initialSolution;
         this.problem = vrpCommonPart.vrpCommonPartRecord.problem;
         this.preplannedRequestByShipmentId = vrpCommonPart.vrpCommonPartRecord.preplannedRequestByShipmentId;
 
+        String numOfThreads = "1";
+        if (options.multiThread) {
+            numOfThreads = Runtime.getRuntime().availableProcessors() + "";
+        }
+
+        this.algorithm = Jsprit.Builder.newInstance(problem)
+                .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
+                .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
         algorithm.addInitialSolution(initialSolution);
+
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
         SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE);

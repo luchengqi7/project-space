@@ -22,12 +22,12 @@ import picocli.CommandLine;
 
 import javax.annotation.Nullable;
 
-@CommandLine.Command(header = ":: Run insertion strategy ::", version = RunDrtInsertionStrategy.VERSION)
-public class RunDrtInsertionStrategy extends MATSimApplication {
+@CommandLine.Command(header = ":: Run insertion strategy ::", version = RunDrtOnlineOptimizationStrategy.VERSION)
+public class RunDrtOnlineOptimizationStrategy extends MATSimApplication {
     static final String VERSION = "1.0";
 
     public static void main(String[] args) {
-        MATSimApplication.run(RunDrtInsertionStrategy.class, args);
+        MATSimApplication.run(RunDrtOnlineOptimizationStrategy.class, args);
     }
 
     @Nullable
