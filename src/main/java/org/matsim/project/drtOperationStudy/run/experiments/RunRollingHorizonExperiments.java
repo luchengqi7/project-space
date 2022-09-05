@@ -37,6 +37,7 @@ import picocli.CommandLine;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Random;
 
 public class RunRollingHorizonExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
@@ -57,6 +58,9 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
     private boolean multiThread;
 
+    @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for the jsprit solver")
+    private long seed;
+
     private static final Logger log = Logger.getLogger(RunRollingHorizonExperiments.class);
 
     public static void main(String[] args) {
@@ -68,6 +72,7 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
         String[] iterationsToRun = maxIterationsString.split(",");
         String[] horizons = horizonsString.split(",");
         String[] intervals = intervalsString.split(",");
+        Random random = new Random(seed);
 
         DrtPerformanceQuantification performanceQuantification = new DrtPerformanceQuantification();
         if (!Files.exists(Path.of(outputRootDirectory))) {
@@ -99,7 +104,7 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
                     Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
                     controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
                     // Add rolling horizon module with PDPTWSolverJsprit
-                    var options = new PDPTWSolverJsprit.Options(iteration, multiThread);
+                    var options = new PDPTWSolverJsprit.Options(iteration, multiThread, random);
                     double finalInterval = interval; // This is needed, as lambda expression only accept final variable (?)
                     controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
                         @Override

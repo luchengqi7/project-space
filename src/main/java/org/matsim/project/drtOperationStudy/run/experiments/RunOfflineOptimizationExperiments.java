@@ -25,6 +25,7 @@ import picocli.CommandLine;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Random;
 
 public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
@@ -39,6 +40,9 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
     private boolean multiThread;
 
+    @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for the jsprit solver")
+    private long seed;
+
     private static final Logger log = Logger.getLogger(RunOfflineOptimizationExperiments.class);
 
     public static void main(String[] args) throws IOException {
@@ -47,6 +51,7 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        Random random = new Random(seed);
         JspritOfflineCalculatorForExperiments.VrpCommonPart vrpCommonPart = new JspritOfflineCalculatorForExperiments.VrpCommonPart();
         boolean initialized = false;
 
@@ -68,7 +73,7 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
                 }
             }
             Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
-            var options = new JspritOfflineCalculatorForExperiments.Options(true, maxIterations, multiThread);
+            var options = new JspritOfflineCalculatorForExperiments.Options(true, maxIterations, multiThread, random);
 
             // compute PreplannedSchedules before starting QSim
             MultiModeDrtConfigGroup.get(config)

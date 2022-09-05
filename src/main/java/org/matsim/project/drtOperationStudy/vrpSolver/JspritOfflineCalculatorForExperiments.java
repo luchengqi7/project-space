@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JspritOfflineCalculatorForExperiments {
-    public record Options(boolean printProgressStatistics, int maxIterations, boolean multiThread) {
+    public record Options(boolean printProgressStatistics, int maxIterations, boolean multiThread, Random random) {
 
     }
 
@@ -98,6 +98,7 @@ public class JspritOfflineCalculatorForExperiments {
 
         this.algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
+                .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
         algorithm.addInitialSolution(initialSolution);
@@ -245,6 +246,7 @@ public class JspritOfflineCalculatorForExperiments {
         }
         this.algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
+                .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(0);
 

@@ -38,6 +38,7 @@ import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmark
 import picocli.CommandLine;
 
 import java.nio.file.Path;
+import java.util.Random;
 
 @CommandLine.Command(
         name = "rolling-horizon-test",
@@ -80,7 +81,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
         // Add rolling horizon module with PDPTWSolverJsprit
-        var options = new PDPTWSolverJsprit.Options(maxIterations, true);
+        var options = new PDPTWSolverJsprit.Options(maxIterations, true, new Random(4711));
         controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
             @Override
             protected void configureQSim() {
