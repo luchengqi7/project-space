@@ -108,7 +108,7 @@ public class RunOnlineStrategy implements MATSimAppCommand {
 
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
                 // Use the rebalancing strategy for this rural area scenario
-//                controler.addOverridingQSimModule(new RuralScenarioRebalancingTCModule(drtCfg, 300));
+                controler.addOverridingQSimModule(new RuralScenarioRebalancingTCModule(drtCfg, 300));
                 // Use linear incremental stop duration
                 controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
                     @Override

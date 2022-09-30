@@ -51,7 +51,6 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        Random random = new Random(seed);
         JspritOfflineCalculatorForExperiments.VrpCommonPart vrpCommonPart = new JspritOfflineCalculatorForExperiments.VrpCommonPart();
         boolean initialized = false;
 
@@ -73,6 +72,8 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
                 }
             }
             Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
+
+            Random random = new Random(seed);
             var options = new JspritOfflineCalculatorForExperiments.Options(true, maxIterations, multiThread, random);
 
             // compute PreplannedSchedules before starting QSim

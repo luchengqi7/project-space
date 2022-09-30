@@ -72,7 +72,6 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
         String[] iterationsToRun = maxIterationsString.split(",");
         String[] horizons = horizonsString.split(",");
         String[] intervals = intervalsString.split(",");
-        Random random = new Random(seed);
 
         DrtPerformanceQuantification performanceQuantification = new DrtPerformanceQuantification();
         if (!Files.exists(Path.of(outputRootDirectory))) {
@@ -104,6 +103,7 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
                     Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
                     controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
                     // Add rolling horizon module with PDPTWSolverJsprit
+                    Random random = new Random(seed);
                     var options = new PDPTWSolverJsprit.Options(iteration, multiThread, random);
                     double finalInterval = interval; // This is needed, as lambda expression only accept final variable (?)
                     controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
