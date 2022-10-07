@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PDPTWSolverJsprit {
-    public record Options(int maxIterations, boolean multiThread) {
+    public record Options(int maxIterations, boolean multiThread, Random random) {
     }
 
     private final Options options;
@@ -183,9 +183,7 @@ public class PDPTWSolverJsprit {
                 for (RollingHorizonDrtOptimizer.PreplannedStop stop : previousSchedule.vehicleToPreplannedStops().get(vehicleId)) {
                     if (requestsOnboardThisVehicle.contains(stop.preplannedRequest())) {
                         Shipment shipment = requestToShipmentMap.get(stop.preplannedRequest());
-                        if (!stop.pickup()) {
-                            iniRouteBuilder.addDelivery(shipment);
-                        }
+                        iniRouteBuilder.addDelivery(shipment);
                     }
                 }
                 VehicleRoute iniRoute = iniRouteBuilder.build();
@@ -224,6 +222,7 @@ public class PDPTWSolverJsprit {
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
                 .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
+                .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
         var solutions = algorithm.searchSolutions();

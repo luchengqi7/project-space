@@ -29,7 +29,7 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
-import org.matsim.project.drtOperationStudy.analysis.RollingHorizonResultsQuantification;
+import org.matsim.project.drtOperationStudy.analysis.DrtPerformanceQuantification;
 import org.matsim.project.drtOperationStudy.analysis.UpdatedDrtTaskWriter;
 import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
 import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
@@ -38,6 +38,7 @@ import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmark
 import picocli.CommandLine;
 
 import java.nio.file.Path;
+import java.util.Random;
 
 @CommandLine.Command(
         name = "rolling-horizon-test",
@@ -80,7 +81,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
         // Add rolling horizon module with PDPTWSolverJsprit
-        var options = new PDPTWSolverJsprit.Options(maxIterations, true);
+        var options = new PDPTWSolverJsprit.Options(maxIterations, true, new Random(4711));
         controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
             @Override
             protected void configureQSim() {
@@ -116,9 +117,10 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         long endTime = System.currentTimeMillis();
         long timeUsed = (endTime - startTime) / 1000;
         // Compute the score based on the objective function of the VRP solver
-        RollingHorizonResultsQuantification resultsQuantification = new RollingHorizonResultsQuantification();
-        resultsQuantification.analyze(Path.of(outputDirectory), timeUsed);
-        resultsQuantification.writeResults(Path.of(outputDirectory));
+        DrtPerformanceQuantification resultsQuantification = new DrtPerformanceQuantification();
+        resultsQuantification.analyzeRollingHorizon(Path.of(outputDirectory), timeUsed, Integer.toString(maxIterations),
+                Double.toString(horizon), Double.toString(interval));
+        resultsQuantification.writeResultsRollingHorizon(Path.of(outputDirectory));
 
         // Plot DRT stopping tasks
         new UpdatedDrtTaskWriter(Path.of(outputDirectory)).run(WaitForStopTask.TYPE);

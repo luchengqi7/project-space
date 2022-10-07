@@ -6,13 +6,13 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.algorithms.NetworkCleaner;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
@@ -84,6 +84,23 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
         PopulationFactory populationFactory = inputPlans.getFactory();
         Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 
+        // We don't want the request to start on very long links
+        List<Link> linksToRemove = new ArrayList<>();
+        for (Link link : outputNetwork.getLinks().values()) {
+            if (link.getLength() >= 1000) {
+                linksToRemove.add(link);
+            }
+        }
+        linksToRemove.forEach(link -> network.removeLink(link.getId()));
+
+        List<Node> nodesToRemove = new ArrayList<>();
+        for (Node node : outputNetwork.getNodes().values()) {
+            if (node.getOutLinks().isEmpty() && node.getOutLinks().isEmpty()) {
+                nodesToRemove.add(node);
+            }
+        }
+        nodesToRemove.forEach(node -> network.removeNode(node.getId()));
+
         MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
         int counter = 0;
         for (Person person : inputPlans.getPersons().values()) {
@@ -121,20 +138,6 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                     }
 
                     // Now,  we create a drt person based on this trip
-                    // We don't want the request to start on very long links
-                    List<Link> linksToRemove = new ArrayList<>();
-                    for (Link link : outputNetwork.getLinks().values()) {
-                        if (link.getLength() >= 1000) {
-                            linksToRemove.add(link);
-                        }
-                    }
-                    for (Link link : linksToRemove) {
-                        outputNetwork.removeLink(link.getId());
-                    }
-
-                    var cleaner = new NetworkCleaner();
-                    cleaner.run(outputNetwork);
-
                     // Then we create the plans
                     Person dummyPerson = populationFactory.createPerson(Id.createPersonId("drt_person_" + counter));
                     Plan plan = populationFactory.createPlan();
