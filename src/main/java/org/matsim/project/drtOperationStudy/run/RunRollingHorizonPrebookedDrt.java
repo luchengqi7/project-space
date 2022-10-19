@@ -1,10 +1,12 @@
 package org.matsim.project.drtOperationStudy.run;
 
 import com.google.common.base.Preconditions;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
@@ -30,11 +32,10 @@ import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.drtOperationStudy.analysis.DrtPerformanceQuantification;
-import org.matsim.project.drtOperationStudy.analysis.UpdatedDrtTaskWriter;
 import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
 import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
-import org.matsim.project.utils.LinearDrtStopDurationEstimator;
 import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
+import org.matsim.project.utils.LinearDrtStopDurationEstimator;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
@@ -45,7 +46,7 @@ import java.util.Random;
         description = "run simple rolling horizon DRT"
 )
 public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
-    private static final Logger log = Logger.getLogger(RunRollingHorizonPrebookedDrt.class);
+    private final Logger log = LogManager.getLogger(RunRollingHorizonPrebookedDrt.class);
 
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
@@ -97,7 +98,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
                         getter -> new PDPTWSolverJsprit(drtConfigGroup, getter.get(Network.class), options)));
 
                 addModalComponent(QSimScopeForkJoinPoolHolder.class,
-                        () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.getNumberOfThreads()));
+                        () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));
                 bindModal(VehicleEntry.EntryFactory.class).toInstance(new VehicleDataEntryFactoryImpl(drtConfigGroup));
             }
         });
@@ -106,8 +107,8 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         controler.addOverridingModule(new AbstractDvrpModeModule(drtConfigGroup.getMode()) {
             @Override
             public void install() {
-                bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtConfigGroup.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
-                bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtConfigGroup.getStopDuration()));
+                bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtConfigGroup.stopDuration * (dropoffRequests.size() + pickupRequests.size()));
+                bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtConfigGroup.stopDuration));
             }
         });
 
@@ -123,7 +124,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         resultsQuantification.writeResultsRollingHorizon(Path.of(outputDirectory));
 
         // Plot DRT stopping tasks
-        new UpdatedDrtTaskWriter(Path.of(outputDirectory)).run(WaitForStopTask.TYPE);
+        new DrtVehicleStoppingTaskWriter(Path.of(outputDirectory)).addingCustomizedTaskToAnalyze(WaitForStopTask.TYPE).run(WaitForStopTask.TYPE);
 
         return 0;
     }

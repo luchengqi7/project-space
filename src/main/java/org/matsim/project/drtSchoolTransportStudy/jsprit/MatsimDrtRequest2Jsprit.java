@@ -1,10 +1,16 @@
 package org.matsim.project.drtSchoolTransportStudy.jsprit;
 
-import java.net.URL;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.log4j.Logger;
+import com.google.common.base.Preconditions;
+import com.graphhopper.jsprit.core.problem.Location;
+import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
+import com.graphhopper.jsprit.core.problem.job.Shipment;
+import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
+import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
+import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
+import com.graphhopper.jsprit.core.util.Coordinate;
+import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.Scenario;
@@ -32,15 +38,11 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.utils.SchoolTrafficUtils;
 
-import com.google.common.base.Preconditions;
-import com.graphhopper.jsprit.core.problem.Location;
-import com.graphhopper.jsprit.core.problem.VehicleRoutingProblem;
-import com.graphhopper.jsprit.core.problem.job.Shipment;
-import com.graphhopper.jsprit.core.problem.solution.route.activity.TimeWindow;
-import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
-import com.graphhopper.jsprit.core.problem.vehicle.VehicleType;
-import com.graphhopper.jsprit.core.util.Coordinate;
-import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
 
 public class MatsimDrtRequest2Jsprit {
 
@@ -69,7 +71,7 @@ public class MatsimDrtRequest2Jsprit {
 		return network;
 	}
 
-	private static final Logger LOG = Logger.getLogger(MatsimDrtRequest2Jsprit.class);
+	private final Logger LOG = LogManager.getLogger(MatsimDrtRequest2Jsprit.class);
 
 	private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
@@ -78,13 +80,13 @@ public class MatsimDrtRequest2Jsprit {
 	}
 
 	// ================ For test purpose
-	public static void main(String[] args) {
+	public static void main(String[] args) throws MalformedURLException {
 		MatsimDrtRequest2Jsprit matsimDrtRequest2Jsprit = new MatsimDrtRequest2Jsprit(
 				"/Users/haowu/workspace/playground/matsim-libs/examples/scenarios/dvrp-grid/one_taxi_config.xml",
 				"taxi", 0);
 	}
 
-	MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex) {
+	MatsimDrtRequest2Jsprit(String matsimConfig, String dvrpMode, int capacityIndex) throws MalformedURLException {
 		this.dvrpMode = dvrpMode;
 		this.capacityIndex = capacityIndex;
 
@@ -93,13 +95,14 @@ public class MatsimDrtRequest2Jsprit {
 		this.scenario = ScenarioUtils.loadScenario(config);
 		this.network = scenario.getNetwork();
 		for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
-			fleetSpecificationUrl = drtCfg.getVehiclesFileUrl(scenario.getConfig().getContext());
+			assert drtCfg.vehiclesFile != null;
+			fleetSpecificationUrl = URI.create(drtCfg.vehiclesFile).toURL();
 
-			this.maxTravelTimeAlpha = drtCfg.getMaxTravelTimeAlpha();
-			this.maxTravelTimeBeta = drtCfg.getMaxTravelTimeBeta();
-			this.maxWaitTime = drtCfg.getMaxWaitTime();
+			this.maxTravelTimeAlpha = drtCfg.maxTravelTimeAlpha;
+			this.maxTravelTimeBeta = drtCfg.maxTravelTimeBeta;
+			this.maxWaitTime = drtCfg.maxWaitTime;
 
-			this.serviceTimeInMatsim = drtCfg.getStopDuration();
+			this.serviceTimeInMatsim = drtCfg.stopDuration;
 		}
 		assert fleetSpecificationUrl != null;
 		new FleetReader(dvrpFleetSpecification).parse(fleetSpecificationUrl);

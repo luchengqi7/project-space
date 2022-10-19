@@ -49,9 +49,9 @@ public class SchoolTrafficRouteCreator implements DefaultMainLegRouter.RouteCrea
         route.setDistance(unsharedDistance);
         route.setTravelTime(maxTravelTime);
         route.setDirectRideTime(unsharedRideTime);
-        route.setMaxWaitTime(drtCfg.getMaxWaitTime());
+        route.setMaxWaitTime(drtCfg.maxWaitTime);
 
-        if (this.drtCfg.getStoreUnsharedPath()) {
+        if (this.drtCfg.storeUnsharedPath) {
             route.setUnsharedPath(unsharedPath);
         }
 

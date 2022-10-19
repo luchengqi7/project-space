@@ -1,27 +1,27 @@
 package org.matsim.project.drtSchoolTransportStudy.jsprit.prepare;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
-import org.matsim.application.MATSimAppCommand;
-import org.matsim.contrib.dvrp.fleet.*;
-import org.matsim.core.network.io.MatsimNetworkReader;
-import org.matsim.core.router.TripStructureUtils;
-import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
-
-import org.apache.log4j.Logger;
+import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.dvrp.fleet.*;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.population.io.PopulationWriter;
+import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
-import java.nio.file.Path;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -58,7 +58,7 @@ public class ScenarioReducer implements MATSimAppCommand {
     private static final double X_MAX = Double.MAX_VALUE;
     private static final double Y_MAX = Double.MAX_VALUE;*/
 
-    private static final Logger LOG = Logger.getLogger(ScenarioReducer.class);
+    private final Logger LOG = LogManager.getLogger(ScenarioReducer.class);
 
     public static void main(String[] args) {
         new ScenarioReducer().execute(args);

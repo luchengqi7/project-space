@@ -8,31 +8,30 @@ import com.graphhopper.jsprit.core.problem.solution.VehicleRoutingProblemSolutio
 import com.graphhopper.jsprit.core.problem.solution.route.VehicleRoute;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.BreakActivity;
 import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
-
 import com.graphhopper.jsprit.core.util.EuclideanCosts;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.utils.StatisticCollectorForOF;
+import org.matsim.project.drtSchoolTransportStudy.jsprit.utils.TransportCostUtils;
 
 import java.util.Map;
-
-import org.apache.log4j.Logger;
-import org.matsim.project.drtSchoolTransportStudy.jsprit.utils.TransportCostUtils;
 
 public class MySolutionCostCalculatorFactory {
 
     public enum ObjectiveFunctionType {JspritDefault, /*JspritDefaultMinusNoVeh, JspritDefaultPlusLatePickup, JspritDefaultPlusLatePickupMinusNoVeh, */Jsprit, JspritMinusNoVeh, JspritPlusLatePickup, JspritPlusLatePickupMinusNoVeh, TT, TTPlusNoVeh, TD, WT, TTTD, TTWT, TTWTTD, OnTimeArrival, OnTimeArrivalPlusTD, DD, DDPlusNoVeh, DT, DTPlusNoVeh, NoVeh, TTPlusDDPlusNoVeh, TTPlusDD, IVT, IVTPlusNoVeh, IVTPlusDDPlusNoVeh, IVTPlusDD, LatePickup, LatePickupPlusNoVeh}
 
-    private static final Logger LOG = Logger.getLogger(MySolutionCostCalculatorFactory.class);
+    private final static Logger LOG = LogManager.getLogger(MySolutionCostCalculatorFactory.class);
 
     public SolutionCostCalculator getObjectiveFunction(final VehicleRoutingProblem vrp, final double maxCosts, ObjectiveFunctionType objectiveFunctionType, Config config, VehicleRoutingTransportCosts transportCosts) {
         //prepare to calculate the KPIs
         double serviceTimeInMatsim = 0;
         //Config config = ConfigUtils.loadConfig(matsimConfig.toString(), new MultiModeDrtConfigGroup());
         for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
-            serviceTimeInMatsim = drtCfg.getStopDuration();
+            serviceTimeInMatsim = drtCfg.stopDuration;
         }
         StatisticCollectorForOF statisticCollectorForOF;
         if (transportCosts instanceof MatrixBasedVrpCosts) {

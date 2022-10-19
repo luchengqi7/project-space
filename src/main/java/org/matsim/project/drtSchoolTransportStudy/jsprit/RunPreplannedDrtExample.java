@@ -20,13 +20,8 @@
 
 package org.matsim.project.drtSchoolTransportStudy.jsprit;
 
-import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.PreplannedSchedules;
-
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Path;
-
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
@@ -43,11 +38,17 @@ import org.matsim.core.utils.io.IOUtils;
 import org.matsim.project.drtSchoolTransportStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.vis.otfvis.OTFVisConfigGroup;
 
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+
+import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.PreplannedSchedules;
+
 /**
  * @author michal.mac
  */
 public class RunPreplannedDrtExample {
-    private static final Logger log = Logger.getLogger(RunPreplannedDrtExample.class);
+	private static final Logger log = LogManager.getLogger(RunPreplannedDrtExample.class);
 	public static void main(String[] args) throws IOException {
 		var configFile = "scenarios/vulkaneifel-school-traffic/vulkaneifel-v1.0-school-childrem.config.xml";
 		RunPreplannedDrtExample.run(IOUtils.resolveFileOrResource(configFile), false, 0);

@@ -34,7 +34,8 @@ import com.graphhopper.jsprit.core.util.RandomNumberGeneration;
 import com.graphhopper.jsprit.core.util.Solutions;
 import com.graphhopper.jsprit.core.util.UnassignedJobReasonTracker;
 import com.graphhopper.jsprit.io.problem.VrpXMLWriter;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.listener.MyIterationEndsListener;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.utils.*;
@@ -103,7 +104,7 @@ public class RunJspritScenario implements MATSimAppCommand {
 
     private VehicleRoutingTransportCosts transportCosts;
 
-    private static final Logger LOG = Logger.getLogger(RunJspritScenario.class);
+    private static final Logger LOG = LogManager.getLogger(RunJspritScenario.class);
 
     public static void main(String[] args) {
         new RunJspritScenario().execute(args);

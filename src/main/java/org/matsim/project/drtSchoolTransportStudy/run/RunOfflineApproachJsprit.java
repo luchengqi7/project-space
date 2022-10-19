@@ -3,7 +3,8 @@ package org.matsim.project.drtSchoolTransportStudy.run;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
@@ -34,7 +35,7 @@ import java.nio.file.Path;
         description = "run jsprit experiment"
 )
 public class RunOfflineApproachJsprit implements MATSimAppCommand {
-    private static final Logger log = Logger.getLogger(RunOfflineApproachJsprit.class);
+    private final Logger log = LogManager.getLogger(RunOfflineApproachJsprit.class);
 
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private Path configPath;
@@ -126,13 +127,13 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
         config.controler().setLastIteration(0);
         modifyConfig(config, caseStudyTool);
 
-        if (!networkChangeEvents.equals("")){
+        if (!networkChangeEvents.equals("")) {
             config.network().setChangeEventsInputFile(networkChangeEvents);
             config.network().setTimeVariantNetwork(true);
-            double modifiedAlpha = drtConfigGroup.getMaxTravelTimeAlpha() * (1 - bufferForTraffic);
-            double modifiedBeta = drtConfigGroup.getMaxTravelTimeBeta() * (1 - bufferForTraffic);
-            drtConfigGroup.setMaxTravelTimeAlpha(modifiedAlpha);
-            drtConfigGroup.setMaxTravelTimeBeta(modifiedBeta);
+            double modifiedAlpha = drtConfigGroup.maxTravelTimeAlpha * (1 - bufferForTraffic);
+            double modifiedBeta = drtConfigGroup.maxTravelTimeBeta * (1 - bufferForTraffic);
+            drtConfigGroup.maxTravelTimeAlpha = modifiedAlpha;
+            drtConfigGroup.maxTravelTimeBeta = modifiedBeta;
         }
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
@@ -170,7 +171,7 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
         MultiModeDrtConfigGroup multiModeDrtConfigGroup = MultiModeDrtConfigGroup.get(config);
         for (DrtConfigGroup drtCfg : multiModeDrtConfigGroup.getModalElements()) {
             caseStudyTool.prepareCaseStudy(config, drtCfg);  // Prepare DRT config based on case study
-            drtCfg.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
+            drtCfg.vehiclesFile = "drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml";
             if (drtCfg.getRebalancingParams().isPresent()) {
                 log.warn("The rebalancing parameter set is defined for drt mode: "
                         + drtCfg.getMode()

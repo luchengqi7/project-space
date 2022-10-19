@@ -139,7 +139,7 @@ public class PDPTWSolverJsprit {
                                     setDeliveryLocation(collectLocationIfAbsent(network.getLinks().get(request.key().toLinkId()))).
                                     setPickupTimeWindow(new TimeWindow(vehicleStartTime, vehicleStartTime)).
                                     setPickupServiceTime(0).
-                                    setDeliveryServiceTime(drtCfg.getStopDuration()).
+                                    setDeliveryServiceTime(drtCfg.stopDuration).
                                     setDeliveryTimeWindow(new TimeWindow(vehicleStartTime, Math.max(request.latestArrivalTime(), earliestLatestDropOffTime))).
                                     addSizeDimension(0, 1).
                                     addRequiredSkill(vehicleId.toString()).
@@ -158,8 +158,8 @@ public class PDPTWSolverJsprit {
                                     setPickupLocation(collectLocationIfAbsent(network.getLinks().get(request.key().fromLinkId()))).
                                     setDeliveryLocation(collectLocationIfAbsent(network.getLinks().get(request.key().toLinkId()))).
                                     setPickupTimeWindow(new TimeWindow(request.earliestStartTime(), Math.max(request.latestStartTime(), earliestLatestPickUpTime))).
-                                    setPickupServiceTime(drtCfg.getStopDuration()).
-                                    setDeliveryServiceTime(drtCfg.getStopDuration()).
+                                    setPickupServiceTime(drtCfg.stopDuration).
+                                    setDeliveryServiceTime(drtCfg.stopDuration).
                                     setDeliveryTimeWindow(new TimeWindow(vehicleStartTime, Math.max(request.latestArrivalTime(), earliestLatestDropOffTime))).
                                     addSizeDimension(0, 1).
                                     setPriority(1).
@@ -170,7 +170,7 @@ public class PDPTWSolverJsprit {
                             preplannedRequestByShipmentId.put(shipmentId, request);
                         }
                     }
-                    currentTime += drtCfg.getStopDuration();
+                    currentTime += drtCfg.stopDuration;
                 }
 
                 // Now we need to create the initial route for this vehicle for the VRP problem
@@ -202,8 +202,8 @@ public class PDPTWSolverJsprit {
                     setDeliveryLocation(collectLocationIfAbsent(newRequest.getToLink())).
                     setPickupTimeWindow(new TimeWindow(newRequest.getEarliestStartTime(), newRequest.getLatestStartTime())).
                     setDeliveryTimeWindow(new TimeWindow(newRequest.getEarliestStartTime(), newRequest.getLatestArrivalTime())).
-                    setPickupServiceTime(drtCfg.getStopDuration()).
-                    setDeliveryServiceTime(drtCfg.getStopDuration()).
+                    setPickupServiceTime(drtCfg.stopDuration).
+                    setDeliveryServiceTime(drtCfg.stopDuration).
                     addSizeDimension(0, 1).
                     setPriority(10).
                     build();
