@@ -1,7 +1,7 @@
 package org.matsim.project.drtOperationStudy.run.experiments;
 
-import com.google.common.base.Preconditions;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
@@ -61,7 +61,7 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for the jsprit solver")
     private long seed;
 
-    private static final Logger log = Logger.getLogger(RunRollingHorizonExperiments.class);
+    private final Logger log = LogManager.getLogger(RunRollingHorizonExperiments.class);
 
     public static void main(String[] args) {
         new RunRollingHorizonExperiments().execute(args);
@@ -121,7 +121,7 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
                                     getter -> new PDPTWSolverJsprit(drtConfigGroup, getter.get(Network.class), options)));
 
                             addModalComponent(QSimScopeForkJoinPoolHolder.class,
-                                    () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.getNumberOfThreads()));
+                                    () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));
                             bindModal(VehicleEntry.EntryFactory.class).toInstance(new VehicleDataEntryFactoryImpl(drtConfigGroup));
                         }
                     });
@@ -130,8 +130,8 @@ public class RunRollingHorizonExperiments implements MATSimAppCommand {
                     controler.addOverridingModule(new AbstractDvrpModeModule(drtConfigGroup.getMode()) {
                         @Override
                         public void install() {
-                            bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtConfigGroup.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
-                            bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtConfigGroup.getStopDuration()));
+                            bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtConfigGroup.stopDuration * (dropoffRequests.size() + pickupRequests.size()));
+                            bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtConfigGroup.stopDuration));
                         }
                     });
 

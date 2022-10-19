@@ -119,17 +119,17 @@ public class RunOnlineApproach implements MATSimAppCommand {
             DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
             DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next(); // By default, the first drt config group is the one we are using
             caseStudyTool.prepareCaseStudy(config, drtConfigGroup);
-            drtConfigGroup.setVehiclesFile("drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml");
+            drtConfigGroup.vehiclesFile = "drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml";
             config.controler().setOutputDirectory(outputDirectory);
             config.global().setRandomSeed(seed);
 
             if (!networkChangeEvents.equals("")) {
                 config.network().setChangeEventsInputFile(networkChangeEvents);
                 config.network().setTimeVariantNetwork(true);
-                double modifiedAlpha = drtConfigGroup.getMaxTravelTimeAlpha() * (1 - bufferForTraffic);
-                double modifiedBeta = drtConfigGroup.getMaxTravelTimeBeta() * (1 - bufferForTraffic);
-                drtConfigGroup.setMaxTravelTimeAlpha(modifiedAlpha);
-                drtConfigGroup.setMaxTravelTimeBeta(modifiedBeta);
+                double modifiedAlpha = drtConfigGroup.maxTravelTimeAlpha * (1 - bufferForTraffic);
+                double modifiedBeta = drtConfigGroup.maxTravelTimeBeta * (1 - bufferForTraffic);
+                drtConfigGroup.maxTravelTimeAlpha = modifiedAlpha;
+                drtConfigGroup.maxTravelTimeBeta = modifiedBeta;
             }
 
             Scenario scenario = ScenarioUtils.loadScenario(config);
@@ -154,8 +154,8 @@ public class RunOnlineApproach implements MATSimAppCommand {
                 controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
                     @Override
                     public void install() {
-                        bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
-                        bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.getStopDuration()));
+                        bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.stopDuration * (dropoffRequests.size() + pickupRequests.size()));
+                        bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.stopDuration));
                     }
                 });
 

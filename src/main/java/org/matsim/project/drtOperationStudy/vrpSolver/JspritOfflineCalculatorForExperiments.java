@@ -203,12 +203,12 @@ public class JspritOfflineCalculatorForExperiments {
                 var dropoffLocation = locationByLinkId.get(endLink.getId());
 
                 double earliestPickupTime = leg.getDepartureTime().seconds();
-                double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
+                double latestPickupTime = earliestPickupTime + drtCfg.maxWaitTime;
                 double travelTime = vrpCosts.getTransportTime(pickupLocation, dropoffLocation, earliestPickupTime, null,
                         null);
 
                 double earliestDeliveryTime = earliestPickupTime + travelTime;
-                double latestDeliveryTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * travelTime + drtCfg.getMaxTravelTimeBeta();
+                double latestDeliveryTime = earliestPickupTime + drtCfg.maxTravelTimeAlpha * travelTime + drtCfg.maxTravelTimeBeta;
 
                 var shipmentId = person.getId()
                         + "_"
@@ -221,8 +221,8 @@ public class JspritOfflineCalculatorForExperiments {
                 var shipment = Shipment.Builder.newInstance(shipmentId)
                         .setPickupLocation(pickupLocation)
                         .setDeliveryLocation(dropoffLocation)
-                        .setPickupServiceTime(drtCfg.getStopDuration())
-                        .setDeliveryServiceTime(drtCfg.getStopDuration())
+                        .setPickupServiceTime(drtCfg.stopDuration)
+                        .setDeliveryServiceTime(drtCfg.stopDuration)
                         .setPickupTimeWindow(new TimeWindow(earliestPickupTime, latestPickupTime))
                         .setDeliveryTimeWindow(new TimeWindow(earliestDeliveryTime, latestDeliveryTime))
                         .addSizeDimension(0, 1)

@@ -28,12 +28,12 @@ public class RuralScenarioRebalancingTCModule extends AbstractDvrpModeQSimModule
         RebalancingParams params = drtCfg.getRebalancingParams().orElseThrow();
         assert params.getName().equals(MinCostFlowRebalancingStrategyParams.SET_NAME); // Currently, this one only works with Min Cost Flow strategy
         MinCostFlowRebalancingStrategyParams strategyParams = (MinCostFlowRebalancingStrategyParams) params.getRebalancingStrategyParams();
-        assert strategyParams.getTargetAlpha() == 1;
-        assert strategyParams.getTargetBeta() == 0;
+        assert strategyParams.targetAlpha == 1;
+        assert strategyParams.targetBeta == 0;
 
         bindModal(RebalancingTargetCalculator.class).toProvider(modalProvider(
                 getter -> new RuralScenarioRebalancingTargetCalculator(
                         getter.getModal(ZonalDemandEstimator.class),
-                        strategyParams.getDemandEstimationPeriod(), lookAheadTime))).asEagerSingleton();
+                        strategyParams.demandEstimationPeriod, lookAheadTime))).asEagerSingleton();
     }
 }

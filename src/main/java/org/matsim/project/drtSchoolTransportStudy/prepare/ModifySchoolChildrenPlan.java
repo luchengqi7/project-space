@@ -3,7 +3,8 @@ package org.matsim.project.drtSchoolTransportStudy.prepare;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -47,7 +48,7 @@ import java.util.Random;
  * output of the runs more meaningful
  */
 public class ModifySchoolChildrenPlan implements MATSimAppCommand {
-    private static final Logger log = Logger.getLogger(ModifySchoolChildrenPlan.class);
+    private static final Logger log = LogManager.getLogger(ModifySchoolChildrenPlan.class);
 
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
@@ -89,7 +90,7 @@ public class ModifySchoolChildrenPlan implements MATSimAppCommand {
         log.info("Walking speed is " + walkingSpeed + " m/s");
 
         MultiModeDrtConfigGroup drtConfigGroup = ConfigUtils.addOrGetModule(config, MultiModeDrtConfigGroup.class);
-        double stopDuration = drtConfigGroup.getModalElements().iterator().next().getStopDuration(); // Use the first Drt Config Group by default
+        double stopDuration = drtConfigGroup.getModalElements().iterator().next().stopDuration; // Use the first Drt Config Group by default
         log.info("DRT Stop Duration is: " + stopDuration + " s");
 
         Network network = NetworkUtils.readNetwork(networkPath);

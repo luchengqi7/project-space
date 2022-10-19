@@ -1,6 +1,7 @@
 package org.matsim.project.drtOperationStudy.run.experiments;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
@@ -43,7 +44,7 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for the jsprit solver")
     private long seed;
 
-    private static final Logger log = Logger.getLogger(RunOfflineOptimizationExperiments.class);
+    private final Logger log = LogManager.getLogger(RunOfflineOptimizationExperiments.class);
 
     public static void main(String[] args) throws IOException {
         new RunOfflineOptimizationExperiments().execute(args);
@@ -98,8 +99,8 @@ public class RunOfflineOptimizationExperiments implements MATSimAppCommand {
                 controler.addOverridingModule(new AbstractDvrpModeModule(drtCfg.getMode()) {
                     @Override
                     public void install() {
-                        bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.getStopDuration() * (dropoffRequests.size() + pickupRequests.size()));
-                        bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.getStopDuration()));
+                        bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtCfg.stopDuration * (dropoffRequests.size() + pickupRequests.size()));
+                        bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtCfg.stopDuration));
                     }
                 });
             }

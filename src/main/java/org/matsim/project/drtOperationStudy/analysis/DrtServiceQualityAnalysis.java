@@ -4,7 +4,8 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -35,7 +36,7 @@ public class DrtServiceQualityAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--directory", description = "path to matsim output directory", required = true)
     private Path directory;
 
-    private static final Logger log = Logger.getLogger(DrtServiceQualityAnalysis.class);
+    private final Logger log = LogManager.getLogger(DrtServiceQualityAnalysis.class);
 
     public static void main(String[] args) {
         new DrtServiceQualityAnalysis().execute(args);

@@ -1,7 +1,8 @@
 package org.matsim.project.drtOperationStudy.rollingHorizon;
 
 import com.google.common.base.Preconditions;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -43,7 +44,7 @@ import java.util.stream.Collectors;
 import static org.matsim.contrib.drt.schedule.DrtTaskBaseType.STAY;
 
 public class RollingHorizonDrtOptimizer implements DrtOptimizer {
-    private static final Logger log = Logger.getLogger(RollingHorizonDrtOptimizer.class);
+    private final Logger log = LogManager.getLogger(RollingHorizonDrtOptimizer.class);
     private final Network network;
     private final TravelTime travelTime;
     private final MobsimTimer timer;
@@ -85,7 +86,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
         this.scheduleTimingUpdater = scheduleTimingUpdater;
         this.solver = pdptwSolverJsprit;
         this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
-        this.stopDuration = drtCfg.getStopDuration();
+        this.stopDuration = drtCfg.stopDuration;
         this.fleet = fleet;
         this.forkJoinPool = forkJoinPool;
         this.vehicleEntryFactory = vehicleEntryFactory;
@@ -110,9 +111,9 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                 var startLink = network.getLinks().get(leg.getRoute().getStartLinkId());
                 var endLink = network.getLinks().get(leg.getRoute().getEndLinkId());
                 double earliestPickupTime = leg.getDepartureTime().seconds();
-                double latestPickupTime = earliestPickupTime + drtCfg.getMaxWaitTime();
+                double latestPickupTime = earliestPickupTime + drtCfg.maxWaitTime;
                 double estimatedDirectTravelTime = VrpPaths.calcAndCreatePath(startLink, endLink, earliestPickupTime, router, travelTime).getTravelTime();
-                double latestArrivalTime = earliestPickupTime + drtCfg.getMaxTravelTimeAlpha() * estimatedDirectTravelTime + drtCfg.getMaxTravelTimeBeta();
+                double latestArrivalTime = earliestPickupTime + drtCfg.maxTravelTimeAlpha * estimatedDirectTravelTime + drtCfg.maxTravelTimeBeta;
                 DrtRequest drtRequest = DrtRequest.newBuilder()
                         .id(Id.create(person.getId().toString() + "_" + counter, Request.class))
                         .submissionTime(earliestPickupTime)
