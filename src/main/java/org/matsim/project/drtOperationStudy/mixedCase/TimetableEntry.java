@@ -1,20 +1,26 @@
 package org.matsim.project.drtOperationStudy.mixedCase;
 
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
-import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
 
 public class TimetableEntry {
-    private final RollingHorizonDrtOptimizer.PreplannedStop preplannedStop;
+
+    enum StopType {PICKUP, DROP_OFF}
+
+    private final MixedCaseDrtOptimizer.GeneralRequest request;
+    final StopType stopType;
     private double arrivalTime;
     private double departureTime;
     private int occupancyBeforeStop;
     private final double stopDuration;
     private final int capacity;
 
-    public TimetableEntry(RollingHorizonDrtOptimizer.PreplannedStop preplannedStop, double arrivalTime,
+    public TimetableEntry(MixedCaseDrtOptimizer.GeneralRequest request, StopType stopType, double arrivalTime,
                           double departureTime, int occupancyBeforeStop, double stopDuration,
                           DvrpVehicle vehicle) {
-        this.preplannedStop = preplannedStop;
+        this.request = request;
+        this.stopType = stopType;
         this.arrivalTime = arrivalTime;
         this.departureTime = departureTime;
         this.occupancyBeforeStop = occupancyBeforeStop;
@@ -26,7 +32,8 @@ public class TimetableEntry {
      * Make a copy of the object
      */
     public TimetableEntry(TimetableEntry timetableEntry) {
-        this.preplannedStop = timetableEntry.preplannedStop;
+        this.request = timetableEntry.request;
+        this.stopType = timetableEntry.stopType;
         this.arrivalTime = timetableEntry.arrivalTime;
         this.departureTime = timetableEntry.departureTime;
         this.occupancyBeforeStop = timetableEntry.occupancyBeforeStop;
@@ -67,27 +74,24 @@ public class TimetableEntry {
     }
 
     public boolean checkOccupancyFeasibility() {
-        if (preplannedStop.pickup()) {
+        if (stopType == StopType.PICKUP) {
             return occupancyBeforeStop < capacity;
         }
         return occupancyBeforeStop <= capacity;
     }
 
-//    public boolean checkTimeFeasibility() {
-//        if (preplannedStop.pickup()) {
-//            return preplannedStop.preplannedRequest().latestStartTime() <= arrivalTime;
-//        }
-//        return preplannedStop.preplannedRequest().latestArrivalTime() <= arrivalTime;
-//    }
-
     public boolean checkTimeFeasibility(double delay) {
-        if (preplannedStop.pickup()) {
-            return arrivalTime + delay <= preplannedStop.preplannedRequest().latestStartTime();
+        if (stopType == StopType.PICKUP) {
+            return arrivalTime + delay <= request.latestStartTime();
         }
-        return arrivalTime + delay <= preplannedStop.preplannedRequest().latestArrivalTime();
+        return arrivalTime + delay <= request.latestArrivalTime();
     }
 
     // Getter functions
+    public MixedCaseDrtOptimizer.GeneralRequest getRequest() {
+        return request;
+    }
+
     public double getArrivalTime() {
         return arrivalTime;
     }
@@ -96,8 +100,11 @@ public class TimetableEntry {
         return departureTime;
     }
 
-    public RollingHorizonDrtOptimizer.PreplannedStop getPreplannedStop() {
-        return preplannedStop;
+    Id<Link> getLinkId() {
+        if (stopType == StopType.PICKUP) {
+            return request.fromLinkId();
+        }
+        return request.toLinkId();
     }
 
     public int getOccupancyBeforeStop() {

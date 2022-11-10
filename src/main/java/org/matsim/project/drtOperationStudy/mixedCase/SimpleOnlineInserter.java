@@ -1,61 +1,52 @@
 package org.matsim.project.drtOperationStudy.mixedCase;
 
-import com.graphhopper.jsprit.core.problem.Location;
-import com.graphhopper.jsprit.core.util.Coordinate;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
-import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
-import org.matsim.project.drtSchoolTransportStudy.jsprit.MatrixBasedVrpCosts;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class MixedCaseInserter {
+public class SimpleOnlineInserter {
     private final Network network;
     private final double stopDuration;
-    private final MatrixBasedVrpCosts vrpCosts;
-    private final Map<Id<Link>, Location> locationByLinkId;
 
-    public MixedCaseInserter(Network network, MatrixBasedVrpCosts vrpCosts, Map<Id<Link>, Location> locationByLinkId, DrtConfigGroup drtConfigGroup) {
+    public SimpleOnlineInserter(Network network, DrtConfigGroup drtConfigGroup) {
         this.network = network;
-        this.vrpCosts = vrpCosts;
-        this.locationByLinkId = locationByLinkId;
         this.stopDuration = drtConfigGroup.stopDuration;
     }
 
-    public void insert(DrtRequest request, Map<DvrpVehicle, List<TimetableEntry>> timetables,
-                       Map<Id<DvrpVehicle>, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap) {
+    public void insert(DrtRequest request, Map<Id<DvrpVehicle>, List<TimetableEntry>> timetables,
+                       Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
+                       LinkToLinkTravelTimeMatrix travelTimeMatrix) {
         // Request information
         Link fromLink = request.getFromLink();
         Link toLink = request.getToLink();
         double latestPickUpTime = request.getLatestStartTime();
         double latestArrivalTime = request.getLatestArrivalTime();
-        RollingHorizonDrtOptimizer.PreplannedRequest preplannedRequest = RollingHorizonDrtOptimizer.createFromRequest(request); //TODO the naming is not optimal. This is actually spontaneous request.
-        RollingHorizonDrtOptimizer.PreplannedStop pickupStop = new RollingHorizonDrtOptimizer.PreplannedStop(preplannedRequest, true);
-        RollingHorizonDrtOptimizer.PreplannedStop dropOffStop = new RollingHorizonDrtOptimizer.PreplannedStop(preplannedRequest, false);
+        MixedCaseDrtOptimizer.GeneralRequest spontaneousRequest = MixedCaseDrtOptimizer.createFromDrtRequest(request);
 
         // Try to find the best insertion
         double bestInsertionCost = Double.MAX_VALUE;
         DvrpVehicle selectedVehicle = null;
         List<TimetableEntry> updatedTimetable = null;
 
-        for (DvrpVehicle vehicle : timetables.keySet()) {
-            RollingHorizonDrtOptimizer.OnlineVehicleInfo vehicleInfo = realTimeVehicleInfoMap.get(vehicle.getId());
+        for (Id<DvrpVehicle> vehicleId : timetables.keySet()) {
+            MixedCaseDrtOptimizer.OnlineVehicleInfo vehicleInfo = realTimeVehicleInfoMap.get(vehicleId);
             Link currentLink = vehicleInfo.currentLink();
             double divertableTime = vehicleInfo.divertableTime();
 
-            List<TimetableEntry> originalTimetable = timetables.get(vehicle);
+            List<TimetableEntry> originalTimetable = timetables.get(vehicleId);
 
             // 1 If original timetable is empty
             if (originalTimetable.isEmpty()) {
-                double timeToPickup = vrpCosts.getTransportTime(collectLocationIfAbsent(currentLink), collectLocationIfAbsent(fromLink), divertableTime, null, null);
+                double timeToPickup = travelTimeMatrix.getLinkToLinkTravelTime(currentLink.getId(), fromLink.getId());
                 double arrivalTimePickUp = divertableTime + timeToPickup;
-                double tripTravelTime = vrpCosts.getTransportTime(collectLocationIfAbsent(fromLink), collectLocationIfAbsent(toLink), arrivalTimePickUp + stopDuration, null, null);
+                double tripTravelTime = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), toLink.getId());
                 double arrivalTimeDropOff = arrivalTimePickUp + stopDuration + tripTravelTime;
                 if (arrivalTimePickUp > latestPickUpTime) {
                     continue;
@@ -63,10 +54,10 @@ public class MixedCaseInserter {
 
                 if (timeToPickup < bestInsertionCost) {
                     bestInsertionCost = timeToPickup;
-                    selectedVehicle = vehicle;
+                    selectedVehicle = vehicleInfo.vehicle();
                     updatedTimetable = new ArrayList<>();
-                    updatedTimetable.add(new TimetableEntry(pickupStop, arrivalTimePickUp, arrivalTimePickUp + stopDuration, 0, stopDuration, vehicle));
-                    updatedTimetable.add(new TimetableEntry(dropOffStop, arrivalTimeDropOff, vehicle.getServiceEndTime(), 1, stopDuration, vehicle));
+                    updatedTimetable.add(new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP, arrivalTimePickUp, arrivalTimePickUp + stopDuration, 0, stopDuration, selectedVehicle));
+                    updatedTimetable.add(new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF, arrivalTimeDropOff, selectedVehicle.getServiceEndTime(), 1, stopDuration, selectedVehicle));
                 }
                 continue;
             }
@@ -80,20 +71,21 @@ public class MixedCaseInserter {
             // 2.1.1 Insert pickup before first stop
             {
                 TimetableEntry stopToInsertBefore = originalTimetable.get(0);
-                Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getPreplannedStop().getLinkId());
-                double detourA = vrpCosts.getTransportTime(collectLocationIfAbsent(currentLink), collectLocationIfAbsent(fromLink), divertableTime, null, null);
+                Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getLinkId());
+                double detourA = travelTimeMatrix.getLinkToLinkTravelTime(currentLink.getId(), fromLink.getId());
                 double pickupTime = divertableTime + detourA;
                 if (pickupTime > latestPickUpTime) {
                     break; // Vehicle is too far away. No need to continue with this vehicle
                 }
-                double detourB = vrpCosts.getTransportTime(collectLocationIfAbsent(fromLink), collectLocationIfAbsent(linkOfStopToInsertBefore), pickupTime + stopDuration, null, null);
+                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopToInsertBefore.getId());
                 double delay = detourA + detourB - (originalTimetable.get(0).getArrivalTime() - divertableTime);
 
                 boolean feasible = isInsertionFeasible(originalTimetable, 0, delay);
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
                     pickupIdx = 0;
-                    pickupStopToInsert = new TimetableEntry(pickupStop, pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicle);
+                    pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
+                            pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                 }
             }
 
@@ -101,34 +93,36 @@ public class MixedCaseInserter {
             for (int i = 1; i < originalTimetable.size(); i++) {
                 TimetableEntry stopToInsertAfter = originalTimetable.get(i - 1);
                 TimetableEntry stopToInsertBefore = originalTimetable.get(i);
-                Link linkOfStopToInsertAfter = network.getLinks().get(originalTimetable.get(i - 1).getPreplannedStop().getLinkId());
-                Link linkOfStopToInsertBefore = network.getLinks().get(originalTimetable.get(i).getPreplannedStop().getLinkId());
-                double detourA = vrpCosts.getTransportTime(collectLocationIfAbsent(linkOfStopToInsertAfter), collectLocationIfAbsent(fromLink), stopToInsertAfter.getDepartureTime(), null, null);
+                Link linkOfStopToInsertAfter = network.getLinks().get(originalTimetable.get(i - 1).getLinkId());
+                Link linkOfStopToInsertBefore = network.getLinks().get(originalTimetable.get(i).getLinkId());
+                double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), fromLink.getId());
                 double pickupTime = stopToInsertAfter.getDepartureTime() + detourA;
                 if (pickupTime > latestPickUpTime) {
                     break; // Pickup not possible before the latest pickup time. No need to continue on the timetable.
                 }
-                double detourB = vrpCosts.getTransportTime(collectLocationIfAbsent(fromLink), collectLocationIfAbsent(linkOfStopToInsertBefore), pickupTime + stopDuration, null, null);
+                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopToInsertBefore.getId());
                 double delay = detourA + detourB - (stopToInsertBefore.getArrivalTime() - stopToInsertAfter.getDepartureTime());
 
                 boolean feasible = isInsertionFeasible(originalTimetable, i, delay);
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
                     pickupIdx = i;
-                    pickupStopToInsert = new TimetableEntry(pickupStop, pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicle);
+                    pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
+                            pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                 }
             }
 
             {
                 TimetableEntry stopToInsertAfter = originalTimetable.get(originalTimetable.size() - 1);
-                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getPreplannedStop().getLinkId());
-                double delay = vrpCosts.getTransportTime(collectLocationIfAbsent(linkOfStopToInsertAfter), collectLocationIfAbsent(fromLink), stopToInsertAfter.getDepartureTime(), null, null);
+                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getLinkId());
+                double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), fromLink.getId());
                 double pickupTime = stopToInsertAfter.getDepartureTime() + delay;
                 boolean feasible = pickupTime <= latestPickUpTime;
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
                     pickupIdx = originalTimetable.size();
-                    pickupStopToInsert = new TimetableEntry(pickupStop, pickupTime, pickupTime + stopDuration, 0, stopDuration, vehicle);
+                    pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
+                            pickupTime, pickupTime + stopDuration, 0, stopDuration, vehicleInfo.vehicle());
                 }
             }
 
@@ -151,35 +145,37 @@ public class MixedCaseInserter {
                 }
 
                 TimetableEntry stopToInsertAfter = temporaryTimetable.get(i);
-                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getPreplannedStop().getLinkId());
+                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getLinkId());
                 if (i + 1 < temporaryTimetable.size()) {
                     TimetableEntry stopToInsertBefore = temporaryTimetable.get(i + 1);
-                    Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getPreplannedStop().getLinkId());
-                    double detourA = vrpCosts.getTransportTime(collectLocationIfAbsent(linkOfStopToInsertAfter), collectLocationIfAbsent(toLink), stopToInsertAfter.getDepartureTime(), null, null);
+                    Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getLinkId());
+                    double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), toLink.getId());
                     double dropOffTime = detourA + stopToInsertAfter.getDepartureTime();
                     if (dropOffTime > latestArrivalTime) {
                         break; // No more drop-off feasible after this stop. No need to continue in the timetable
                     }
-                    double detourB = vrpCosts.getTransportTime(collectLocationIfAbsent(toLink), collectLocationIfAbsent(linkOfStopToInsertBefore), dropOffTime + stopDuration, null, null);
+                    double detourB = travelTimeMatrix.getLinkToLinkTravelTime(toLink.getId(), linkOfStopToInsertBefore.getId());
                     double delay = detourA + detourB - (stopToInsertBefore.getArrivalTime() - stopToInsertAfter.getDepartureTime());
                     boolean feasible = isInsertionFeasible(temporaryTimetable, i + 1, delay);
 
                     if (feasible && delay < dropOffInsertionCost) {
                         dropOffInsertionCost = delay;
                         dropOffIdx = i + 1;
-                        dropOffStopToInsert = new TimetableEntry(dropOffStop, dropOffTime, dropOffTime + stopDuration, stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicle);
+                        dropOffStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF,
+                                dropOffTime, dropOffTime + stopDuration, stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                     }
 
                 } else {
                     // insert drop-off at the end
-                    double delay = vrpCosts.getTransportTime(collectLocationIfAbsent(linkOfStopToInsertAfter), collectLocationIfAbsent(toLink), stopToInsertAfter.getDepartureTime(), null, null);
+                    double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), toLink.getId());
                     double dropOffTime = delay + stopToInsertAfter.getDepartureTime();
                     boolean feasible = dropOffTime <= latestArrivalTime;
 
                     if (feasible && delay < dropOffInsertionCost) {
                         dropOffInsertionCost = delay;
                         dropOffIdx = i + 1;
-                        dropOffStopToInsert = new TimetableEntry(dropOffStop, dropOffTime, vehicle.getServiceEndTime(), stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicle);
+                        dropOffStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF,
+                                dropOffTime, vehicleInfo.vehicle().getServiceEndTime(), stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                     }
                 }
             }
@@ -189,7 +185,7 @@ public class MixedCaseInserter {
                 double totalCost = dropOffInsertionCost + pickupInsertionCost;
                 if (totalCost < bestInsertionCost) {
                     bestInsertionCost = totalCost;
-                    selectedVehicle = vehicle;
+                    selectedVehicle = vehicleInfo.vehicle();
                     updatedTimetable = candidateTimetable;
                 }
             }
@@ -197,17 +193,9 @@ public class MixedCaseInserter {
 
         // Insert the request to the best vehicle
         if (selectedVehicle != null) {
-            timetables.put(selectedVehicle, updatedTimetable);
+            timetables.put(selectedVehicle.getId(), updatedTimetable);
         }
 
-    }
-
-    private Location collectLocationIfAbsent(Link link) {
-        return locationByLinkId.computeIfAbsent(link.getId(), linkId -> Location.Builder.newInstance()
-                .setId(link.getId() + "")
-                .setIndex(locationByLinkId.size())
-                .setCoordinate(Coordinate.newInstance(link.getCoord().getX(), link.getCoord().getY()))
-                .build());
     }
 
     private boolean isInsertionFeasible(List<TimetableEntry> originalTimetable, int insertionBeforeStopIdx, double delay) {
@@ -242,8 +230,6 @@ public class MixedCaseInserter {
         } else {
             temporaryTimetable.add(stopToInsert);
         }
-
-
         return temporaryTimetable;
     }
 
@@ -267,6 +253,4 @@ public class MixedCaseInserter {
 
         return candidateTimetable;
     }
-
-
 }
