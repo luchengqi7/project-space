@@ -32,7 +32,9 @@ import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.mobsim.framework.events.MobsimBeforeSimStepEvent;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import scala.Int;
 
@@ -77,17 +79,17 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
     public MixedCaseDrtOptimizer(Network network, TravelTime travelTime, MobsimTimer timer, DrtTaskFactory taskFactory,
                                  EventsManager eventsManager, ScheduleTimingUpdater scheduleTimingUpdater,
-                                 LeastCostPathCalculator router, double stopDuration, String mode, DrtConfigGroup drtCfg,
+                                 TravelDisutility travelDisutility, double stopDuration, String mode, DrtConfigGroup drtCfg,
                                  Fleet fleet, ForkJoinPool forkJoinPool, VehicleEntry.EntryFactory vehicleEntryFactory,
-                                 PrebookedRequestsSolverJsprit solver, SimpleOnlineInserter inserter, Population prebookedPlans,
-                                 double horizon, double interval) {
+                                 PrebookedRequestsSolverJsprit solver, SimpleOnlineInserter inserter, Population plans,
+                                 double horizon, double interval, Population prebookedTrips) {
         this.network = network;
         this.travelTime = travelTime;
         this.timer = timer;
         this.taskFactory = taskFactory;
         this.eventsManager = eventsManager;
         this.scheduleTimingUpdater = scheduleTimingUpdater;
-        this.router = router;
+        this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
         this.stopDuration = stopDuration;
         this.mode = mode;
         this.drtCfg = drtCfg;
@@ -100,7 +102,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         this.interval = interval;
 
         initDrtSchedules();
-        readPrebookedRequests(prebookedPlans);
+        readPrebookedRequests(plans, prebookedTrips);
         assert interval <= horizon : "Interval of optimization must be smaller than or equal to the horizon length!";
 
     }
@@ -335,7 +337,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         }
     }
 
-    private void readPrebookedRequests(Population plans) {
+    private void readPrebookedRequests(Population plans, Population prebookedTrips) {
+        // TODO process prebooked trips
         int counter = 0;
         for (Person person : plans.getPersons().values()) {
             for (var leg : TripStructureUtils.getLegs(person.getSelectedPlan())) {

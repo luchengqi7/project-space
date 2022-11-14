@@ -67,7 +67,7 @@ public class RunMixedCase implements MATSimAppCommand {
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
 
         // TODO
-//        controler.addOverridingQSimModule(new MixedCaseModule(prebookedPlans, drtConfigGroup.mode, drtConfigGroup, horizon, interval, maxIterations, false, seed));
+        controler.addOverridingQSimModule(new MixedCaseModule(prebookedPlans, drtConfigGroup.mode, drtConfigGroup, horizon, interval, maxIterations, false, seed));
 
         // Add linear stop duration module
         controler.addOverridingModule(new AbstractDvrpModeModule(drtConfigGroup.getMode()) {
