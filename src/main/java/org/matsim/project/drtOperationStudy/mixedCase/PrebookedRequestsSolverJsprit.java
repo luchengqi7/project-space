@@ -37,6 +37,8 @@ class PrebookedRequestsSolverJsprit {
     private final DrtConfigGroup drtCfg;
     private final Network network;
 
+    private LinkToLinkTravelTimeMatrix travelTimeMatrix;
+
 
     //    private final Map<Id<Link>, Integer> linkToIndexMap = new HashMap<>();
     private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
@@ -53,7 +55,6 @@ class PrebookedRequestsSolverJsprit {
     MixedCaseDrtOptimizer.FleetSchedules calculate(MixedCaseDrtOptimizer.FleetSchedules previousSchedules,
                                                    Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> onlineVehicleInfoMap,
                                                    List<MixedCaseDrtOptimizer.GeneralRequest> newRequests,
-                                                   LinkToLinkTravelTimeMatrix travelTimeMatrix,
                                                    double time) {
         // Create PDPTW problem
         var vrpBuilder = new VehicleRoutingProblem.Builder();
@@ -281,6 +282,10 @@ class PrebookedRequestsSolverJsprit {
         }
 
         return new MixedCaseDrtOptimizer.FleetSchedules(vehicleToPreplannedStops, assignedPassengerToVehicleMap, rejectedRequests);
+    }
+
+    public LinkToLinkTravelTimeMatrix getTravelTimeMatrix() {
+        return travelTimeMatrix;
     }
 
     // Inner classes / records

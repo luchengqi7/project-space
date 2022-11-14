@@ -255,7 +255,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
             double endTime = now + horizon;
             log.info("Calculating the plan for t =" + now + " to t = " + endTime);
             log.info("There are " + newRequests.size() + " new request within this horizon");
-            fleetSchedules = solver.calculate(fleetSchedules, realTimeVehicleInfoMap, newRequests, travelTimeMatrix, now);
+            fleetSchedules = solver.calculate(fleetSchedules, realTimeVehicleInfoMap, newRequests, now);
+            travelTimeMatrix = solver.getTravelTimeMatrix();  // Update the link-to-link travel time matrix
 
             // Update vehicles schedules
             for (OnlineVehicleInfo onlineVehicleInfo : realTimeVehicleInfoMap.values()) {
