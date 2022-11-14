@@ -2,7 +2,6 @@ package org.matsim.project.drtOperationStudy.mixedCase;
 
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Population;
-import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.optimizer.QSimScopeForkJoinPoolHolder;
 import org.matsim.contrib.drt.optimizer.VehicleDataEntryFactoryImpl;
@@ -18,7 +17,6 @@ import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 
 import java.util.Random;
-import java.util.concurrent.ForkJoinPool;
 
 public class MixedCaseModule extends AbstractDvrpModeQSimModule {
     private final Population prebookedPlans;

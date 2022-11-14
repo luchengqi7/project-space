@@ -156,9 +156,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         double currentTime = timer.getTimeOfDay();
 
         var stopsToVisit = fleetSchedules.vehicleToTimetableMap.get(vehicle.getId());
-        var nextStop = stopsToVisit.get(0);
 
-        if (nextStop == null) {
+        if (stopsToVisit.isEmpty()) {
             // no preplanned stops for the vehicle within current horizon
             if (currentTime < vehicle.getServiceEndTime()) {
                 // fill the time gap with STAY
@@ -167,31 +166,34 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
                 // we need to end the schedule with STAY task even if it is delayed
                 schedule.addTask(taskFactory.createStayTask(vehicle, currentTime, currentTime, currentLink));
             }
-        } else if (!nextStop.getLinkId().equals(currentLink.getId())) {
-            // Next stop is at another location? --> Add a drive task
-            var nextLink = network.getLinks().get(nextStop.getLinkId());
-            VrpPathWithTravelData path = VrpPaths.calcAndCreatePath(currentLink, nextLink, currentTime, router,
-                    travelTime);
-            schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
-        } else if (nextStop.getRequest().earliestStartTime >= timer.getTimeOfDay()) {
-            // We are at the stop location. But we are too early. --> Add a wait for stop task
-            // Currently assuming the mobsim time step is 1 s
-            schedule.addTask(new WaitForStopTask(currentTime,
-                    nextStop.getRequest().earliestStartTime + 1, currentLink));
         } else {
-            // We are ready for the stop task! --> Add stop task to the schedule
-            var stopTask = taskFactory.createStopTask(vehicle, currentTime, currentTime + stopDuration, currentLink);
-            if (nextStop.stopType == TimetableEntry.StopType.PICKUP) {
-                var request = Preconditions.checkNotNull(openRequests.get(nextStop.getRequest().passengerId()),
-                        "Request (%s) has not been yet submitted", nextStop.getRequest());
-                stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+            var nextStop = stopsToVisit.get(0);
+            if (!nextStop.getLinkId().equals(currentLink.getId())) {
+                // Next stop is at another location? --> Add a drive task
+                var nextLink = network.getLinks().get(nextStop.getLinkId());
+                VrpPathWithTravelData path = VrpPaths.calcAndCreatePath(currentLink, nextLink, currentTime, router,
+                        travelTime);
+                schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
+            } else if (nextStop.getRequest().earliestStartTime >= timer.getTimeOfDay()) {
+                // We are at the stop location. But we are too early. --> Add a wait for stop task
+                // Currently assuming the mobsim time step is 1 s
+                schedule.addTask(new WaitForStopTask(currentTime,
+                        nextStop.getRequest().earliestStartTime + 1, currentLink));
             } else {
-                var request = Preconditions.checkNotNull(openRequests.remove(nextStop.getRequest().passengerId()),
-                        "Request (%s) has not been yet submitted", nextStop.getRequest());
-                stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+                // We are ready for the stop task! --> Add stop task to the schedule
+                var stopTask = taskFactory.createStopTask(vehicle, currentTime, currentTime + stopDuration, currentLink);
+                if (nextStop.stopType == TimetableEntry.StopType.PICKUP) {
+                    var request = Preconditions.checkNotNull(openRequests.get(nextStop.getRequest().passengerId()),
+                            "Request (%s) has not been yet submitted", nextStop.getRequest());
+                    stopTask.addPickupRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+                } else {
+                    var request = Preconditions.checkNotNull(openRequests.remove(nextStop.getRequest().passengerId()),
+                            "Request (%s) has not been yet submitted", nextStop.getRequest());
+                    stopTask.addDropoffRequest(AcceptedDrtRequest.createFromOriginalRequest(request));
+                }
+                schedule.addTask(stopTask);
+                stopsToVisit.remove(0); //remove the first entry in the stops to visit list
             }
-            schedule.addTask(stopTask);
-            stopsToVisit.remove(0); //remove the first entry in the stops to visit list
         }
 
         // switch to the next task and update currentTasks
