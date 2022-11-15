@@ -47,15 +47,15 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
                 drtConfigGroup.stopDuration, drtConfigGroup.getMode(), drtConfigGroup, getter.getModal(Fleet.class),
                 getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
                 getter.getModal(VehicleEntry.EntryFactory.class),
-                getter.get(PrebookedRequestsSolverJsprit.class),
-                getter.get(SimpleOnlineInserter.class),
+                getter.getModal(PrebookedRequestsSolverJsprit.class),
+                getter.getModal(SimpleOnlineInserter.class),
                 getter.get(Population.class),
                 horizon, interval, prebookedPlans)));
 
-        bind(SimpleOnlineInserter.class).toProvider(modalProvider(
+        bindModal(SimpleOnlineInserter.class).toProvider(modalProvider(
                 getter -> new SimpleOnlineInserter(getter.getModal(Network.class), drtConfigGroup)));
 
-        bind(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
+        bindModal(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
                 getter -> new PrebookedRequestsSolverJsprit(
                         new PrebookedRequestsSolverJsprit.Options(maxIteration, multiThread, new Random(seed)),
                         drtConfigGroup, getter.getModal(Network.class))));

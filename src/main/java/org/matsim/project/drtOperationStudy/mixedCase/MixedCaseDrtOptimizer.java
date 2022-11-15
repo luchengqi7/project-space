@@ -137,7 +137,15 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
         } else {
             // This is a spontaneous request
-            inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap, realTimeVehicleInfoMap, travelTimeMatrix);
+            Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap, realTimeVehicleInfoMap, travelTimeMatrix);
+            if (selectedVehicleId != null) {
+                eventsManager.processEvent(
+                        new PassengerRequestScheduledEvent(timer.getTimeOfDay(), drtRequest.getMode(), drtRequest.getId(),
+                                drtRequest.getPassengerId(), selectedVehicleId, Double.NaN, Double.NaN)); //TODO add estimated pickup / arrival time
+            } else {
+                eventsManager.processEvent(new PassengerRequestRejectedEvent(timer.getTimeOfDay(), mode, request.getId(),
+                        passengerId, "No feasible insertion. The spontaneous request is rejected"));
+            }
         }
     }
 
@@ -340,9 +348,11 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     }
 
     private void readPrebookedRequests(Population plans, Population prebookedTrips) {
-        // TODO process prebooked trips
         int counter = 0;
         for (Person person : plans.getPersons().values()) {
+            if (!prebookedTrips.getPersons().containsKey(person.getId())) {
+                continue;
+            }
             for (var leg : TripStructureUtils.getLegs(person.getSelectedPlan())) {
                 if (!leg.getMode().equals(mode)) {
                     continue;

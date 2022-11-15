@@ -20,9 +20,9 @@ public class SimpleOnlineInserter {
         this.stopDuration = drtConfigGroup.stopDuration;
     }
 
-    public void insert(DrtRequest request, Map<Id<DvrpVehicle>, List<TimetableEntry>> timetables,
-                       Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
-                       LinkToLinkTravelTimeMatrix travelTimeMatrix) {
+    public Id<DvrpVehicle> insert(DrtRequest request, Map<Id<DvrpVehicle>, List<TimetableEntry>> timetables,
+                                  Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
+                                  LinkToLinkTravelTimeMatrix travelTimeMatrix) {
         // Request information
         Link fromLink = request.getFromLink();
         Link toLink = request.getToLink();
@@ -140,7 +140,7 @@ public class SimpleOnlineInserter {
             for (int i = pickupIdx; i < temporaryTimetable.size(); i++) {
                 // First, check the capacity constraint
                 // Drop off is inserted after this stop. The occupancy constraint must not be violated.
-                if (temporaryTimetable.get(i).checkOccupancyFeasibility()) {
+                if (!temporaryTimetable.get(i).checkOccupancyFeasibility()) {
                     break;
                 }
 
@@ -194,8 +194,10 @@ public class SimpleOnlineInserter {
         // Insert the request to the best vehicle
         if (selectedVehicle != null) {
             timetables.put(selectedVehicle.getId(), updatedTimetable);
+            return selectedVehicle.getId();
         }
 
+        return null;
     }
 
     private boolean isInsertionFeasible(List<TimetableEntry> originalTimetable, int insertionBeforeStopIdx, double delay) {
