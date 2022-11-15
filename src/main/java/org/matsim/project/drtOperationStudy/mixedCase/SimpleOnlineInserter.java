@@ -70,14 +70,14 @@ public class SimpleOnlineInserter {
 
             // 2.1.1 Insert pickup before first stop
             {
-                TimetableEntry stopToInsertBefore = originalTimetable.get(0);
-                Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getLinkId());
+                TimetableEntry stopAfterTheInsertion = originalTimetable.get(0);
+                Link linkOfStopAfterTheInsertion = network.getLinks().get(stopAfterTheInsertion.getLinkId());
                 double detourA = travelTimeMatrix.getLinkToLinkTravelTime(currentLink.getId(), fromLink.getId());
                 double pickupTime = divertableTime + detourA;
                 if (pickupTime > latestPickUpTime) {
                     break; // Vehicle is too far away. No need to continue with this vehicle
                 }
-                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopToInsertBefore.getId());
+                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopAfterTheInsertion.getId());
                 double delay = detourA + detourB - (originalTimetable.get(0).getArrivalTime() - divertableTime);
 
                 boolean feasible = isInsertionFeasible(originalTimetable, 0, delay);
@@ -85,38 +85,38 @@ public class SimpleOnlineInserter {
                     pickupInsertionCost = delay;
                     pickupIdx = 0;
                     pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
-                            pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
+                            pickupTime, pickupTime + stopDuration, stopAfterTheInsertion.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                 }
             }
 
             // 2.1.2 Insert pick up before each middle stop
             for (int i = 1; i < originalTimetable.size(); i++) {
-                TimetableEntry stopToInsertAfter = originalTimetable.get(i - 1);
-                TimetableEntry stopToInsertBefore = originalTimetable.get(i);
-                Link linkOfStopToInsertAfter = network.getLinks().get(originalTimetable.get(i - 1).getLinkId());
-                Link linkOfStopToInsertBefore = network.getLinks().get(originalTimetable.get(i).getLinkId());
-                double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), fromLink.getId());
-                double pickupTime = stopToInsertAfter.getDepartureTime() + detourA;
+                TimetableEntry stopBeforeTheInsertion = originalTimetable.get(i - 1);
+                TimetableEntry stopAfterTheInsertion = originalTimetable.get(i);
+                Link linkOfStopBeforeTheInsertion = network.getLinks().get(originalTimetable.get(i - 1).getLinkId());
+                Link linkOfStopAfterTheInsertion = network.getLinks().get(originalTimetable.get(i).getLinkId());
+                double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopBeforeTheInsertion.getId(), fromLink.getId());
+                double pickupTime = stopBeforeTheInsertion.getDepartureTime() + detourA;
                 if (pickupTime > latestPickUpTime) {
                     break; // Pickup not possible before the latest pickup time. No need to continue on the timetable.
                 }
-                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopToInsertBefore.getId());
-                double delay = detourA + detourB - (stopToInsertBefore.getArrivalTime() - stopToInsertAfter.getDepartureTime());
+                double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopAfterTheInsertion.getId());
+                double delay = detourA + detourB - (stopAfterTheInsertion.getArrivalTime() - stopBeforeTheInsertion.getDepartureTime());
 
                 boolean feasible = isInsertionFeasible(originalTimetable, i, delay);
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
                     pickupIdx = i;
                     pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
-                            pickupTime, pickupTime + stopDuration, stopToInsertBefore.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
+                            pickupTime, pickupTime + stopDuration, stopAfterTheInsertion.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
                 }
             }
 
             {
-                TimetableEntry stopToInsertAfter = originalTimetable.get(originalTimetable.size() - 1);
-                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getLinkId());
-                double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), fromLink.getId());
-                double pickupTime = stopToInsertAfter.getDepartureTime() + delay;
+                TimetableEntry stopBeforeTheInsertion = originalTimetable.get(originalTimetable.size() - 1);
+                Link linkOfStopBeforeTheInsertion = network.getLinks().get(stopBeforeTheInsertion.getLinkId());
+                double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopBeforeTheInsertion.getId(), fromLink.getId());
+                double pickupTime = stopBeforeTheInsertion.getDepartureTime() + delay;
                 boolean feasible = pickupTime <= latestPickUpTime;
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
@@ -144,38 +144,39 @@ public class SimpleOnlineInserter {
                     break;
                 }
 
-                TimetableEntry stopToInsertAfter = temporaryTimetable.get(i);
-                Link linkOfStopToInsertAfter = network.getLinks().get(stopToInsertAfter.getLinkId());
+                TimetableEntry stopBeforeTheInsertion = temporaryTimetable.get(i);
+                Link linkOfStopBeforeTheInsertion = network.getLinks().get(stopBeforeTheInsertion.getLinkId());
                 if (i + 1 < temporaryTimetable.size()) {
-                    TimetableEntry stopToInsertBefore = temporaryTimetable.get(i + 1);
-                    Link linkOfStopToInsertBefore = network.getLinks().get(stopToInsertBefore.getLinkId());
-                    double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), toLink.getId());
-                    double dropOffTime = detourA + stopToInsertAfter.getDepartureTime();
+                    TimetableEntry stopAfterTheInsertion = temporaryTimetable.get(i + 1);
+                    Link linkOfStopAfterTheInsertion = network.getLinks().get(stopAfterTheInsertion.getLinkId());
+                    double detourA = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopBeforeTheInsertion.getId(), toLink.getId());
+                    double dropOffTime = detourA + stopBeforeTheInsertion.getDepartureTime();
                     if (dropOffTime > latestArrivalTime) {
                         break; // No more drop-off feasible after this stop. No need to continue in the timetable
                     }
-                    double detourB = travelTimeMatrix.getLinkToLinkTravelTime(toLink.getId(), linkOfStopToInsertBefore.getId());
-                    double delay = detourA + detourB - (stopToInsertBefore.getArrivalTime() - stopToInsertAfter.getDepartureTime());
+                    double detourB = travelTimeMatrix.getLinkToLinkTravelTime(toLink.getId(), linkOfStopAfterTheInsertion.getId());
+                    double delay = detourA + detourB - (stopAfterTheInsertion.getArrivalTime() - stopBeforeTheInsertion.getDepartureTime());
                     boolean feasible = isInsertionFeasible(temporaryTimetable, i + 1, delay);
 
                     if (feasible && delay < dropOffInsertionCost) {
                         dropOffInsertionCost = delay;
                         dropOffIdx = i + 1;
                         dropOffStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF,
-                                dropOffTime, dropOffTime + stopDuration, stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
+                                dropOffTime, dropOffTime + stopDuration, stopAfterTheInsertion.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
+                        // Attention: the occupancy of the stop after the insertion is not yet deducted. Therefore, we don't need to +1 to the occupancy here.
                     }
 
                 } else {
                     // insert drop-off at the end
-                    double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopToInsertAfter.getId(), toLink.getId());
-                    double dropOffTime = delay + stopToInsertAfter.getDepartureTime();
+                    double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopBeforeTheInsertion.getId(), toLink.getId());
+                    double dropOffTime = delay + stopBeforeTheInsertion.getDepartureTime();
                     boolean feasible = dropOffTime <= latestArrivalTime;
 
                     if (feasible && delay < dropOffInsertionCost) {
                         dropOffInsertionCost = delay;
                         dropOffIdx = i + 1;
                         dropOffStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF,
-                                dropOffTime, vehicleInfo.vehicle().getServiceEndTime(), stopToInsertAfter.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
+                                dropOffTime, vehicleInfo.vehicle().getServiceEndTime(), 1, stopDuration, vehicleInfo.vehicle());
                     }
                 }
             }
@@ -215,7 +216,7 @@ public class SimpleOnlineInserter {
         return true;
     }
 
-    private List<TimetableEntry> insertPickup(List<TimetableEntry> originalTimetable, int insertionBeforeStopIdx,
+    private List<TimetableEntry> insertPickup(List<TimetableEntry> originalTimetable, int pickUpIdx,
                                               TimetableEntry stopToInsert, double delay) {
         // Create a copy of the original timetable (and copy each object inside)
         List<TimetableEntry> temporaryTimetable = new ArrayList<>();
@@ -223,35 +224,34 @@ public class SimpleOnlineInserter {
             temporaryTimetable.add(new TimetableEntry(timetableEntry));
         }
 
-        if (insertionBeforeStopIdx < temporaryTimetable.size()) {
-            temporaryTimetable.add(insertionBeforeStopIdx, stopToInsert);
-            for (int i = insertionBeforeStopIdx + 1; i < temporaryTimetable.size(); i++) {
+        if (pickUpIdx < temporaryTimetable.size()) {
+            temporaryTimetable.add(pickUpIdx, stopToInsert);
+            for (int i = pickUpIdx + 1; i < temporaryTimetable.size(); i++) {
                 delay = temporaryTimetable.get(i).delayTheStop(delay);
                 temporaryTimetable.get(i).addPickupBeforeTheStop();
             }
         } else {
-            temporaryTimetable.add(stopToInsert);
+            temporaryTimetable.add(stopToInsert); // insert at the end
         }
         return temporaryTimetable;
     }
 
-    private List<TimetableEntry> insertDropOff(List<TimetableEntry> temporaryTimetable, int insertionBeforeStopIdx,
+    private List<TimetableEntry> insertDropOff(List<TimetableEntry> temporaryTimetable, int dropOffIdx,
                                                TimetableEntry stopToInsert, double delay) {
         List<TimetableEntry> candidateTimetable = new ArrayList<>();
         for (TimetableEntry timetableEntry : temporaryTimetable) {
             candidateTimetable.add(new TimetableEntry(timetableEntry));
         }
 
-        if (insertionBeforeStopIdx < candidateTimetable.size()) {
-            candidateTimetable.add(insertionBeforeStopIdx, stopToInsert);
-            for (int i = insertionBeforeStopIdx + 1; i < candidateTimetable.size(); i++) {
+        if (dropOffIdx < candidateTimetable.size()) {
+            candidateTimetable.add(dropOffIdx, stopToInsert);
+            for (int i = dropOffIdx + 1; i < candidateTimetable.size(); i++) {
                 delay = candidateTimetable.get(i).delayTheStop(delay);
                 candidateTimetable.get(i).addDropOffBeforeTheStop();
             }
         } else {
             candidateTimetable.add(stopToInsert); // insert at the end
         }
-
 
         return candidateTimetable;
     }
