@@ -74,6 +74,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
     private final List<DrtRequest> prebookedRequests = new ArrayList<>();
 
+    private double lastUpdateTimeOfFleetStatus;
+
     private FleetSchedules fleetSchedules;
     Map<Id<DvrpVehicle>, OnlineVehicleInfo> realTimeVehicleInfoMap = new HashMap<>();
 
@@ -137,11 +139,14 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
         } else {
             // This is a spontaneous request
+            double now = timer.getTimeOfDay();
+            updateFleetStatus(now);
             Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap, realTimeVehicleInfoMap, travelTimeMatrix);
             if (selectedVehicleId != null) {
                 eventsManager.processEvent(
                         new PassengerRequestScheduledEvent(timer.getTimeOfDay(), drtRequest.getMode(), drtRequest.getId(),
                                 drtRequest.getPassengerId(), selectedVehicleId, Double.NaN, Double.NaN)); //TODO add estimated pickup / arrival time
+                updateVehicleCurrentTask(realTimeVehicleInfoMap.get(selectedVehicleId), now);
             } else {
                 eventsManager.processEvent(new PassengerRequestRejectedEvent(timer.getTimeOfDay(), mode, request.getId(),
                         passengerId, "No feasible insertion. The spontaneous request is rejected"));
@@ -214,51 +219,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
         // TODO at time = 0, vehicle does not have any task, therefore, we can only start at t = 1
         if (now % interval == 1 && now >= serviceStartTime && now < serviceEndTime) {
-            for (DvrpVehicle v : fleet.getVehicles().values()) {
-                scheduleTimingUpdater.updateTimings(v);
-            }
-
-            // Begin reading data
-            // Analyze vehicle current information
-            var vehicleEntries = forkJoinPool.submit(() -> fleet.getVehicles()
-                    .values()
-                    .parallelStream()
-                    .map(v -> vehicleEntryFactory.create(v, now))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toMap(e -> e.vehicle.getId(), e -> e))).join();
-            for (VehicleEntry vehicleEntry : vehicleEntries.values()) {
-                Schedule schedule = vehicleEntry.vehicle.getSchedule();
-                Task currentTask = schedule.getCurrentTask();
-
-                Link currentLink = null;
-                double divertableTime = Double.NaN;
-
-                if (currentTask instanceof DrtStayTask) {
-                    currentLink = ((DrtStayTask) currentTask).getLink();
-                    divertableTime = now;
-                }
-
-                if (currentTask instanceof WaitForStopTask) {
-                    currentLink = ((WaitForStopTask) currentTask).getLink();
-                    divertableTime = now;
-                }
-
-                if (currentTask instanceof DriveTask) {
-                    LinkTimePair diversion = ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).getDiversionPoint();
-                    currentLink = diversion.link;
-                    divertableTime = diversion.time;
-                }
-
-                if (currentTask instanceof DrtStopTask) {
-                    currentLink = ((DrtStopTask) currentTask).getLink();
-                    divertableTime = currentTask.getEndTime();
-                }
-
-                Preconditions.checkState(currentLink != null, "Current link should not be null! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
-                Preconditions.checkState(!Double.isNaN(divertableTime), "Divertable time should not be NaN! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
-                OnlineVehicleInfo onlineVehicleInfo = new OnlineVehicleInfo(vehicleEntry.vehicle, currentLink, divertableTime);
-                realTimeVehicleInfoMap.put(vehicleEntry.vehicle.getId(), onlineVehicleInfo);
-            }
+            // Update vehicle current information
+            updateFleetStatus(now);
 
             // Read new requests
             List<GeneralRequest> newRequests = readRequestsFromTimeBin(now);
@@ -270,43 +232,9 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
             fleetSchedules = solver.calculate(fleetSchedules, realTimeVehicleInfoMap, newRequests, now);
             travelTimeMatrix = solver.getTravelTimeMatrix();  // Update the link-to-link travel time matrix
 
-            // Update vehicles schedules
+            // Update vehicles schedules (i.e., current task)
             for (OnlineVehicleInfo onlineVehicleInfo : realTimeVehicleInfoMap.values()) {
-                DvrpVehicle vehicle = onlineVehicleInfo.vehicle;
-                Schedule schedule = vehicle.getSchedule();
-                Task currentTask = schedule.getCurrentTask();
-                Link currentLink = onlineVehicleInfo.currentLink;
-                double divertableTime = onlineVehicleInfo.divertableTime;
-
-                // "Stay" task or "Wait for stop" task --> end now (then vehicle will find next task in the nextTask section)
-                if (currentTask instanceof DrtStayTask) {
-                    currentTask.setEndTime(now);
-                }
-
-                if (currentTask instanceof WaitForStopTask) {
-                    currentTask.setEndTime(now);
-                }
-
-                // Drive task --> check if diversion is needed
-                if (currentTask instanceof DrtDriveTask) {
-                    var stopsToVisit = fleetSchedules.vehicleToTimetableMap.get(vehicle.getId());
-                    if (stopsToVisit.isEmpty()) {
-                        // stop the vehicle at divertable location and time (a stay task will be appended in the nextTask section)
-                        var dummyPath = VrpPaths.calcAndCreatePath(currentLink, currentLink, divertableTime, router, travelTime);
-                        ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).divertPath(dummyPath);
-                    } else {
-                        // Divert the vehicle if destination has changed
-                        assert stopsToVisit.get(0) != null;
-                        Id<Link> newDestination = stopsToVisit.get(0).getLinkId();
-                        Id<Link> oldDestination = ((DrtDriveTask) currentTask).getPath().getToLink().getId();
-                        if (!oldDestination.toString().equals(newDestination.toString())) {
-                            var newPath = VrpPaths.calcAndCreatePath(currentLink,
-                                    network.getLinks().get(newDestination), divertableTime, router, travelTime);
-                            ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).divertPath(newPath);
-                        }
-                    }
-                }
-                // Stop task --> nothing need to be changed
+                updateVehicleCurrentTask(onlineVehicleInfo, now);
             }
         }
     }
@@ -392,4 +320,98 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         prebookedRequests.removeAll(newRequests);
         return newRequests.stream().map(MixedCaseDrtOptimizer::createFromDrtRequest).collect(Collectors.toList());
     }
+
+    private void updateFleetStatus(double now) {
+        // This function only needs to be performed once for each time step
+        if (now != lastUpdateTimeOfFleetStatus) {
+            for (DvrpVehicle v : fleet.getVehicles().values()) {
+                scheduleTimingUpdater.updateTimings(v);
+            }
+
+            var vehicleEntries = forkJoinPool.submit(() -> fleet.getVehicles()
+                    .values()
+                    .parallelStream()
+                    .map(v -> vehicleEntryFactory.create(v, now))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toMap(e -> e.vehicle.getId(), e -> e))).join();
+            for (VehicleEntry vehicleEntry : vehicleEntries.values()) {
+                Schedule schedule = vehicleEntry.vehicle.getSchedule();
+                Task currentTask = schedule.getCurrentTask();
+
+                Link currentLink = null;
+                double divertableTime = Double.NaN;
+
+                if (currentTask instanceof DrtStayTask) {
+                    currentLink = ((DrtStayTask) currentTask).getLink();
+                    divertableTime = now;
+                }
+
+                if (currentTask instanceof WaitForStopTask) {
+                    currentLink = ((WaitForStopTask) currentTask).getLink();
+                    divertableTime = now;
+                }
+
+                if (currentTask instanceof DriveTask) {
+                    LinkTimePair diversion = ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).getDiversionPoint();
+                    currentLink = diversion.link;
+                    divertableTime = diversion.time;
+                }
+
+                if (currentTask instanceof DrtStopTask) {
+                    currentLink = ((DrtStopTask) currentTask).getLink();
+                    divertableTime = currentTask.getEndTime();
+                }
+
+                Preconditions.checkState(currentLink != null, "Current link should not be null! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
+                Preconditions.checkState(!Double.isNaN(divertableTime), "Divertable time should not be NaN! Vehicle ID = " + vehicleEntry.vehicle.getId().toString());
+                OnlineVehicleInfo onlineVehicleInfo = new OnlineVehicleInfo(vehicleEntry.vehicle, currentLink, divertableTime);
+                realTimeVehicleInfoMap.put(vehicleEntry.vehicle.getId(), onlineVehicleInfo);
+            }
+
+            lastUpdateTimeOfFleetStatus = now;
+        }
+    }
+
+    private void updateVehicleCurrentTask(OnlineVehicleInfo onlineVehicleInfo, double now) {
+        DvrpVehicle vehicle = onlineVehicleInfo.vehicle;
+        Schedule schedule = vehicle.getSchedule();
+        Task currentTask = schedule.getCurrentTask();
+        Link currentLink = onlineVehicleInfo.currentLink;
+        double divertableTime = onlineVehicleInfo.divertableTime;
+        List<TimetableEntry> timetable = fleetSchedules.vehicleToTimetableMap.get(vehicle.getId());
+
+        // Stay task: end stay task now if timetable is non-empty
+        if (currentTask instanceof DrtStayTask && !timetable.isEmpty()) {
+            currentTask.setEndTime(now);
+        }
+
+        // Wait for stop task: end this task if first timetable entry has changed
+        if (currentTask instanceof WaitForStopTask) {
+            currentTask.setEndTime(now);
+            //TODO currently, it's not easy to check if the first entry in timetable is changed. We just end this task (a new wait for stop task will be generated at "nextTask" section if needed)
+        }
+
+        // Drive task: Divert the drive task when needed
+        if (currentTask instanceof DrtDriveTask) {
+            if (timetable.isEmpty()) {
+                // stop the vehicle at divertable location and time (a stay task will be appended in the "nextTask" section)
+                var dummyPath = VrpPaths.calcAndCreatePath(currentLink, currentLink, divertableTime, router, travelTime);
+                ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).divertPath(dummyPath);
+            } else {
+                // Divert the vehicle if destination has changed
+                assert timetable.get(0) != null;
+                Id<Link> newDestination = timetable.get(0).getLinkId();
+                Id<Link> oldDestination = ((DrtDriveTask) currentTask).getPath().getToLink().getId();
+                if (!oldDestination.toString().equals(newDestination.toString())) {
+                    var newPath = VrpPaths.calcAndCreatePath(currentLink,
+                            network.getLinks().get(newDestination), divertableTime, router, travelTime);
+                    ((OnlineDriveTaskTracker) currentTask.getTaskTracker()).divertPath(newPath);
+                }
+            }
+        }
+
+        // Stop task: nothing need to be done here
+
+    }
+
 }

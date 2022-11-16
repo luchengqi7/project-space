@@ -2,15 +2,12 @@ package org.matsim.project.drtOperationStudy.scenarioPreparation;
 
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
-import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import picocli.CommandLine;
 
-import java.nio.file.Path;
 import java.util.Random;
 
 public class PersonSelector implements MATSimAppCommand {

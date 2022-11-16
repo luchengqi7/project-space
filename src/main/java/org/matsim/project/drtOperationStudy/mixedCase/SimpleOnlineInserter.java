@@ -75,7 +75,7 @@ public class SimpleOnlineInserter {
                 double detourA = travelTimeMatrix.getLinkToLinkTravelTime(currentLink.getId(), fromLink.getId());
                 double pickupTime = divertableTime + detourA;
                 if (pickupTime > latestPickUpTime) {
-                    break; // Vehicle is too far away. No need to continue with this vehicle
+                    continue; // Vehicle is too far away. No need to continue with this vehicle
                 }
                 double detourB = travelTimeMatrix.getLinkToLinkTravelTime(fromLink.getId(), linkOfStopAfterTheInsertion.getId());
                 double delay = detourA + detourB - (originalTimetable.get(0).getArrivalTime() - divertableTime);
@@ -112,11 +112,12 @@ public class SimpleOnlineInserter {
                 }
             }
 
+            // 2.1.3 Insert pick up after the last stop
             {
                 TimetableEntry stopBeforeTheInsertion = originalTimetable.get(originalTimetable.size() - 1);
                 Link linkOfStopBeforeTheInsertion = network.getLinks().get(stopBeforeTheInsertion.getLinkId());
                 double delay = travelTimeMatrix.getLinkToLinkTravelTime(linkOfStopBeforeTheInsertion.getId(), fromLink.getId());
-                double pickupTime = stopBeforeTheInsertion.getDepartureTime() + delay;
+                double pickupTime = stopBeforeTheInsertion.getArrivalTime() + stopDuration + delay; // Attention: we cannot use the departure time of the last drop off stop, as it is usually service end time
                 boolean feasible = pickupTime <= latestPickUpTime;
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
