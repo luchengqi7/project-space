@@ -348,7 +348,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
     }
 
     public record PreplannedStop(PreplannedRequest preplannedRequest, boolean pickup) {
-        private Id<Link> getLinkId() {
+        public Id<Link> getLinkId() {
             return pickup ? preplannedRequest.key.fromLinkId : preplannedRequest.key.toLinkId;
         }
     }
@@ -358,7 +358,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
                                       Map<PreplannedRequestKey, PreplannedRequest> unassignedRequests) {
     }
 
-    static PreplannedRequest createFromRequest(DrtRequest request) {
+    public static PreplannedRequest createFromRequest(DrtRequest request) {
         return new PreplannedRequest(new PreplannedRequestKey(request.getPassengerId(), request.getFromLink().getId(),
                 request.getToLink().getId()), request.getEarliestStartTime(), request.getLatestStartTime(),
                 request.getLatestArrivalTime());
