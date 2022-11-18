@@ -28,6 +28,7 @@ import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.schedule.*;
 import org.matsim.contrib.dvrp.tracker.OnlineDriveTaskTracker;
 import org.matsim.contrib.dvrp.util.LinkTimePair;
+import org.matsim.contrib.zone.skims.TravelTimeMatrix;
 import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.mobsim.framework.events.MobsimBeforeSimStepEvent;
@@ -70,8 +71,6 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     private double serviceStartTime = Double.MAX_VALUE;  // Start time of the whole DRT service (will be set to the earliest starting time of all the fleet)
     private double serviceEndTime = 0; // End time of the whole DRT service (will be set to the latest ending time of all the fleet)
 
-    private LinkToLinkTravelTimeMatrix travelTimeMatrix;
-
     private final List<DrtRequest> prebookedRequests = new ArrayList<>();
 
     private double lastUpdateTimeOfFleetStatus;
@@ -79,9 +78,15 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     private FleetSchedules fleetSchedules;
     Map<Id<DvrpVehicle>, OnlineVehicleInfo> realTimeVehicleInfoMap = new HashMap<>();
 
+    /**
+     * This DRT optimizer handles both pre-booked requests and the spontaneous requests.
+     * Pre-booked requests will be optimized via rolling horizon approach with jsprit (later can
+     * work with other VRP solver). The spontaneous requests will be inserted to the timetable
+     * via a simple insertion heuristic* *
+     */
     public MixedCaseDrtOptimizer(Network network, TravelTime travelTime, MobsimTimer timer, DrtTaskFactory taskFactory,
                                  EventsManager eventsManager, ScheduleTimingUpdater scheduleTimingUpdater,
-                                 TravelDisutility travelDisutility, double stopDuration, String mode, DrtConfigGroup drtCfg,
+                                 TravelDisutility travelDisutility, DrtConfigGroup drtCfg,
                                  Fleet fleet, ForkJoinPool forkJoinPool, VehicleEntry.EntryFactory vehicleEntryFactory,
                                  PrebookedRequestsSolverJsprit solver, SimpleOnlineInserter inserter, Population plans,
                                  double horizon, double interval, Population prebookedTrips) {
@@ -92,8 +97,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         this.eventsManager = eventsManager;
         this.scheduleTimingUpdater = scheduleTimingUpdater;
         this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
-        this.stopDuration = stopDuration;
-        this.mode = mode;
+        this.stopDuration = drtCfg.stopDuration;
+        this.mode = drtCfg.getMode();
         this.drtCfg = drtCfg;
         this.fleet = fleet;
         this.forkJoinPool = forkJoinPool;
@@ -141,7 +146,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
             // This is a spontaneous request
             double now = timer.getTimeOfDay();
             updateFleetStatus(now);
-            Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap, realTimeVehicleInfoMap, travelTimeMatrix);
+            Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap, realTimeVehicleInfoMap);
             if (selectedVehicleId != null) {
                 eventsManager.processEvent(
                         new PassengerRequestScheduledEvent(timer.getTimeOfDay(), drtRequest.getMode(), drtRequest.getId(),
@@ -217,7 +222,6 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     public void notifyMobsimBeforeSimStep(MobsimBeforeSimStepEvent mobsimBeforeSimStepEvent) {
         double now = mobsimBeforeSimStepEvent.getSimulationTime();
 
-        // TODO at time = 0, vehicle does not have any task, therefore, we can only start at t = 1
         if (now % interval == 1 && now >= serviceStartTime && now < serviceEndTime) {
             // Update vehicle current information
             updateFleetStatus(now);
@@ -230,7 +234,6 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
             log.info("Calculating the plan for t =" + now + " to t = " + endTime);
             log.info("There are " + newRequests.size() + " new request within this horizon");
             fleetSchedules = solver.calculate(fleetSchedules, realTimeVehicleInfoMap, newRequests, now);
-            travelTimeMatrix = solver.getTravelTimeMatrix();  // Update the link-to-link travel time matrix
 
             // Update vehicles schedules (i.e., current task)
             for (OnlineVehicleInfo onlineVehicleInfo : realTimeVehicleInfoMap.values()) {

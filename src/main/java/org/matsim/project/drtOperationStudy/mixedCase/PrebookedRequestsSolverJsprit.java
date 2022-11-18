@@ -26,30 +26,37 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
+import org.matsim.contrib.dvrp.path.VrpPaths;
+import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
+import org.matsim.contrib.zone.skims.TravelTimeMatrix;
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
 import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
+
 class PrebookedRequestsSolverJsprit {
     private final Options options;
     private final DrtConfigGroup drtCfg;
     private final Network network;
 
-    private LinkToLinkTravelTimeMatrix travelTimeMatrix;
+    private final TravelTimeMatrix travelTimeMatrix;
+    private final TravelTime travelTime;
 
-
-    //    private final Map<Id<Link>, Integer> linkToIndexMap = new HashMap<>();
     private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
     public static final double REJECTION_COST = 100000;
 
 
-    PrebookedRequestsSolverJsprit(Options options, DrtConfigGroup drtCfg, Network network) {
+    PrebookedRequestsSolverJsprit(Options options, DrtConfigGroup drtCfg, Network network, TravelTimeMatrix travelTimeMatrix, TravelTime travelTime) {
         this.options = options;
         this.drtCfg = drtCfg;
         this.network = network;
+        this.travelTimeMatrix = travelTimeMatrix;
+        this.travelTime = travelTime;
     }
 
     MixedCaseDrtOptimizer.FleetSchedules calculate(MixedCaseDrtOptimizer.FleetSchedules previousSchedules,
@@ -104,12 +111,7 @@ class PrebookedRequestsSolverJsprit {
         }
 
         // Calculate link to link travel time matrix and initialize VRP costs
-        Map<Id<Link>, Integer> linkToIndexMap = new HashMap<>();
-        for (Id<Link> linkId : locationByLinkId.keySet()) {
-            linkToIndexMap.put(linkId, locationByLinkId.get(linkId).getIndex());
-        }
-        travelTimeMatrix = new LinkToLinkTravelTimeMatrix(linkToIndexMap, network, time);
-        MatrixBasedVrpCosts vrpCosts = new MatrixBasedVrpCosts(travelTimeMatrix.getMatrix());
+        MatrixBasedVrpCosts vrpCosts = new MatrixBasedVrpCosts(travelTimeMatrix, time, network, travelTime);
         vrpBuilder.setRoutingCost(vrpCosts);
 
         // 2.1 Passengers already assigned
@@ -284,17 +286,20 @@ class PrebookedRequestsSolverJsprit {
         return new MixedCaseDrtOptimizer.FleetSchedules(vehicleToPreplannedStops, assignedPassengerToVehicleMap, rejectedRequests);
     }
 
-    public LinkToLinkTravelTimeMatrix getTravelTimeMatrix() {
-        return travelTimeMatrix;
-    }
-
     // Inner classes / records
     record Options(int maxIterations, boolean multiThread, Random random) {
     }
 
-    record MatrixBasedVrpCosts(int[][] matrix) implements VehicleRoutingTransportCosts {
+    record MatrixBasedVrpCosts(TravelTimeMatrix travelTimeMatrix, double now,
+                               Network network, TravelTime travelTime) implements VehicleRoutingTransportCosts {
         private double getTravelTime(Location from, Location to) {
-            return matrix[from.getIndex()][to.getIndex()];
+            if (from.getId().equals(to.getId())) {
+                return 0;
+            }
+            Link fromLink = network.getLinks().get(Id.createLinkId(from.getId()));
+            Link toLink = network.getLinks().get(Id.createLinkId(to.getId()));
+            return FIRST_LINK_TT + travelTimeMatrix.getTravelTime(fromLink.getToNode(), toLink.getFromNode(), now)
+                    + VrpPaths.getLastLinkTT(travelTime, toLink, now);
         }
 
         @Override

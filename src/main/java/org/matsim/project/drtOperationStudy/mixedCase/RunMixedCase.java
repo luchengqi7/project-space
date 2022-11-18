@@ -11,6 +11,7 @@ import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtControlerCreator;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.drt.schedule.StopDurationEstimator;
+import org.matsim.contrib.dvrp.router.DvrpModeRoutingNetworkModule;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.run.DvrpModule;
@@ -65,15 +66,14 @@ public class RunMixedCase implements MATSimAppCommand {
 
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
-
-        // TODO
         controler.addOverridingQSimModule(new MixedCaseModule(prebookedPlans, drtConfigGroup.mode, drtConfigGroup, horizon, interval, maxIterations, false, seed));
 
         // Add linear stop duration module
         controler.addOverridingModule(new AbstractDvrpModeModule(drtConfigGroup.getMode()) {
             @Override
             public void install() {
-                bindModal(StopDurationEstimator.class).toInstance((vehicle, dropoffRequests, pickupRequests) -> drtConfigGroup.stopDuration * (dropoffRequests.size() + pickupRequests.size()));
+                install(new DvrpModeRoutingNetworkModule(getMode(), drtConfigGroup.useModeFilteredSubnetwork));
+                bindModal(StopDurationEstimator.class).toInstance((vehicle, dropOffRequests, pickupRequests) -> drtConfigGroup.stopDuration * (dropOffRequests.size() + pickupRequests.size()));
                 bindModal(IncrementalStopDurationEstimator.class).toInstance(new LinearDrtStopDurationEstimator(drtConfigGroup.stopDuration));
             }
         });

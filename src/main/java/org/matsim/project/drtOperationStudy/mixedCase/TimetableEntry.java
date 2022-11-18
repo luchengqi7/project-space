@@ -43,17 +43,16 @@ public class TimetableEntry {
 
     public double delayTheStop(double delay) {
         double effectiveDelay = getEffectiveDelay(delay);
+        if (effectiveDelay == -1) {
+            throw new RuntimeException("Effective delay should not be -1 at this stage!");
+        }
         arrivalTime += delay;
         departureTime += effectiveDelay;
         return effectiveDelay;
     }
 
-    public boolean addPickupBeforeTheStop() {
-        if (occupancyBeforeStop == capacity) {
-            return false;
-        }
+    public void addPickupBeforeTheStop() {
         occupancyBeforeStop += 1;
-        return true;
     }
 
     public void addDropOffBeforeTheStop() {
@@ -69,15 +68,12 @@ public class TimetableEntry {
         return effectiveDelay;
     }
 
-    public boolean checkIfInsertBeforeIsFeasible() {
-        return occupancyBeforeStop < capacity; // At least 1 more seat for new insertion
+    public boolean isVehicleFullBeforeThisStop() {
+        return occupancyBeforeStop >= capacity;
     }
 
     public boolean checkOccupancyFeasibility() {
-        if (stopType == StopType.PICKUP) {
-            return occupancyBeforeStop < capacity;
-        }
-        return occupancyBeforeStop <= capacity;
+        return stopType == StopType.PICKUP ? occupancyBeforeStop < capacity : occupancyBeforeStop <= capacity;
     }
 
     public boolean checkTimeFeasibility(double delay) {

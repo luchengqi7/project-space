@@ -11,6 +11,7 @@ import org.matsim.contrib.drt.schedule.DrtTaskFactory;
 import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
 import org.matsim.contrib.dvrp.schedule.ScheduleTimingUpdater;
+import org.matsim.contrib.zone.skims.TravelTimeMatrix;
 import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
@@ -44,21 +45,22 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
                 getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class),
                 getter.get(EventsManager.class), getter.getModal(ScheduleTimingUpdater.class),
                 getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)),
-                drtConfigGroup.stopDuration, drtConfigGroup.getMode(), drtConfigGroup, getter.getModal(Fleet.class),
+                drtConfigGroup, getter.getModal(Fleet.class),
                 getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
                 getter.getModal(VehicleEntry.EntryFactory.class),
                 getter.getModal(PrebookedRequestsSolverJsprit.class),
                 getter.getModal(SimpleOnlineInserter.class),
-                getter.get(Population.class),
-                horizon, interval, prebookedPlans)));
+                getter.get(Population.class), horizon, interval, prebookedPlans)));
 
         bindModal(SimpleOnlineInserter.class).toProvider(modalProvider(
-                getter -> new SimpleOnlineInserter(getter.getModal(Network.class), drtConfigGroup)));
+                getter -> new SimpleOnlineInserter(getter.getModal(Network.class), drtConfigGroup,
+                        getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class))));
 
         bindModal(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
                 getter -> new PrebookedRequestsSolverJsprit(
                         new PrebookedRequestsSolverJsprit.Options(maxIteration, multiThread, new Random(seed)),
-                        drtConfigGroup, getter.getModal(Network.class))));
+                        drtConfigGroup, getter.getModal(Network.class), getter.getModal(TravelTimeMatrix.class),
+                        getter.getModal(TravelTime.class))));
 
         addModalComponent(QSimScopeForkJoinPoolHolder.class,
                 () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));
