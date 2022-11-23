@@ -64,7 +64,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
     private final Map<Id<Person>, DrtRequest> openRequests = new HashMap<>();
     private final PrebookedRequestsSolverJsprit solver;
-    private final SimpleOnlineInserter inserter;
+    private final OnlineInserter inserter;
 
     private final double horizon;
     private final double interval; // Must be smaller than or equal to the horizon
@@ -88,7 +88,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
                                  EventsManager eventsManager, ScheduleTimingUpdater scheduleTimingUpdater,
                                  TravelDisutility travelDisutility, DrtConfigGroup drtCfg,
                                  Fleet fleet, ForkJoinPool forkJoinPool, VehicleEntry.EntryFactory vehicleEntryFactory,
-                                 PrebookedRequestsSolverJsprit solver, SimpleOnlineInserter inserter, Population plans,
+                                 PrebookedRequestsSolverJsprit solver, OnlineInserter inserter, Population plans,
                                  double horizon, double interval, Population prebookedTrips) {
         this.network = network;
         this.travelTime = travelTime;

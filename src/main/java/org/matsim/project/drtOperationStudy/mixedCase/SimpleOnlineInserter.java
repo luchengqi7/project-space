@@ -16,21 +16,22 @@ import java.util.Map;
 
 import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
 
-public class SimpleOnlineInserter {
+class SimpleOnlineInserter implements OnlineInserter{
     private final Network network;
     private final double stopDuration;
     private final TravelTimeMatrix travelTimeMatrix;
     private final TravelTime travelTime;
 
-    public SimpleOnlineInserter(Network network, DrtConfigGroup drtConfigGroup, TravelTimeMatrix travelTimeMatrix, TravelTime travelTime) {
+    SimpleOnlineInserter(Network network, DrtConfigGroup drtConfigGroup, TravelTimeMatrix travelTimeMatrix, TravelTime travelTime) {
         this.network = network;
         this.stopDuration = drtConfigGroup.stopDuration;
         this.travelTimeMatrix = travelTimeMatrix;
         this.travelTime = travelTime;
     }
 
+    @Override
     public Id<DvrpVehicle> insert(DrtRequest request, Map<Id<DvrpVehicle>, List<TimetableEntry>> timetables,
-                                  Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap) {
+                           Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap) {
         // Request information
         Link fromLink = request.getFromLink();
         Link toLink = request.getToLink();
@@ -92,7 +93,7 @@ public class SimpleOnlineInserter {
                     double detourB = calculateVrpTravelTime(fromLink, linkOfStopAfterTheInsertion, pickupTime + stopDuration);
                     double delay = detourA + detourB - (stopAfterTheInsertion.getArrivalTime() - divertableTime);
 
-                    boolean feasible = isInsertionFeasible(originalTimetable, 0, delay);
+                    boolean feasible = isInsertionFeasible(originalTimetable, 0, delay + stopDuration);
                     if (feasible && delay < pickupInsertionCost) {
                         pickupInsertionCost = delay;
                         pickupIdx = 0;
@@ -120,7 +121,7 @@ public class SimpleOnlineInserter {
                 double detourB = calculateVrpTravelTime(fromLink, linkOfStopAfterTheInsertion, pickupTime + stopDuration);
                 double delay = detourA + detourB - (stopAfterTheInsertion.getArrivalTime() - stopBeforeTheInsertion.getDepartureTime());
 
-                boolean feasible = isInsertionFeasible(originalTimetable, i, delay);
+                boolean feasible = isInsertionFeasible(originalTimetable, i, delay + stopDuration);
                 if (feasible && delay < pickupInsertionCost) {
                     pickupInsertionCost = delay;
                     pickupIdx = i;
@@ -151,7 +152,7 @@ public class SimpleOnlineInserter {
                 continue; // no feasible insertion for pickup -> skip this vehicle
             }
 
-            List<TimetableEntry> temporaryTimetable = insertPickup(originalTimetable, pickupIdx, pickupStopToInsert, pickupInsertionCost); // Assume that cost = delay!!!
+            List<TimetableEntry> temporaryTimetable = insertPickup(originalTimetable, pickupIdx, pickupStopToInsert, pickupInsertionCost + stopDuration); // Assume that cost = delay!!!
 
             int dropOffIdx = -1;
             double dropOffInsertionCost = Double.MAX_VALUE;
@@ -160,7 +161,7 @@ public class SimpleOnlineInserter {
             for (int i = pickupIdx; i < temporaryTimetable.size(); i++) {
                 // First, check the capacity constraint
                 // Drop off is inserted after this stop. The occupancy constraint must not be violated.
-                if (!temporaryTimetable.get(i).checkOccupancyFeasibility()) {
+                if (temporaryTimetable.get(i).isVehicleOverloaded()) {
                     break;
                 }
 
@@ -176,7 +177,7 @@ public class SimpleOnlineInserter {
                     }
                     double detourB = calculateVrpTravelTime(toLink, linkOfStopAfterTheInsertion, dropOffTime + stopDuration);
                     double delay = detourA + detourB - (stopAfterTheInsertion.getArrivalTime() - stopBeforeTheInsertion.getDepartureTime());
-                    boolean feasible = isInsertionFeasible(temporaryTimetable, i + 1, delay);
+                    boolean feasible = isInsertionFeasible(temporaryTimetable, i + 1, delay + stopDuration);
 
                     if (feasible && delay < dropOffInsertionCost) {
                         dropOffInsertionCost = delay;
@@ -203,7 +204,7 @@ public class SimpleOnlineInserter {
             }
 
             if (dropOffIdx != -1) {
-                List<TimetableEntry> candidateTimetable = insertDropOff(temporaryTimetable, dropOffIdx, dropOffStopToInsert, dropOffInsertionCost);
+                List<TimetableEntry> candidateTimetable = insertDropOff(temporaryTimetable, dropOffIdx, dropOffStopToInsert, dropOffInsertionCost + stopDuration);
                 double totalCost = dropOffInsertionCost + pickupInsertionCost;
                 if (totalCost < bestInsertionCost) {
                     bestInsertionCost = totalCost;

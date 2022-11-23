@@ -4,7 +4,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 
-public class TimetableEntry {
+class TimetableEntry {
 
     enum StopType {PICKUP, DROP_OFF}
 
@@ -16,9 +16,9 @@ public class TimetableEntry {
     private final double stopDuration;
     private final int capacity;
 
-    public TimetableEntry(MixedCaseDrtOptimizer.GeneralRequest request, StopType stopType, double arrivalTime,
-                          double departureTime, int occupancyBeforeStop, double stopDuration,
-                          DvrpVehicle vehicle) {
+    TimetableEntry(MixedCaseDrtOptimizer.GeneralRequest request, StopType stopType, double arrivalTime,
+                   double departureTime, int occupancyBeforeStop, double stopDuration,
+                   DvrpVehicle vehicle) {
         this.request = request;
         this.stopType = stopType;
         this.arrivalTime = arrivalTime;
@@ -31,7 +31,7 @@ public class TimetableEntry {
     /**
      * Make a copy of the object
      */
-    public TimetableEntry(TimetableEntry timetableEntry) {
+    TimetableEntry(TimetableEntry timetableEntry) {
         this.request = timetableEntry.request;
         this.stopType = timetableEntry.stopType;
         this.arrivalTime = timetableEntry.arrivalTime;
@@ -41,26 +41,23 @@ public class TimetableEntry {
         this.capacity = timetableEntry.capacity;
     }
 
-    public double delayTheStop(double delay) {
+    double delayTheStop(double delay) {
         double effectiveDelay = getEffectiveDelay(delay);
-        if (effectiveDelay == -1) {
-            throw new RuntimeException("Effective delay should not be -1 at this stage!");
-        }
         arrivalTime += delay;
         departureTime += effectiveDelay;
         return effectiveDelay;
     }
 
-    public void addPickupBeforeTheStop() {
+    void addPickupBeforeTheStop() {
         occupancyBeforeStop += 1;
     }
 
-    public void addDropOffBeforeTheStop() {
+    void addDropOffBeforeTheStop() {
         occupancyBeforeStop -= 1;
     }
 
     // Checking functions
-    public double checkDelayFeasibility(double delay) {
+    double checkDelayFeasibility(double delay) {
         double effectiveDelay = getEffectiveDelay(delay);
         if (!checkTimeFeasibility(delay)) {
             return -1; // if not feasible, then return -1
@@ -68,15 +65,15 @@ public class TimetableEntry {
         return effectiveDelay;
     }
 
-    public boolean isVehicleFullBeforeThisStop() {
+    boolean isVehicleFullBeforeThisStop() {
         return occupancyBeforeStop >= capacity;
     }
 
-    public boolean checkOccupancyFeasibility() {
-        return stopType == StopType.PICKUP ? occupancyBeforeStop < capacity : occupancyBeforeStop <= capacity;
+    boolean isVehicleOverloaded() {
+        return stopType == StopType.PICKUP ? occupancyBeforeStop >= capacity : occupancyBeforeStop > capacity;
     }
 
-    public boolean checkTimeFeasibility(double delay) {
+    boolean checkTimeFeasibility(double delay) {
         if (stopType == StopType.PICKUP) {
             return arrivalTime + delay <= request.latestStartTime();
         }
@@ -84,15 +81,15 @@ public class TimetableEntry {
     }
 
     // Getter functions
-    public MixedCaseDrtOptimizer.GeneralRequest getRequest() {
+    MixedCaseDrtOptimizer.GeneralRequest getRequest() {
         return request;
     }
 
-    public double getArrivalTime() {
+    double getArrivalTime() {
         return arrivalTime;
     }
 
-    public double getDepartureTime() {
+    double getDepartureTime() {
         return departureTime;
     }
 
@@ -103,7 +100,7 @@ public class TimetableEntry {
         return request.toLinkId();
     }
 
-    public int getOccupancyBeforeStop() {
+    int getOccupancyBeforeStop() {
         return occupancyBeforeStop;
     }
 
