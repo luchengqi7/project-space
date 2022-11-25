@@ -226,7 +226,7 @@ class SimpleOnlineInserter implements OnlineInserter{
     private boolean isInsertionFeasible(List<TimetableEntry> originalTimetable, int insertionIdx, double delay) {
         for (int i = insertionIdx; i < originalTimetable.size(); i++) {
             TimetableEntry stop = originalTimetable.get(i);
-            delay = stop.checkDelayFeasibility(delay); // Check delay and update the delay (because of potential "wait for stop" task)
+            delay = stop.checkDelayFeasibilityAndReturnEffectiveDelay(delay); // Check delay and update the delay (because of potential "wait for stop" task)
             if (delay == 0) {
                 return true; // The effective delay becomes 0, then there will be no impact on the following stops
             }

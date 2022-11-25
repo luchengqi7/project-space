@@ -54,7 +54,8 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
 
         bindModal(OnlineInserter.class).toProvider(modalProvider(
                 getter -> new ExtensiveOnlineInserter(getter.getModal(Network.class), drtConfigGroup,
-                        getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class))));
+                        getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class),
+                        getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
 
         bindModal(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
                 getter -> new PrebookedRequestsSolverJsprit(

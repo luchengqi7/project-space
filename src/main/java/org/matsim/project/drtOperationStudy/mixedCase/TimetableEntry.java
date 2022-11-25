@@ -15,6 +15,7 @@ class TimetableEntry {
     private int occupancyBeforeStop;
     private final double stopDuration;
     private final int capacity;
+    private double slackTime;
 
     TimetableEntry(MixedCaseDrtOptimizer.GeneralRequest request, StopType stopType, double arrivalTime,
                    double departureTime, int occupancyBeforeStop, double stopDuration,
@@ -26,6 +27,7 @@ class TimetableEntry {
         this.occupancyBeforeStop = occupancyBeforeStop;
         this.stopDuration = stopDuration;
         this.capacity = vehicle.getCapacity();
+        this.slackTime = departureTime - (stopDuration + arrivalTime);
     }
 
     /**
@@ -39,10 +41,12 @@ class TimetableEntry {
         this.occupancyBeforeStop = timetableEntry.occupancyBeforeStop;
         this.stopDuration = timetableEntry.stopDuration;
         this.capacity = timetableEntry.capacity;
+        this.slackTime = timetableEntry.slackTime;
     }
 
+    @Deprecated
     double delayTheStop(double delay) {
-        double effectiveDelay = getEffectiveDelay(delay);
+        double effectiveDelay = getEffectiveDelayIfStopIsDelayedBy(delay);
         arrivalTime += delay;
         departureTime += effectiveDelay;
         return effectiveDelay;
@@ -56,11 +60,34 @@ class TimetableEntry {
         occupancyBeforeStop -= 1;
     }
 
+    double getEffectiveDelayIfStopIsDelayedBy(double delay) {
+        double departureTimeAfterAddingDelay = Math.max(arrivalTime + delay + stopDuration, getEarliestDepartureTime());
+        return departureTimeAfterAddingDelay - departureTime;
+    }
+
+    void delayTheStopBy(double delay) {
+        // Note: delay can be negative (i.e., bring forward)
+        arrivalTime += delay;
+        departureTime = Math.max(arrivalTime + stopDuration, getEarliestDepartureTime());
+        slackTime = departureTime - (arrivalTime + stopDuration);
+    }
+
+    void updateArrivalTime(double newArrivalTime) {
+        arrivalTime = newArrivalTime;
+        departureTime = Math.max(arrivalTime + stopDuration, getEarliestDepartureTime());
+        slackTime = departureTime - (arrivalTime + stopDuration);
+    }
+
     // Checking functions
-    double checkDelayFeasibility(double delay) {
-        double effectiveDelay = getEffectiveDelay(delay);
-        if (!checkTimeFeasibility(delay)) {
-            return -1; // if not feasible, then return -1
+    boolean isTimeConstraintViolated(double delay) {
+        return arrivalTime + delay > getLatestArrivalTime();
+    }
+
+    @Deprecated
+    double checkDelayFeasibilityAndReturnEffectiveDelay(double delay) {
+        double effectiveDelay = getEffectiveDelayIfStopIsDelayedBy(delay);
+        if (isTimeConstraintViolated(delay)) {
+            return -1; // if not feasible, then return -1 //TODO do not use this anymore, as delay can now be negative also!!!
         }
         return effectiveDelay;
     }
@@ -71,13 +98,6 @@ class TimetableEntry {
 
     boolean isVehicleOverloaded() {
         return stopType == StopType.PICKUP ? occupancyBeforeStop >= capacity : occupancyBeforeStop > capacity;
-    }
-
-    boolean checkTimeFeasibility(double delay) {
-        if (stopType == StopType.PICKUP) {
-            return arrivalTime + delay <= request.latestStartTime();
-        }
-        return arrivalTime + delay <= request.latestArrivalTime();
     }
 
     // Getter functions
@@ -104,10 +124,18 @@ class TimetableEntry {
         return occupancyBeforeStop;
     }
 
-    // Private functions
-    private double getEffectiveDelay(double delay) {
-        double slackTime = departureTime - arrivalTime - stopDuration;
-        double effectiveDelay = delay - slackTime;
-        return Math.max(0, effectiveDelay);
+    double getEarliestDepartureTime() {
+        return request.earliestStartTime();
     }
+
+    double getSlackTime() {
+        return slackTime;
+    }
+
+    double getLatestArrivalTime() {
+        return stopType == StopType.PICKUP ? request.latestStartTime() : request.latestArrivalTime();
+    }
+
+    // Private functions
+
 }
