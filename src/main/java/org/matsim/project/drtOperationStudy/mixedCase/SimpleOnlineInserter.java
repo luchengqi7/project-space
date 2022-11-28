@@ -16,7 +16,8 @@ import java.util.Map;
 
 import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
 
-class SimpleOnlineInserter implements OnlineInserter{
+@Deprecated
+class SimpleOnlineInserter implements OnlineInserter {
     private final Network network;
     private final double stopDuration;
     private final TravelTimeMatrix travelTimeMatrix;
@@ -31,7 +32,7 @@ class SimpleOnlineInserter implements OnlineInserter{
 
     @Override
     public Id<DvrpVehicle> insert(DrtRequest request, Map<Id<DvrpVehicle>, List<TimetableEntry>> timetables,
-                           Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap) {
+                                  Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap) {
         // Request information
         Link fromLink = request.getFromLink();
         Link toLink = request.getToLink();

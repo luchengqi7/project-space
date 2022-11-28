@@ -28,7 +28,6 @@ import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.schedule.*;
 import org.matsim.contrib.dvrp.tracker.OnlineDriveTaskTracker;
 import org.matsim.contrib.dvrp.util.LinkTimePair;
-import org.matsim.contrib.zone.skims.TravelTimeMatrix;
 import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.mobsim.framework.MobsimTimer;
 import org.matsim.core.mobsim.framework.events.MobsimBeforeSimStepEvent;
@@ -37,7 +36,6 @@ import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
-import scala.Int;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -161,6 +159,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
 
     @Override
     public void nextTask(DvrpVehicle vehicle) {
+        // TODO potential place to update vehicle timetable
         scheduleTimingUpdater.updateBeforeNextTask(vehicle);
         var schedule = vehicle.getSchedule();
 
@@ -325,7 +324,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     }
 
     private void updateFleetStatus(double now) {
-        // TODO update vehicle timetable
+        // TODO potential place to update vehicle timetable
         // This function only needs to be performed once for each time step
         if (now != lastUpdateTimeOfFleetStatus) {
             for (DvrpVehicle v : fleet.getVehicles().values()) {
