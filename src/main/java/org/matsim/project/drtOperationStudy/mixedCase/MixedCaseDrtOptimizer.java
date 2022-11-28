@@ -325,6 +325,7 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
     }
 
     private void updateFleetStatus(double now) {
+        // TODO update vehicle timetable
         // This function only needs to be performed once for each time step
         if (now != lastUpdateTimeOfFleetStatus) {
             for (DvrpVehicle v : fleet.getVehicles().values()) {
@@ -391,7 +392,8 @@ public class MixedCaseDrtOptimizer implements DrtOptimizer {
         // Wait for stop task: end this task if first timetable entry has changed
         if (currentTask instanceof WaitForStopTask) {
             currentTask.setEndTime(now);
-            //TODO currently, it's not easy to check if the first entry in timetable is changed. We just end this task (a new wait for stop task will be generated at "nextTask" section if needed)
+            //Note: currently, it's not easy to check if the first entry in timetable is changed.
+            // We just end this task (a new wait for stop task will be generated at "nextTask" section if needed)
         }
 
         // Drive task: Divert the drive task when needed
