@@ -48,7 +48,7 @@ public class PDPTWSolverJsprit {
 
     public RollingHorizonDrtOptimizer.PreplannedSchedules calculate(RollingHorizonDrtOptimizer.PreplannedSchedules previousSchedule,
                                                                     Map<Id<DvrpVehicle>, RollingHorizonDrtOptimizer.OnlineVehicleInfo> realTimeVehicleInfoMap,
-                                                                    List<DrtRequest> newRequests) {
+                                                                    List<DrtRequest> newRequests, double horizon, double interval, double now) {
         // Create PDPTW problem
         var vrpBuilder = new VehicleRoutingProblem.Builder();
         // 1. Vehicle
@@ -174,20 +174,22 @@ public class PDPTWSolverJsprit {
                 }
 
                 // Now we need to create the initial route for this vehicle for the VRP problem
-                VehicleRoute.Builder iniRouteBuilder = VehicleRoute.Builder.newInstance(vehicleIdToJSpritVehicleMap.get(vehicleId));
-                // First pick up the dummy requests (onboard request)
-                for (RollingHorizonDrtOptimizer.PreplannedRequest requestOnboardThisVehicle : requestsOnboardThisVehicle) {
-                    iniRouteBuilder.addPickup(requestToShipmentMap.get(requestOnboardThisVehicle));
-                }
-                // Then deliver those requests based on the previous stop plans
-                for (RollingHorizonDrtOptimizer.PreplannedStop stop : previousSchedule.vehicleToPreplannedStops().get(vehicleId)) {
-                    if (requestsOnboardThisVehicle.contains(stop.preplannedRequest())) {
-                        Shipment shipment = requestToShipmentMap.get(stop.preplannedRequest());
-                        iniRouteBuilder.addDelivery(shipment);
-                    }
-                }
-                VehicleRoute iniRoute = iniRouteBuilder.build();
-                vrpBuilder.addInitialVehicleRoute(iniRoute);
+                // TODO The initial route may cause some strange behaviors in optimization (jsprit)
+                // TODO On the other hand, if no initial route is used, we need to make sure the request onboard is never rejected!
+//                VehicleRoute.Builder iniRouteBuilder = VehicleRoute.Builder.newInstance(vehicleIdToJSpritVehicleMap.get(vehicleId));
+//                // First pick up the dummy requests (onboard request)
+//                for (RollingHorizonDrtOptimizer.PreplannedRequest requestOnboardThisVehicle : requestsOnboardThisVehicle) {
+//                    iniRouteBuilder.addPickup(requestToShipmentMap.get(requestOnboardThisVehicle));
+//                }
+//                // Then deliver those requests based on the previous stop plans
+//                for (RollingHorizonDrtOptimizer.PreplannedStop stop : previousSchedule.vehicleToPreplannedStops().get(vehicleId)) {
+//                    if (requestsOnboardThisVehicle.contains(stop.preplannedRequest())) {
+//                        Shipment shipment = requestToShipmentMap.get(stop.preplannedRequest());
+//                        iniRouteBuilder.addDelivery(shipment);
+//                    }
+//                }
+//                VehicleRoute iniRoute = iniRouteBuilder.build();
+//                vrpBuilder.addInitialVehicleRoute(iniRoute);
 
                 // Add the request onboard this vehicle to the main pool
                 requestsOnboard.addAll(requestsOnboardThisVehicle);
@@ -221,6 +223,7 @@ public class PDPTWSolverJsprit {
         }
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
+//                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiscount(problem, horizon, interval, now))
                 .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .setRandom(options.random)
                 .buildAlgorithm();
@@ -228,7 +231,7 @@ public class PDPTWSolverJsprit {
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
-        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
+//        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();
