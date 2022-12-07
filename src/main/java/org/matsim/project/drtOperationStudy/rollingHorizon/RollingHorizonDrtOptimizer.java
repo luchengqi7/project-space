@@ -271,7 +271,7 @@ public class RollingHorizonDrtOptimizer implements DrtOptimizer {
             double endTime = now + horizon;
             log.info("Calculating the plan for t =" + now + " to t = " + endTime);
             log.info("There are " + newRequests.size() + " new request within this horizon");
-            preplannedSchedules = solver.calculate(preplannedSchedules, realTimeVehicleInfoMap, newRequests);
+            preplannedSchedules = solver.calculate(preplannedSchedules, realTimeVehicleInfoMap, newRequests, horizon, interval, now);
 
             // Update vehicles schedules
             for (OnlineVehicleInfo onlineVehicleInfo : realTimeVehicleInfoMap.values()) {

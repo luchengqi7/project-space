@@ -30,10 +30,10 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
     @CommandLine.Option(names = "--plans", description = "path to input plans file", required = true)
     private Path inputPlansPath;
 
-    @CommandLine.Option(names = "--network", description = "path to input network file", required = true)
+    @CommandLine.Option(names = "--network", description = "path to original network file", required = true)
     private Path networkPath;
 
-    @CommandLine.Option(names = "--output-network", description = "path to output network file", defaultValue = "")
+    @CommandLine.Option(names = "--output-network", description = "path to drt network", defaultValue = "")
     private String outputNetworkPath;
 
     @CommandLine.Option(names = "--output", description = "output path", required = true)
@@ -122,11 +122,17 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                     if (trip.getOriginActivity().getCoord() != null) {
                         fromCoord = trip.getOriginActivity().getCoord();
                     } else {
+                        if (network.getLinks().get(trip.getOriginActivity().getLinkId()) == null) {
+                            continue;
+                        }
                         fromCoord = network.getLinks().get(trip.getOriginActivity().getLinkId()).getToNode().getCoord();
                     }
                     if (trip.getDestinationActivity().getCoord() != null) {
                         toCoord = trip.getDestinationActivity().getCoord();
                     } else {
+                        if (network.getLinks().get(trip.getDestinationActivity().getLinkId()) == null) {
+                            continue;
+                        }
                         toCoord = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getToNode().getCoord();
                     }
 

@@ -85,7 +85,7 @@ public class RunJspritScenario implements MATSimAppCommand {
     @CommandLine.Option(names = "--enable-graph-stream-viewer", description = "enable graphStreamViewer", defaultValue = "false")
     private static boolean enableGraphStreamViewer;
 
-    @CommandLine.Option(names = "--school-traffic", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "Disabled")
+    @CommandLine.Option(names = "--school-traffic", description = "Enum values: ${COMPLETION-CANDIDATES}", defaultValue = "UNIFORM")
     private SchoolTrafficUtils.SchoolStartTimeScheme schoolStartTimeScheme;
 
     @CommandLine.Option(names = "--run-test", description = "if running the test for jsprit", defaultValue = "false")

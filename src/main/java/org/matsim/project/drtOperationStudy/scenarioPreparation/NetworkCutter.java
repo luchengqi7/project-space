@@ -25,6 +25,9 @@ public class NetworkCutter implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "path to output network file", required = true)
     private String outputNetworkFile;
 
+    @CommandLine.Option(names = "--max-free-speed", description = "maximum free speed of the link in m/s", defaultValue = "40")
+    private double maxFreeSpeed;
+
     @CommandLine.Mixin
     private ShpOptions shp = new ShpOptions();
 
@@ -48,8 +51,15 @@ public class NetworkCutter implements MATSimAppCommand {
             if (!link.getAllowedModes().contains(TransportMode.car)) {
                 continue;
             }
+
+            if (link.getAttributes().getAttribute("type").equals("highway.service")) {
+                continue;
+            }
+
             if (MGC.coord2Point(link.getCoord()).within(geometry)) {
                 link.setAllowedModes(Set.of(TransportMode.car));
+                double freeSpeed = Math.min(link.getFreespeed(), maxFreeSpeed);
+                link.setFreespeed(freeSpeed);
                 linksToKeep.add(link);
                 nodesToKeep.add(link.getFromNode());
                 nodesToKeep.add(link.getToNode());
