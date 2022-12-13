@@ -162,7 +162,7 @@ public class PDPTWSolverJsprit {
                                     setDeliveryServiceTime(drtCfg.stopDuration).
                                     setDeliveryTimeWindow(new TimeWindow(vehicleStartTime, Math.max(request.latestArrivalTime(), earliestLatestDropOffTime))).
                                     addSizeDimension(0, 1).
-                                    setPriority(1).
+                                    setPriority(2).
                                     build();
                             // Priority: 1 --> top priority. 10 --> the lowest priority
                             vrpBuilder.addJob(shipment);
@@ -224,14 +224,15 @@ public class PDPTWSolverJsprit {
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
 //                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiscount(problem, horizon, interval, now))
-                .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
+                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiversionCosts(problem, previousSchedule, realTimeVehicleInfoMap, now))
+//                .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
-//        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
+        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();
@@ -265,6 +266,9 @@ public class PDPTWSolverJsprit {
         Map<RollingHorizonDrtOptimizer.PreplannedRequestKey, RollingHorizonDrtOptimizer.PreplannedRequest> unassignedRequests = new HashMap<>();
         for (Job job : bestSolution.getUnassignedJobs()) {
             RollingHorizonDrtOptimizer.PreplannedRequest rejectedRequest = preplannedRequestByShipmentId.get(job.getId());
+            if (requestsOnboard.contains(rejectedRequest)) {
+                throw new RuntimeException("Request onboard is rejected! This should not happen and will cause major problem afterwards. Abort the simulation now...");
+            }
             unassignedRequests.put(rejectedRequest.key(), rejectedRequest);
         }
 
@@ -294,7 +298,12 @@ public class PDPTWSolverJsprit {
             }
 
             for (Job j : solution.getUnassignedJobs()) {
-                costs += REJECTION_COST * (11 - j.getPriority());
+                if (j.getPriority() <= 1) {
+                    costs += REJECTION_COST * 10000;
+                } else {
+                    costs += REJECTION_COST * (11 - j.getPriority());
+                }
+
             }
 
             return costs;
