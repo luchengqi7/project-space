@@ -224,15 +224,15 @@ public class PDPTWSolverJsprit {
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
 //                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiscount(problem, horizon, interval, now))
-                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiversionCosts(problem, previousSchedule, realTimeVehicleInfoMap, now))
-//                .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
+//                .setObjectiveFunction(new RollingHorizonObjectiveFunctionWithDiversionCosts(problem, previousSchedule, realTimeVehicleInfoMap, now))
+                .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
-        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
+//        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
 
         // Collect results
         List<Id<Person>> personsOnboard = new ArrayList<>();

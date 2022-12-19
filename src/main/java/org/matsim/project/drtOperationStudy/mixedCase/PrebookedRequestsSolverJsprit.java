@@ -119,7 +119,7 @@ class PrebookedRequestsSolverJsprit {
         MatrixBasedVrpCosts vrpCosts = new MatrixBasedVrpCosts(travelTimeMatrix, time, network, travelTime);
         vrpBuilder.setRoutingCost(vrpCosts);
         List<VehicleRoute> routesForInitialSolutions = new ArrayList<>();
-        List<Job> unassignedShipments = new ArrayList<>();
+        List<Job> unassignedShipments = new ArrayList<>(); //Used for initial solution
 
         Map<MixedCaseDrtOptimizer.GeneralRequest, Shipment> requestToShipmentMap = new HashMap<>();
         // 2.1 Passengers already assigned
@@ -184,7 +184,7 @@ class PrebookedRequestsSolverJsprit {
                                     setDeliveryServiceTime(drtCfg.stopDuration).
                                     setDeliveryTimeWindow(new TimeWindow(vehicleStartTime, Math.max(request.latestArrivalTime(), earliestLatestDropOffTime))).
                                     addSizeDimension(0, 1).
-                                    setPriority(1).
+                                    setPriority(2).
                                     build();
                             // Priority: 1 --> top priority. 10 --> the lowest priority
                             vrpBuilder.addJob(shipment);
@@ -261,10 +261,8 @@ class PrebookedRequestsSolverJsprit {
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
-//        SolutionPrinter.print(problem, bestSolution, SolutionPrinter.Print.VERBOSE); // TODO delete
-
         // Collect results
-        List<Id<Person>> personsOnboard = new ArrayList<>();
+        Set<Id<Person>> personsOnboard = new HashSet<>();
         requestsOnboardEachVehicles.values().forEach(l -> l.forEach(r -> personsOnboard.add(r.passengerId())));
 
         Map<Id<Person>, Id<DvrpVehicle>> assignedPassengerToVehicleMap = new HashMap<>();
@@ -364,7 +362,7 @@ class PrebookedRequestsSolverJsprit {
             }
 
             for (Job j : solution.getUnassignedJobs()) {
-                costs += REJECTION_COST * (11 - j.getPriority());
+                costs += REJECTION_COST * (11 - j.getPriority()) * (11 - j.getPriority()) * (11 - j.getPriority()); // Make sure the cost to "reject" request onboard is prohibitively large
             }
 
             return costs;
