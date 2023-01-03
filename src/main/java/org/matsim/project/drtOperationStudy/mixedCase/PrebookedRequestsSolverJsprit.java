@@ -16,53 +16,58 @@ import com.graphhopper.jsprit.core.problem.solution.route.activity.TourActivity;
 import com.graphhopper.jsprit.core.problem.vehicle.Vehicle;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleImpl;
 import com.graphhopper.jsprit.core.problem.vehicle.VehicleTypeImpl;
+import com.graphhopper.jsprit.core.reporting.SolutionPrinter;
 import com.graphhopper.jsprit.core.util.Coordinate;
 import com.graphhopper.jsprit.core.util.Solutions;
+import one.util.streamex.EntryStream;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
-import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.path.VrpPaths;
-import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
+import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
+import org.matsim.contrib.zone.Zone;
+import org.matsim.contrib.zone.skims.Matrix;
+import org.matsim.contrib.zone.skims.TravelTimeMatrices;
 import org.matsim.contrib.zone.skims.TravelTimeMatrix;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
-import org.matsim.project.drtOperationStudy.rollingHorizon.PDPTWSolverJsprit;
-import org.matsim.project.drtOperationStudy.rollingHorizon.RollingHorizonDrtOptimizer;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
 
 class PrebookedRequestsSolverJsprit {
     private final Options options;
     private final DrtConfigGroup drtCfg;
     private final Network network;
-
-    private final TravelTimeMatrix travelTimeMatrix;
     private final TravelTime travelTime;
-
+    private final TravelDisutility travelDisutility;
     private final Map<Id<Link>, Location> locationByLinkId = new IdMap<>(Link.class);
 
     public static final double REJECTION_COST = 100000;
 
 
-    PrebookedRequestsSolverJsprit(Options options, DrtConfigGroup drtCfg, Network network, TravelTimeMatrix travelTimeMatrix, TravelTime travelTime) {
+    PrebookedRequestsSolverJsprit(Options options, DrtConfigGroup drtCfg, Network network, TravelTime travelTime) {
         this.options = options;
         this.drtCfg = drtCfg;
         this.network = network;
-        this.travelTimeMatrix = travelTimeMatrix;
         this.travelTime = travelTime;
+        this.travelDisutility = new TimeAsTravelDisutility(travelTime);
     }
 
     MixedCaseDrtOptimizer.FleetSchedules calculate(MixedCaseDrtOptimizer.FleetSchedules previousSchedules,
                                                    Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> onlineVehicleInfoMap,
                                                    List<MixedCaseDrtOptimizer.GeneralRequest> newRequests,
                                                    double time) {
+        locationByLinkId.clear();
         // Create PDPTW problem
         var vrpBuilder = new VehicleRoutingProblem.Builder();
         // 1. Vehicle
@@ -91,8 +96,7 @@ class PrebookedRequestsSolverJsprit {
 
         // 2. Request
         var preplannedRequestByShipmentId = new HashMap<String, MixedCaseDrtOptimizer.GeneralRequest>();
-        List<MixedCaseDrtOptimizer.GeneralRequest> requestsOnboard = new ArrayList<>();
-        // TODO consider also adding locations of the spontaneous requests to the matrix
+        Map<Id<DvrpVehicle>, List<MixedCaseDrtOptimizer.GeneralRequest>> requestsOnboardEachVehicles = new HashMap<>();
         newRequests.forEach(drtRequest -> collectLocationIfAbsent(network.getLinks().get(drtRequest.fromLinkId())));
         newRequests.forEach(drtRequest -> collectLocationIfAbsent(network.getLinks().get(drtRequest.toLinkId())));
 
@@ -111,17 +115,19 @@ class PrebookedRequestsSolverJsprit {
         }
 
         // Calculate link to link travel time matrix and initialize VRP costs
+        TravelTimeMatrix travelTimeMatrix = createTravelTimeMatrix(time);
         MatrixBasedVrpCosts vrpCosts = new MatrixBasedVrpCosts(travelTimeMatrix, time, network, travelTime);
         vrpBuilder.setRoutingCost(vrpCosts);
+        List<VehicleRoute> routesForInitialSolutions = new ArrayList<>();
+        List<Job> unassignedShipments = new ArrayList<>(); //Used for initial solution
 
+        Map<MixedCaseDrtOptimizer.GeneralRequest, Shipment> requestToShipmentMap = new HashMap<>();
         // 2.1 Passengers already assigned
         // When creating the shipment, we may need to postpone the pickup/delivery deadlines, in order to keep the original solution still remains feasible (due to potential delays)
         if (previousSchedules != null) {
             for (Id<DvrpVehicle> vehicleId : previousSchedules.vehicleToTimetableMap().keySet()) {
                 Map<MixedCaseDrtOptimizer.GeneralRequest, Double> requestPickUpTimeMap = new HashMap<>();
-                Map<MixedCaseDrtOptimizer.GeneralRequest, Shipment> requestToShipmentMap = new HashMap<>();
                 List<MixedCaseDrtOptimizer.GeneralRequest> requestsOnboardThisVehicle = new ArrayList<>();
-
                 Link vehicleStartLink = onlineVehicleInfoMap.get(vehicleId).currentLink();
                 double vehicleStartTime = onlineVehicleInfoMap.get(vehicleId).divertableTime();
                 Link currentLink = vehicleStartLink;
@@ -178,7 +184,7 @@ class PrebookedRequestsSolverJsprit {
                                     setDeliveryServiceTime(drtCfg.stopDuration).
                                     setDeliveryTimeWindow(new TimeWindow(vehicleStartTime, Math.max(request.latestArrivalTime(), earliestLatestDropOffTime))).
                                     addSizeDimension(0, 1).
-                                    setPriority(1).
+                                    setPriority(2).
                                     build();
                             // Priority: 1 --> top priority. 10 --> the lowest priority
                             vrpBuilder.addJob(shipment);
@@ -188,25 +194,8 @@ class PrebookedRequestsSolverJsprit {
                     }
                     currentTime += drtCfg.stopDuration;
                 }
-
-                // Now we need to create the initial route for this vehicle for the VRP problem
-                VehicleRoute.Builder iniRouteBuilder = VehicleRoute.Builder.newInstance(vehicleIdToJSpritVehicleMap.get(vehicleId));
-                // First pick up the dummy requests (onboard request)
-                for (MixedCaseDrtOptimizer.GeneralRequest requestOnboardThisVehicle : requestsOnboardThisVehicle) {
-                    iniRouteBuilder.addPickup(requestToShipmentMap.get(requestOnboardThisVehicle));
-                }
-                // Then deliver those requests based on the previous stop plans
-                for (TimetableEntry stop : previousSchedules.vehicleToTimetableMap().get(vehicleId)) {
-                    if (requestsOnboardThisVehicle.contains(stop.getRequest())) {
-                        Shipment shipment = requestToShipmentMap.get(stop.getRequest());
-                        iniRouteBuilder.addDelivery(shipment);
-                    }
-                }
-                VehicleRoute iniRoute = iniRouteBuilder.build();
-                vrpBuilder.addInitialVehicleRoute(iniRoute);
-
                 // Add the request onboard this vehicle to the main pool
-                requestsOnboard.addAll(requestsOnboardThisVehicle);
+                requestsOnboardEachVehicles.put(vehicleId, requestsOnboardThisVehicle);
             }
         }
 
@@ -225,26 +214,56 @@ class PrebookedRequestsSolverJsprit {
                     build();
             vrpBuilder.addJob(shipment);
             preplannedRequestByShipmentId.put(shipmentId, newRequest);
+            unassignedShipments.add(shipment);
         }
 
         // Solve VRP problem
         var problem = vrpBuilder.setFleetSize(VehicleRoutingProblem.FleetSize.FINITE).build();
+
         String numOfThreads = "1";
         if (options.multiThread) {
             numOfThreads = Runtime.getRuntime().availableProcessors() + "";
         }
+        if (previousSchedules != null) {
+            for (Id<DvrpVehicle> vehicleId : previousSchedules.vehicleToTimetableMap().keySet()) {
+                // Now we need to create the initial solution for this vehicle for the VRP problem
+                VehicleRoute.Builder initialRouteBuilder = VehicleRoute.Builder
+                        .newInstance(vehicleIdToJSpritVehicleMap.get(vehicleId))
+                        .setJobActivityFactory(problem.getJobActivityFactory());
+                // First pick up all the dummy requests (onboard request)
+                for (MixedCaseDrtOptimizer.GeneralRequest request : requestsOnboardEachVehicles.get(vehicleId)) {
+                    initialRouteBuilder.addPickup(requestToShipmentMap.get(request));
+                }
+                // Then add each stops according to the previous plan
+                for (TimetableEntry stop : previousSchedules.vehicleToTimetableMap().get(vehicleId)) {
+                    Shipment shipment = requestToShipmentMap.get(stop.getRequest());
+                    if (stop.stopType == TimetableEntry.StopType.PICKUP) {
+                        initialRouteBuilder.addPickup(shipment);
+                    } else {
+                        initialRouteBuilder.addDelivery(shipment);
+                    }
+                }
+                // Build the route and store in the map
+                VehicleRoute iniRoute = initialRouteBuilder.build();
+                routesForInitialSolutions.add(iniRoute);
+            }
+        }
+        VehicleRoutingProblemSolution initialSolution = new VehicleRoutingProblemSolution(routesForInitialSolutions, unassignedShipments, 0);
+        initialSolution.setCost(new DefaultRollingHorizonObjectiveFunction(problem).getCosts(initialSolution));
+
         var algorithm = Jsprit.Builder.newInstance(problem)
                 .setProperty(Jsprit.Parameter.THREADS, numOfThreads)
                 .setObjectiveFunction(new DefaultRollingHorizonObjectiveFunction(problem))
                 .setRandom(options.random)
                 .buildAlgorithm();
         algorithm.setMaxIterations(options.maxIterations);
+        algorithm.addInitialSolution(initialSolution);
         var solutions = algorithm.searchSolutions();
         var bestSolution = Solutions.bestOf(solutions);
 
         // Collect results
-        List<Id<Person>> personsOnboard = new ArrayList<>();
-        requestsOnboard.forEach(r -> personsOnboard.add(r.passengerId()));
+        Set<Id<Person>> personsOnboard = new HashSet<>();
+        requestsOnboardEachVehicles.values().forEach(l -> l.forEach(r -> personsOnboard.add(r.passengerId())));
 
         Map<Id<Person>, Id<DvrpVehicle>> assignedPassengerToVehicleMap = new HashMap<>();
         Map<Id<DvrpVehicle>, List<TimetableEntry>> vehicleToPreplannedStops = problem.getVehicles()
@@ -343,7 +362,7 @@ class PrebookedRequestsSolverJsprit {
             }
 
             for (Job j : solution.getUnassignedJobs()) {
-                costs += REJECTION_COST * (11 - j.getPriority());
+                costs += REJECTION_COST * (11 - j.getPriority()) * (11 - j.getPriority()) * (11 - j.getPriority()); // Make sure the cost to "reject" request onboard is prohibitively large
             }
 
             return costs;
@@ -357,6 +376,19 @@ class PrebookedRequestsSolverJsprit {
                 .setIndex(locationByLinkId.size())
                 .setCoordinate(Coordinate.newInstance(link.getCoord().getX(), link.getCoord().getY()))
                 .build());
+    }
+
+    private TravelTimeMatrix createTravelTimeMatrix(double time) {
+        Map<Node, Zone> zoneByNode = locationByLinkId.keySet()
+                .stream()
+                .flatMap(linkId -> Stream.of(network.getLinks().get(linkId).getFromNode(), network.getLinks().get(linkId).getToNode()))
+                .collect(toMap(n -> n, node -> new Zone(Id.create(node.getId(), Zone.class), "node", node.getCoord()),
+                        (zone1, zone2) -> zone1));
+        var nodeByZone = EntryStream.of(zoneByNode).invert().toMap();
+        Matrix nodeToNodeMatrix = TravelTimeMatrices.calculateTravelTimeMatrix(network, nodeByZone, time, travelTime,
+                travelDisutility, Runtime.getRuntime().availableProcessors());
+
+        return (fromNode, toNode, departureTime) -> nodeToNodeMatrix.get(zoneByNode.get(fromNode), zoneByNode.get(toNode));
     }
 
 }

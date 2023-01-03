@@ -57,10 +57,11 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
                         getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class),
                         getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
 
-        bindModal(PrecalculatedExactNodeToNodeMatrix.class).toProvider(modalProvider(
-                getter -> new PrecalculatedExactNodeToNodeMatrix(getter.getModal(Network.class),
-                        getter.getModal(TravelTime.class), 0, getter.get(Population.class))
-        ));
+        // For testing purpose: use exact travel time matrix for online insertion
+//        bindModal(PrecalculatedExactNodeToNodeMatrix.class).toProvider(modalProvider(
+//                getter -> new PrecalculatedExactNodeToNodeMatrix(getter.getModal(Network.class),
+//                        getter.getModal(TravelTime.class), 0, getter.get(Population.class))
+//        ));
 
 //        bindModal(OnlineInserter.class).toProvider(modalProvider(
 //                getter -> new ExtensiveOnlineInserter(getter.getModal(Network.class), drtConfigGroup,
@@ -70,8 +71,7 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
         bindModal(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
                 getter -> new PrebookedRequestsSolverJsprit(
                         new PrebookedRequestsSolverJsprit.Options(maxIteration, multiThread, new Random(seed)),
-                        drtConfigGroup, getter.getModal(Network.class), getter.getModal(PrecalculatedExactNodeToNodeMatrix.class),
-                        getter.getModal(TravelTime.class))));
+                        drtConfigGroup, getter.getModal(Network.class), getter.getModal(TravelTime.class))));
 
         addModalComponent(QSimScopeForkJoinPoolHolder.class,
                 () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));

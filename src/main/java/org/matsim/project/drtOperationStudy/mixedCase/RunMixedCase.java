@@ -30,7 +30,7 @@ public class RunMixedCase implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
 
-    @CommandLine.Option(names = "--prebooked-trips", description = "path to pre-booked plans file", required = true)
+    @CommandLine.Option(names = "--prebooked-trips", description = "path to pre-booked plans file", defaultValue = "empty")
     private String prebookedPlansFile;
 
     @CommandLine.Option(names = "--output", description = "path to output directory", required = true)
@@ -56,7 +56,12 @@ public class RunMixedCase implements MATSimAppCommand {
     public Integer call() throws Exception {
         long startTime = System.currentTimeMillis();
         Preconditions.checkArgument(interval <= horizon, "The interval must be smaller than or equal to the horizon!");
-        Population prebookedPlans = PopulationUtils.readPopulation(prebookedPlansFile);
+        Population prebookedPlans;
+        if (prebookedPlansFile.equals("empty")) {
+            prebookedPlans = PopulationUtils.createPopulation(ConfigUtils.createConfig());
+        } else {
+            prebookedPlans = PopulationUtils.readPopulation(prebookedPlansFile);
+        }
 
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
