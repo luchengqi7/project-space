@@ -27,8 +27,10 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
     private final int maxIteration;
     private final boolean multiThread;
     private final long seed;
+    private final PrebookedRequestSolverType prebookedRequestSolverType;
 
-    public MixedCaseModule(Population prebookedPlans, String mode, DrtConfigGroup drtConfigGroup, double horizon, double interval, int maxIterations, boolean multiThread, long seed) {
+    public MixedCaseModule(Population prebookedPlans, String mode, DrtConfigGroup drtConfigGroup, double horizon,
+                           double interval, int maxIterations, boolean multiThread, long seed, PrebookedRequestSolverType type) {
         super(mode);
         this.prebookedPlans = prebookedPlans;
         this.drtConfigGroup = drtConfigGroup;
@@ -37,7 +39,10 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
         this.maxIteration = maxIterations;
         this.multiThread = multiThread;
         this.seed = seed;
+        this.prebookedRequestSolverType = type;
     }
+
+    enum PrebookedRequestSolverType {JSPRIT, SEQ_INSERTION}
 
     @Override
     protected void configureQSim() {
@@ -48,7 +53,7 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
                 drtConfigGroup, getter.getModal(Fleet.class),
                 getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
                 getter.getModal(VehicleEntry.EntryFactory.class),
-                getter.getModal(PrebookedRequestsSolverJsprit.class),
+                getter.getModal(PrebookedRequestsSolver.class),
                 getter.getModal(OnlineInserter.class),
                 getter.get(Population.class), horizon, interval, prebookedPlans)));
 
@@ -56,6 +61,21 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
                 getter -> new ExtensiveOnlineInserter(getter.getModal(Network.class), drtConfigGroup,
                         getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class),
                         getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
+
+        switch (prebookedRequestSolverType) {
+            case JSPRIT -> bindModal(PrebookedRequestsSolver.class).toProvider(modalProvider(
+                    getter -> new PrebookedRequestsSolverJsprit(
+                            new PrebookedRequestsSolverJsprit.Options(maxIteration, multiThread, new Random(seed)),
+                            drtConfigGroup, getter.getModal(Network.class), getter.getModal(TravelTime.class))));
+            case SEQ_INSERTION -> bindModal(PrebookedRequestsSolver.class).toProvider(modalProvider(
+                    getter -> new PrebookedRequestsSolverSeqInsertion(
+                            getter.getModal(Network.class), getter.getModal(TravelTime.class), drtConfigGroup)));
+            default -> throw new RuntimeException("The solver is not implemented!");
+        }
+
+        addModalComponent(QSimScopeForkJoinPoolHolder.class,
+                () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));
+        bindModal(VehicleEntry.EntryFactory.class).toInstance(new VehicleDataEntryFactoryImpl(drtConfigGroup));
 
         // For testing purpose: use exact travel time matrix for online insertion
 //        bindModal(PrecalculatedExactNodeToNodeMatrix.class).toProvider(modalProvider(
@@ -68,13 +88,5 @@ public class MixedCaseModule extends AbstractDvrpModeQSimModule {
 //                        getter.getModal(PrecalculatedExactNodeToNodeMatrix.class), getter.getModal(TravelTime.class),
 //                        getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
 
-        bindModal(PrebookedRequestsSolverJsprit.class).toProvider(modalProvider(
-                getter -> new PrebookedRequestsSolverJsprit(
-                        new PrebookedRequestsSolverJsprit.Options(maxIteration, multiThread, new Random(seed)),
-                        drtConfigGroup, getter.getModal(Network.class), getter.getModal(TravelTime.class))));
-
-        addModalComponent(QSimScopeForkJoinPoolHolder.class,
-                () -> new QSimScopeForkJoinPoolHolder(drtConfigGroup.numberOfThreads));
-        bindModal(VehicleEntry.EntryFactory.class).toInstance(new VehicleDataEntryFactoryImpl(drtConfigGroup));
     }
 }

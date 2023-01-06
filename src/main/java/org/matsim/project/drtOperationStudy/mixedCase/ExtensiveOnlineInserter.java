@@ -56,6 +56,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
             MixedCaseDrtOptimizer.OnlineVehicleInfo vehicleInfo = realTimeVehicleInfoMap.get(vehicleId);
             Link currentLink = vehicleInfo.currentLink();
             double divertableTime = vehicleInfo.divertableTime();
+            double serviceEndTime = vehicleInfo.vehicle().getServiceEndTime() - stopDuration;
 
             List<TimetableEntry> originalTimetable = timetables.get(vehicleId);
 
@@ -66,7 +67,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                 double tripTravelTime = calculateVrpTravelTimeFromMatrix(fromLink, toLink, arrivalTimePickUp + stopDuration);
                 double arrivalTimeDropOff = arrivalTimePickUp + stopDuration + tripTravelTime;
                 double totalInsertionCost = timeToPickup + tripTravelTime;
-                if (arrivalTimePickUp > latestPickUpTime) {
+                if (arrivalTimePickUp > latestPickUpTime || arrivalTimePickUp > serviceEndTime) {
                     continue;
                 }
 
@@ -100,7 +101,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                 if (i == 0) {
                     detourA = calculateVrpTravelTimeFromMatrix(currentLink, fromLink, divertableTime);
                     pickupTime = divertableTime + detourA;
-                    if (pickupTime > latestPickUpTime) {
+                    if (pickupTime > latestPickUpTime || pickupTime > serviceEndTime) {
                         noNeedToContinueWithThisVehicle = true;
                         break; // Vehicle cannot reach the pickup location in time. No need to continue with this vehicle
                     }
@@ -111,7 +112,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                     Link linkOfStopBeforePickUpInsertion = network.getLinks().get(stopBeforePickUpInsertion.getLinkId());
                     detourA = calculateVrpTravelTimeFromMatrix(linkOfStopBeforePickUpInsertion, fromLink, stopBeforePickUpInsertion.getDepartureTime());
                     pickupTime = stopBeforePickUpInsertion.getDepartureTime() + detourA;
-                    if (pickupTime > latestPickUpTime) {
+                    if (pickupTime > latestPickUpTime || pickupTime > serviceEndTime) {
                         noNeedToContinueWithThisVehicle = true;
                         break; // Vehicle cannot reach the pickup location in time from this point. No need to continue on the timetable.
                     }
@@ -120,7 +121,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                 }
 
                 delayCausedByPickupDetour = Math.max(0, delayCausedByPickupDetour); // Due to the inaccuracy of the TT matrix, the delay may be smaller than 0, which is not meaningful
-                boolean isPickupFeasible = isInsertionFeasible(originalTimetable, i, delayCausedByPickupDetour + stopDuration);
+                boolean isPickupFeasible = isInsertionFeasible(originalTimetable, i, delayCausedByPickupDetour + stopDuration, serviceEndTime);
                 if (isPickupFeasible) {
                     TimetableEntry pickupStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.PICKUP,
                             pickupTime, pickupTime + stopDuration, stopAfterPickUpInsertion.getOccupancyBeforeStop(), stopDuration, vehicleInfo.vehicle());
@@ -139,13 +140,13 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                             Link linkOfStopAfterDropOffInsertion = network.getLinks().get(stopAfterDropOffInsertion.getLinkId());
                             double detourC = calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
                             double dropOffTime = detourC + stopBeforeDropOffInsertion.getDepartureTime();
-                            if (dropOffTime > latestArrivalTime) {
+                            if (dropOffTime > latestArrivalTime || dropOffTime > serviceEndTime) {
                                 break; // No more drop-off feasible after this stop. No need to continue in the timetable
                             }
                             double detourD = calculateVrpTravelTimeFromMatrix(toLink, linkOfStopAfterDropOffInsertion, dropOffTime + stopDuration);
                             double delayCausedByDropOffDetour = detourC + detourD - calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, linkOfStopAfterDropOffInsertion, stopBeforeDropOffInsertion.getDepartureTime());
                             delayCausedByDropOffDetour = Math.max(0, delayCausedByDropOffDetour);
-                            boolean isDropOffIsFeasible = isInsertionFeasible(temporaryTimetable, j + 1, delayCausedByDropOffDetour + stopDuration);
+                            boolean isDropOffIsFeasible = isInsertionFeasible(temporaryTimetable, j + 1, delayCausedByDropOffDetour + stopDuration, serviceEndTime);
                             double totalInsertionCost = delayCausedByDropOffDetour + delayCausedByPickupDetour; // Currently, we assume cost = total extra drive time caused by the insertion
 
                             if (isDropOffIsFeasible && totalInsertionCost < bestInsertionCost) {
@@ -162,7 +163,7 @@ class ExtensiveOnlineInserter implements OnlineInserter {
                             double detourC = calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
                             double dropOffTime = detourC + stopBeforeDropOffInsertion.getDepartureTime();
                             double totalInsertionCost = detourC + delayCausedByPickupDetour;
-                            boolean isDropOffFeasible = dropOffTime <= latestArrivalTime;
+                            boolean isDropOffFeasible = dropOffTime <= latestArrivalTime && dropOffTime <= serviceEndTime;
 
                             if (isDropOffFeasible && totalInsertionCost < bestInsertionCost) {
                                 TimetableEntry dropOffStopToInsert = new TimetableEntry(spontaneousRequest, TimetableEntry.StopType.DROP_OFF,
@@ -229,10 +230,11 @@ class ExtensiveOnlineInserter implements OnlineInserter {
         }
     }
 
-    private boolean isInsertionFeasible(List<TimetableEntry> originalTimetable, int insertionIdx, double delay) {
+    private boolean isInsertionFeasible(List<TimetableEntry> originalTimetable, int insertionIdx, double delay, double serviceEndTime) {
         for (int i = insertionIdx; i < originalTimetable.size(); i++) {
             TimetableEntry stop = originalTimetable.get(i);
-            if (stop.isTimeConstraintViolated(delay)) {
+            double newArrivalTime = stop.getArrivalTime() + delay;
+            if (stop.isTimeConstraintViolated(delay) || newArrivalTime > serviceEndTime) {
                 return false;
             }
             delay = stop.getEffectiveDelayIfStopIsDelayedBy(delay); // Update the delay after this stop (as stop time of some stops may be squeezed)
