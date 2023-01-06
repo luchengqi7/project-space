@@ -47,6 +47,10 @@ public class PrebookedRequestsSolverSeqInsertion implements PrebookedRequestsSol
             previousSchedules = new MixedCaseDrtOptimizer.FleetSchedules(vehicleToTimetableMap, requestIdToVehicleMap, rejectedRequests);
         }
 
+        if (newRequests.isEmpty()) {
+            return previousSchedules;
+        }
+
         // Prepare link to link travel time matrix based on all relevant locations (links)
         Set<Id<Link>> relevantLinks = new HashSet<>();
         // Vehicle locations
