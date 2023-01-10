@@ -40,6 +40,10 @@ public class CreateNetworkFromOsmData implements MATSimAppCommand {
     private Path output;
 
     @CommandLine.Mixin
+    private ShpOptions shp = new ShpOptions();
+    // To only keep the links within certain area, specify the shapefile
+
+    @CommandLine.Mixin
     private CrsOptions crs = new CrsOptions();
     // Input CRS: WGS84 (EPSG:4326). Target CRS: EPSG:25832
 
@@ -67,6 +71,16 @@ public class CreateNetworkFromOsmData implements MATSimAppCommand {
                 .setAfterLinkCreated((link, osmTags, isReverse) -> link.setAllowedModes(new HashSet<>(List.of(TransportMode.car))))
                 .build()
                 .read(input.toString());
+
+        if (shp.isDefined()) {
+            Set<Link> linkToRemove = new HashSet<>();
+            for (Link link : network.getLinks().values()) {
+                if (!MGC.coord2Point(link.getToNode().getCoord()).within(shp.getGeometry())) {
+                    linkToRemove.add(link);
+                }
+            }
+            linkToRemove.forEach(l -> network.removeLink(l.getId()));
+        }
 
         var cleaner = new MultimodalNetworkCleaner(network);
         cleaner.run(Set.of(TransportMode.car));
