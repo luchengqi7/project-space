@@ -61,20 +61,20 @@ class TimetableEntry {
     }
 
     double getEffectiveDelayIfStopIsDelayedBy(double delay) {
-        double departureTimeAfterAddingDelay = Math.max(arrivalTime + delay + stopDuration, getEarliestDepartureTime());
+        double departureTimeAfterAddingDelay = Math.max(arrivalTime + delay, getEarliestDepartureTime()) + stopDuration;
         return departureTimeAfterAddingDelay - departureTime;
     }
 
     void delayTheStopBy(double delay) {
         // Note: delay can be negative (i.e., bring forward)
         arrivalTime += delay;
-        departureTime = Math.max(arrivalTime + stopDuration, getEarliestDepartureTime());
+        departureTime = Math.max(arrivalTime, getEarliestDepartureTime()) + stopDuration;
         slackTime = departureTime - (arrivalTime + stopDuration);
     }
 
     void updateArrivalTime(double newArrivalTime) {
         arrivalTime = newArrivalTime;
-        departureTime = Math.max(arrivalTime + stopDuration, getEarliestDepartureTime());
+        departureTime = Math.max(arrivalTime, getEarliestDepartureTime()) + stopDuration;
         slackTime = departureTime - (arrivalTime + stopDuration);
     }
 

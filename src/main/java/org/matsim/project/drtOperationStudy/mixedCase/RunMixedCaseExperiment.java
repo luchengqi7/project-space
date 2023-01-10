@@ -50,6 +50,9 @@ public class RunMixedCaseExperiment implements MATSimAppCommand {
     @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for the jsprit solver")
     private long seed;
 
+    @CommandLine.Option(names = "--prebooked-solver", defaultValue = "JSPRIT", description = "Prebooked trips solver")
+    private MixedCaseModule.PrebookedRequestSolverType type;
+
     private final Logger log = LogManager.getLogger(RunMixedCaseExperiment.class);
 
     public static void main(String[] args) {
@@ -90,7 +93,7 @@ public class RunMixedCaseExperiment implements MATSimAppCommand {
 
                     Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
                     controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
-                    controler.addOverridingQSimModule(new MixedCaseModule(prebookedPlans, drtConfigGroup.mode, drtConfigGroup, horizon, interval, iteration, false, seed));
+                    controler.addOverridingQSimModule(new MixedCaseModule(prebookedPlans, drtConfigGroup.mode, drtConfigGroup, horizon, interval, iteration, false, seed, type));
 
                     // Add linear stop duration module
                     controler.addOverridingModule(new AbstractDvrpModeModule(drtConfigGroup.getMode()) {

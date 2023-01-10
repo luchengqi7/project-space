@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toMap;
 import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
 
-class PrebookedRequestsSolverJsprit {
+class PrebookedRequestsSolverJsprit implements PrebookedRequestsSolver{
     private final Options options;
     private final DrtConfigGroup drtCfg;
     private final Network network;
@@ -63,7 +63,8 @@ class PrebookedRequestsSolverJsprit {
         this.travelDisutility = new TimeAsTravelDisutility(travelTime);
     }
 
-    MixedCaseDrtOptimizer.FleetSchedules calculate(MixedCaseDrtOptimizer.FleetSchedules previousSchedules,
+    @Override
+    public MixedCaseDrtOptimizer.FleetSchedules calculate(MixedCaseDrtOptimizer.FleetSchedules previousSchedules,
                                                    Map<Id<DvrpVehicle>, MixedCaseDrtOptimizer.OnlineVehicleInfo> onlineVehicleInfoMap,
                                                    List<MixedCaseDrtOptimizer.GeneralRequest> newRequests,
                                                    double time) {
