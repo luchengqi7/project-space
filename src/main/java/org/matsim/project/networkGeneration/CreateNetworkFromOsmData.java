@@ -8,6 +8,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
 import org.matsim.application.options.ShpOptions;
@@ -84,6 +85,14 @@ public class CreateNetworkFromOsmData implements MATSimAppCommand {
 
         var cleaner = new MultimodalNetworkCleaner(network);
         cleaner.run(Set.of(TransportMode.car));
+
+        Set<Node> nodesToRemove = new HashSet<>();
+        for (Node node : network.getNodes().values()) {
+            if (node.getInLinks().size() == 0 && node.getOutLinks().size() == 0) {
+                nodesToRemove.add(node);
+            }
+        }
+        nodesToRemove.forEach(n -> network.removeNode(n.getId()));
 
         log.info("Modifying network speed for urban area...");
         log.info("Loading urban area geometry file");
