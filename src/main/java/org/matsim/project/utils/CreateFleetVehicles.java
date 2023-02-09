@@ -99,6 +99,10 @@ public class CreateFleetVehicles implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        if (!Files.exists(outputFolder)) {
+            Files.createDirectory(outputFolder);
+        }
+
         Network network = NetworkUtils.readNetwork(networkFile.toString());
         List<Link> links = network.getLinks().values().stream().
                 filter(l -> l.getAllowedModes().contains(TransportMode.car)).
