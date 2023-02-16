@@ -71,7 +71,7 @@ public class DropOffAnalysis implements MATSimAppCommand {
 
                 for (int i = 1; i < arrivalTimes.size(); i++) {
                     double currentDropOffTime = arrivalTimes.get(i);
-                    if (currentDropOffTime > lastDropOffTime + stopDuration) {
+                    if (currentDropOffTime > lastDropOffTime + stopDuration + 1) {
                         int numberOfDropOffInPreviousStop = i - lastUpdateIdx;
                         lastUpdateIdx = i;
                         arrivalDropsOffDistribution.get(numberOfDropOffInPreviousStop).increment();
