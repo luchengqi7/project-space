@@ -24,12 +24,21 @@ import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.Builder;
 import static com.graphhopper.jsprit.core.problem.VehicleRoutingProblem.FleetSize;
 import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer.*;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import com.graphhopper.jsprit.core.problem.job.Job;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.IdMap;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Person;
@@ -38,6 +47,8 @@ import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
+import org.matsim.contrib.dvrp.passenger.PassengerPickedUpEvent;
+import org.matsim.contrib.dvrp.passenger.PassengerPickedUpEventHandler;
 import org.matsim.core.router.TripStructureUtils;
 
 import com.google.common.base.Preconditions;
@@ -72,13 +83,16 @@ public class PreplannedSchedulesCalculatorForSchoolTransport {
         public final int maxIterations;
         public final boolean multiThread;
         public final CaseStudyTool caseStudyTool;
+        public final String outputDirectory;
 
-        public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread, CaseStudyTool caseStudyTool) {
+        public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread,
+                       CaseStudyTool caseStudyTool) {
             this.infiniteFleet = infiniteFleet;
             this.printProgressStatistics = printProgressStatistics;
             this.maxIterations = maxIterations;
             this.multiThread = multiThread;
             this.caseStudyTool = caseStudyTool;
+            this.outputDirectory = null;
         }
 
         public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread) {
@@ -87,6 +101,17 @@ public class PreplannedSchedulesCalculatorForSchoolTransport {
             this.maxIterations = maxIterations;
             this.multiThread = multiThread;
             this.caseStudyTool = new CaseStudyTool();
+            this.outputDirectory = null;
+        }
+
+        public Options(boolean infiniteFleet, boolean printProgressStatistics, int maxIterations, boolean multiThread,
+                       CaseStudyTool caseStudyTool, String outputDirectory) {
+            this.infiniteFleet = infiniteFleet;
+            this.printProgressStatistics = printProgressStatistics;
+            this.maxIterations = maxIterations;
+            this.multiThread = multiThread;
+            this.caseStudyTool = caseStudyTool;
+            this.outputDirectory = outputDirectory;
         }
     }
 
@@ -108,7 +133,11 @@ public class PreplannedSchedulesCalculatorForSchoolTransport {
         this.options = options;
     }
 
-    public PreplannedSchedules calculate() {
+    public PreplannedSchedules calculate() throws IOException {
+        if (Files.exists(Path.of(options.outputDirectory + "/pre-calculated-plans.tsv"))) {
+            return readPreplannedFileFromPlan(options.outputDirectory + "/pre-calculated-plans.tsv");
+        }
+
         var vrpBuilder = new Builder();
 
         // create fleet
@@ -253,8 +282,90 @@ public class PreplannedSchedulesCalculatorForSchoolTransport {
             unassignedRequests.put(rejectedRequest.key(), rejectedRequest);
         }
 
-        return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops, unassignedRequests);
+        if (options.outputDirectory != null) {
+            // write the plan into a tsv file
+            CSVPrinter csvPrinter = new CSVPrinter(new FileWriter(options.outputDirectory + "/pre-calculated-plans.tsv"), CSVFormat.TDF);
+            csvPrinter.printRecord("vehicle_id", "requests");
 
+            for (Id<DvrpVehicle> vehicleId : vehicleToPreplannedStops.keySet()) {
+                List<String> outputRow = new ArrayList<>();
+                outputRow.add(vehicleId.toString());
+                outputRow.addAll(vehicleToPreplannedStops.get(vehicleId).
+                        stream().map(s -> s.preplannedRequest().key().passengerId().toString()).collect(Collectors.toList()));
+                csvPrinter.printRecord(outputRow);
+            }
+
+            // The last row is the rejected requests
+            List<String> rejectedRequests = new ArrayList<>();
+            rejectedRequests.add("rejected");
+            rejectedRequests.addAll(unassignedRequests.keySet().stream().map(k -> k.passengerId().toString()).collect(Collectors.toList()));
+            csvPrinter.printRecord(rejectedRequests);
+
+            csvPrinter.close();
+        }
+
+        return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops, unassignedRequests);
+    }
+
+    private PreplannedSchedules readPreplannedFileFromPlan(String preplannedScheduleFile) {
+        Map<PreplannedRequestKey, Id<DvrpVehicle>> preplannedRequestToVehicle = new HashMap<>();
+        Map<Id<DvrpVehicle>, Queue<PreplannedStop>> vehicleToPreplannedStops = new HashMap<>();
+        Map<PreplannedRequestKey, PreplannedRequest> unassignedRequests = new HashMap<>();
+
+        Map<String, PreplannedRequest> requestMap = new HashMap<>();
+        for (Person person : population.getPersons().values()) {
+            Id<Person> personId = person.getId();
+            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+            assert trips.size() == 1;  // For this study, there is only 1 trip per student
+            for (var leg : TripStructureUtils.getLegs(person.getSelectedPlan())) {
+                if (leg.getMode().equals(TransportMode.drt)) {
+                    Id<Link> fromLinkId = leg.getRoute().getStartLinkId();
+                    Id<Link> toLinkId = leg.getRoute().getEndLinkId();
+                    double earliestDepartureTime = leg.getDepartureTime().orElse(0);
+                    PreplannedRequestKey preplannedRequestKey = new PreplannedRequestKey(personId, fromLinkId, toLinkId);
+                    PreplannedRequest preplannedRequest = new PreplannedRequest(preplannedRequestKey, earliestDepartureTime, 86400, 86400);
+                    requestMap.put(personId.toString(), preplannedRequest);
+                }
+            }
+        }
+
+        try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(preplannedScheduleFile)),
+                CSVFormat.TDF.withFirstRecordAsHeader())) {
+            for (CSVRecord record : parser.getRecords()) {
+                if (!record.get(0).equals("rejected")) {
+                    Id<DvrpVehicle> vehicleId = Id.create(record.get(0), DvrpVehicle.class);
+                    Queue<PreplannedStop> preplannedStopsQueue = new LinkedList<>();
+                    Set<String> requestsOnBoard = new HashSet<>();
+                    for (int i = 1; i < record.size(); i++) {
+                        String passengerIdString = record.get(i);
+                        PreplannedRequest preplannedRequest = requestMap.get(passengerIdString);
+
+                        boolean pickup = true;
+                        if (!requestsOnBoard.contains(passengerIdString)) {
+                            requestsOnBoard.add(passengerIdString);
+                            preplannedRequestToVehicle.put(preplannedRequest.key(), vehicleId);
+                        } else {
+                            requestsOnBoard.remove(passengerIdString);
+                            pickup = false;
+                        }
+
+                        PreplannedStop preplannedStop = new PreplannedStop(preplannedRequest, pickup);
+                        preplannedStopsQueue.add(preplannedStop);
+                    }
+                    vehicleToPreplannedStops.put(vehicleId, preplannedStopsQueue);
+                } else {
+                    for (int i = 1; i < record.size(); i++) {
+                        String passengerIdString = record.get(i);
+                        PreplannedRequest preplannedRequest = requestMap.get(passengerIdString);
+                        unassignedRequests.put(preplannedRequest.key(), preplannedRequest);
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return new PreplannedSchedules(preplannedRequestToVehicle, vehicleToPreplannedStops, unassignedRequests);
     }
 
     private Location collectLocationIfAbsent(Link link) {
