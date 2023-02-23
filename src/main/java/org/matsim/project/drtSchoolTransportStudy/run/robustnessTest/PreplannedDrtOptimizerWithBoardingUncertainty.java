@@ -179,14 +179,18 @@ public class PreplannedDrtOptimizerWithBoardingUncertainty implements DrtOptimiz
             schedule.addTask(taskFactory.createDriveTask(vehicle, path, DrtDriveTask.TYPE));
         } else if (!(currentTask instanceof WaitForStopTask) && nextStop.pickup()) {
             // To model the randomness in the departure time, we add a wait for stop task in front of each pick up (ranging from 0s to say 300s, based on some distribution)
-            double originalPickupTime = pickupTimeHandler.getPlannedPickUpTimeMap().getOrDefault(nextStop.preplannedRequest().key().passengerId(), currentTime);
-            double deviation = Math.min(Math.max(0, Math.floor(random.nextGaussian() * 120)), 180);
-            double actualPickupTime = Math.max(currentTime, originalPickupTime + deviation);
+            double originalPickupTime = currentTime;
+            double deviation = 0;
+            if (pickupTimeHandler.getPlannedPickUpTimeMap().containsKey(nextStop.preplannedRequest().key().passengerId())) {
+                originalPickupTime = pickupTimeHandler.getPlannedPickUpTimeMap().get(nextStop.preplannedRequest().key().passengerId());
+                deviation = Math.min(Math.max(0, Math.floor(random.nextGaussian() * 120)), 180);
+            }
             if (nextStop.preplannedRequest().earliestStartTime() >= timer.getTimeOfDay()) {
                 double earliestDepartureTime = nextStop.preplannedRequest().earliestStartTime() + 1;
                 double actualDepartureTime = earliestDepartureTime + deviation;
                 schedule.addTask(new WaitForStopTask(currentTime, actualDepartureTime, currentLink));
             } else {
+                double actualPickupTime = Math.max(currentTime, originalPickupTime + deviation);
                 schedule.addTask(new WaitForStopTask(currentTime, actualPickupTime, currentLink));
             }
         } else {
