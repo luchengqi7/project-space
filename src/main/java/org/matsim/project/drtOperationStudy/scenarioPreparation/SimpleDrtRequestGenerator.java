@@ -90,6 +90,10 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
             if (link.getLength() >= 1000) {
                 linksToRemove.add(link);
             }
+
+            if (!link.getAllowedModes().contains(TransportMode.car)) {
+                linksToRemove.add(link);
+            }
         }
         linksToRemove.forEach(link -> network.removeLink(link.getId()));
 
