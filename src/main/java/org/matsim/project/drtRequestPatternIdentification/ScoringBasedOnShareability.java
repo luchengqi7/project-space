@@ -45,7 +45,6 @@ public class ScoringBasedOnShareability {
 
         // Create router (based on free speed)
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
-        TravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
 
         // Getting drt setups
         double alpha = drtConfigGroup.maxTravelTimeAlpha;
@@ -216,6 +215,10 @@ public class ScoringBasedOnShareability {
 
         double shareabilityScore = shareablePairs / counter;
         double driveTimeSavingsScore = savingsScore / counter;
+
+        System.out.println("Counter = " + counter);
+        System.out.println("Shareable pairs = " + shareablePairs);
+        System.out.println("Savings score = " + savingsScore);
 
         System.out.println("Shareability score = " + shareabilityScore);
         System.out.println("Drive time savings score = " + driveTimeSavingsScore);
