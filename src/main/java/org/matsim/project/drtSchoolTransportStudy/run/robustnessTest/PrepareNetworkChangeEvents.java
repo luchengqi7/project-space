@@ -1,5 +1,8 @@
-package org.matsim.project.drtSchoolTransportStudy.prepare;
+package org.matsim.project.drtSchoolTransportStudy.run.robustnessTest;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -9,19 +12,24 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.io.NetworkChangeEventsWriter;
 import picocli.CommandLine;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public class PrepareNetworkChangeEvents implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private String networkPath;
 
-    @CommandLine.Option(names = "--std", description = "Standard deviation of the network speed change", defaultValue = "0.05")
-    private double standardDeviation;
+    @CommandLine.Option(names = "--distribution", description = "path to random distribution file", required = true)
+    private String distributionFile;
 
     @CommandLine.Option(names = "--interval", description = "Interval of the network speed changes", defaultValue = "600")
     private double interval;
 
-    @CommandLine.Option(names = "--output", description = "Output file of the network change event", required = true)
+    @CommandLine.Option(names = "--seed", description = "Random seed", required = true)
+    private long seed;
+
+    @CommandLine.Option(names = "--output", description = "output directory of the network change events", required = true)
     private String output;
 
     public static void main(String[] args) {
@@ -30,7 +38,17 @@ public class PrepareNetworkChangeEvents implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        Random random = new Random(1234);
+        // Read the random distribution generator (a list of double)
+        List<Double> randomNumbers = new ArrayList<>();
+        try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(distributionFile)),
+                CSVFormat.DEFAULT)) {
+            for (CSVRecord record : parser.getRecords()) {
+                randomNumbers.add(Double.parseDouble(record.get(0)));
+            }
+        }
+        int size = randomNumbers.size();
+
+        Random random = new Random(seed);
         Map<Id<Link>, Double> linkOriginalFreeSpeedMap = new HashMap<>();
         Network network = NetworkUtils.readNetwork(networkPath);
 
@@ -45,19 +63,17 @@ public class PrepareNetworkChangeEvents implements MATSimAppCommand {
 
         for (double time = startTime; time < endTime; time += interval) {
             for (Link link : network.getLinks().values()) {
-                double factor = 1 + random.nextGaussian() * standardDeviation;
-                double newSpeed = linkOriginalFreeSpeedMap.get(link.getId()) * factor;
+                double factor = randomNumbers.get(random.nextInt(size));
+                double newSpeed = linkOriginalFreeSpeedMap.get(link.getId()) / factor;
                 NetworkChangeEvent networkChangeEvent = new NetworkChangeEvent(time);
                 networkChangeEvent.addLink(link);
                 networkChangeEvent.setFreespeedChange(new NetworkChangeEvent.ChangeValue(NetworkChangeEvent.ChangeType.ABSOLUTE_IN_SI_UNITS, newSpeed));
-                // TODO does the network change event change the link property of the network?
-
                 networkChangeEvents.add(networkChangeEvent);
             }
         }
 
         NetworkChangeEventsWriter networkChangeEventsWriter = new NetworkChangeEventsWriter();
-        networkChangeEventsWriter.write(output, networkChangeEvents);
+        networkChangeEventsWriter.write(output + "/network-change-events-" + seed + ".events.xml.gz", networkChangeEvents);
 
         return 0;
     }

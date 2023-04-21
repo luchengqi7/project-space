@@ -22,6 +22,7 @@ package org.matsim.project.drtSchoolTransportStudy.jsprit;
 
 import static org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculatorForSchoolTransport.Options;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Map;
@@ -67,7 +68,7 @@ public class RunJsprit implements MATSimAppCommand {
 		new RunJsprit().execute(args);
 	}
 
-	void runJsprit(String matsimConfig, boolean infiniteFleet, boolean printProgressStatistics) throws MalformedURLException {
+	void runJsprit(String matsimConfig, boolean infiniteFleet, boolean printProgressStatistics) throws IOException {
 		var config = ConfigUtils.loadConfig(matsimConfig, new MultiModeDrtConfigGroup());
 		var scenario = ScenarioUtils.loadScenario(config);
 		var network = scenario.getNetwork();

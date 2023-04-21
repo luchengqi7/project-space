@@ -71,6 +71,9 @@ public class RunOnlineApproach implements MATSimAppCommand {
     @CommandLine.Option(names = "--step-size", description = "number of vehicles reduced for each step", defaultValue = "5")
     private int stepSize;
 
+    @CommandLine.Option(names = "--seats", description = "number of seats in each vehicle", defaultValue = "8")
+    private int seats;
+
     @CommandLine.Option(names = "--seed", description = "number of vehicles reduced for each step", defaultValue = "4711")
     private long seed;
 
@@ -111,7 +114,7 @@ public class RunOnlineApproach implements MATSimAppCommand {
 
         int maxFleetSize = fleetSize + stepSize * (steps - 1);
         while (fleetSize <= maxFleetSize) {
-            String outputDirectory = output + "/fleet-size-" + fleetSize;
+            String outputDirectory = output + "/fleet-size-" + fleetSize + "-" + seats +"-seats";
 
             // prepare config
             Config config = ConfigUtils.loadConfig(temporaryConfig, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
@@ -119,7 +122,7 @@ public class RunOnlineApproach implements MATSimAppCommand {
             DrtConfigs.adjustMultiModeDrtConfig(multiModeDrtConfig, config.planCalcScore(), config.plansCalcRoute());
             DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next(); // By default, the first drt config group is the one we are using
             caseStudyTool.prepareCaseStudy(config, drtConfigGroup);
-            drtConfigGroup.vehiclesFile = "drt-vehicles-with-depot/" + fleetSize + "-8_seater-drt-vehicles.xml";
+            drtConfigGroup.vehiclesFile = "drt-vehicles-with-depot/" + fleetSize + "-" + seats + "_seater-drt-vehicles.xml";
             config.controler().setOutputDirectory(outputDirectory);
             config.global().setRandomSeed(seed);
 

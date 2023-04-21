@@ -48,16 +48,17 @@ import static org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDr
  * @author michal.mac
  */
 public class RunPreplannedDrtExample {
-	private static final Logger log = LogManager.getLogger(RunPreplannedDrtExample.class);
-	public static void main(String[] args) throws IOException {
-		var configFile = "scenarios/vulkaneifel-school-traffic/vulkaneifel-v1.0-school-childrem.config.xml";
-		RunPreplannedDrtExample.run(IOUtils.resolveFileOrResource(configFile), false, 0);
-	}
+    private static final Logger log = LogManager.getLogger(RunPreplannedDrtExample.class);
 
-	public static void run(URL configUrl, boolean otfvis, int lastIteration) throws IOException {
-		Config config = ConfigUtils.loadConfig(configUrl, new MultiModeDrtConfigGroup(), new DvrpConfigGroup(),
-				new OTFVisConfigGroup());
-		config.controler().setLastIteration(lastIteration);
+    public static void main(String[] args) throws IOException {
+        var configFile = "scenarios/vulkaneifel-school-traffic/vulkaneifel-v1.0-school-childrem.config.xml";
+        RunPreplannedDrtExample.run(IOUtils.resolveFileOrResource(configFile), false, 0);
+    }
+
+    public static void run(URL configUrl, boolean otfvis, int lastIteration) throws IOException {
+        Config config = ConfigUtils.loadConfig(configUrl, new MultiModeDrtConfigGroup(), new DvrpConfigGroup(),
+                new OTFVisConfigGroup());
+        config.controler().setLastIteration(lastIteration);
         for (DrtConfigGroup drtCfg : MultiModeDrtConfigGroup.get(config).getModalElements()) {
             if (drtCfg.getRebalancingParams().isPresent()) {
                 log.warn("The rebalancing parameter set is defined for drt mode: "
@@ -67,30 +68,37 @@ public class RunPreplannedDrtExample {
             }
         }
 
-		Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
+        Controler controler = PreplannedDrtControlerCreator.createControler(config, otfvis);
 
-		var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, true, 200, true);
+        var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, true, 200, true);
 
-		// compute PreplannedSchedules before starting QSim
-		MultiModeDrtConfigGroup.get(config)
-				.getModalElements()
-				.forEach(drtConfig -> controler.addOverridingQSimModule(
-						new AbstractDvrpModeQSimModule(drtConfig.getMode()) {
-							@Override
-							protected void configureQSim() {
-								bindModal(PreplannedSchedules.class).toProvider(modalProvider(
-										getter -> new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
-												getter.getModal(FleetSpecification.class),
-												getter.getModal(Network.class), getter.get(Population.class),
-												options).calculate())).asEagerSingleton();
-							}
-						}));
+        // compute PreplannedSchedules before starting QSim
+        MultiModeDrtConfigGroup.get(config)
+                .getModalElements()
+                .forEach(drtConfig -> controler.addOverridingQSimModule(
+                        new AbstractDvrpModeQSimModule(drtConfig.getMode()) {
+                            @Override
+                            protected void configureQSim() {
+                                bindModal(PreplannedSchedules.class).toProvider(modalProvider(
+                                        getter -> {
+                                            try {
+                                                return new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
+                                                        getter.getModal(FleetSpecification.class),
+                                                        getter.getModal(Network.class), getter.get(Population.class),
+                                                        options).calculate();
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                            return null;
+                                        })).asEagerSingleton();
+                            }
+                        }));
 
-		if (otfvis) {
-			controler.addOverridingModule(new OTFVisLiveModule());
-		}
+        if (otfvis) {
+            controler.addOverridingModule(new OTFVisLiveModule());
+        }
 
-		controler.run();
-		new SchoolTripsAnalysis().analyze(Path.of(config.controler().getOutputDirectory()));
-	}
+        controler.run();
+        new SchoolTripsAnalysis().analyze(Path.of(config.controler().getOutputDirectory()));
+    }
 }

@@ -10,18 +10,29 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.PreplannedDrtOptimizer;
 import org.matsim.contrib.drt.extension.preplanned.run.PreplannedDrtControlerCreator;
+import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
+import org.matsim.contrib.drt.schedule.DrtTaskFactory;
+import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.fleet.FleetSpecification;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.run.DvrpModule;
+import org.matsim.contrib.dvrp.schedule.ScheduleTimingUpdater;
+import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
+import org.matsim.core.mobsim.framework.MobsimTimer;
+import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
+import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.drtSchoolTransportStudy.analysis.SchoolTripsAnalysis;
 import org.matsim.project.drtSchoolTransportStudy.jsprit.PreplannedSchedulesCalculatorForSchoolTransport;
 import org.matsim.project.drtSchoolTransportStudy.run.dummyTraffic.DvrpBenchmarkTravelTimeModuleFixedTT;
+import org.matsim.project.drtSchoolTransportStudy.run.robustnessTest.PickupTimeHandler;
+import org.matsim.project.drtSchoolTransportStudy.run.robustnessTest.PreplannedDrtOptimizerWithBoardingUncertainty;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -29,6 +40,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Random;
 
 @CommandLine.Command(
         name = "run-jsprit-experiment",
@@ -73,10 +85,18 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
     @CommandLine.Option(names = "--network-change-events", description = "Path to network change events file", defaultValue = "")
     private String networkChangeEvents;
 
+    @CommandLine.Option(names = "--robustness-test", defaultValue = "false", description = "enable the uncertainty in the boarding")
+    private boolean robustnessTest;
+
+    @CommandLine.Option(names = "--seed", defaultValue = "4711", description = "random seed for uncertainty")
+    private long seed;
+
     @CommandLine.Option(names = "--buffer", description = "Add buffer to the plans by reducing the max travel time", defaultValue = "0.0")
     private double bufferForTraffic;
 
     private final SchoolTripsAnalysis analysis = new SchoolTripsAnalysis();
+
+    private final Random random = new Random(seed);
 
     public static void main(String[] args) {
         new RunOfflineApproachJsprit().execute(args);
@@ -136,10 +156,14 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
             drtConfigGroup.maxTravelTimeBeta = modifiedBeta;
         }
 
+        if (robustnessTest) {
+            config.controler().setLastIteration(100);
+        }
+
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
 
-        var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, false, jspritIterations, multiThread, caseStudyTool);
+        var options = new PreplannedSchedulesCalculatorForSchoolTransport.Options(false, false, jspritIterations, multiThread, caseStudyTool, outputDirectory);
         MultiModeDrtConfigGroup.get(config)
                 .getModalElements()
                 .forEach(drtConfig -> controler.addOverridingQSimModule(
@@ -147,12 +171,38 @@ public class RunOfflineApproachJsprit implements MATSimAppCommand {
                             @Override
                             protected void configureQSim() {
                                 bindModal(PreplannedDrtOptimizer.PreplannedSchedules.class).toProvider(modalProvider(
-                                        getter -> new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
-                                                getter.getModal(FleetSpecification.class),
-                                                getter.getModal(Network.class), getter.get(Population.class),
-                                                options).calculate())).asEagerSingleton();
+                                        getter -> {
+                                            try {
+                                                return new PreplannedSchedulesCalculatorForSchoolTransport(drtConfig,
+                                                        getter.getModal(FleetSpecification.class),
+                                                        getter.getModal(Network.class), getter.get(Population.class),
+                                                        options).calculate();
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                            return null;
+                                        })).asEagerSingleton();
+                                if (robustnessTest) {
+                                    bindModal(DrtOptimizer.class).toProvider(modalProvider(
+                                            getter -> new PreplannedDrtOptimizerWithBoardingUncertainty(drtConfig,
+                                                    getter.getModal(PreplannedDrtOptimizer.PreplannedSchedules.class), getter.getModal(Network.class),
+                                                    getter.getModal(TravelTime.class), getter.getModal(TravelDisutilityFactory.class)
+                                                    .createTravelDisutility(getter.getModal(TravelTime.class)), getter.get(MobsimTimer.class),
+                                                    getter.getModal(DrtTaskFactory.class), getter.get(EventsManager.class), getter.getModal(Fleet.class),
+                                                    getter.getModal(ScheduleTimingUpdater.class), random, getter.get(PickupTimeHandler.class)))).asEagerSingleton();
+                                }
                             }
                         }));
+
+        if (robustnessTest) {
+            controler.addOverridingModule(new AbstractModule() {
+                @Override
+                public void install() {
+                    bind(PickupTimeHandler.class).toInstance(new PickupTimeHandler());
+                    addEventHandlerBinding().to(PickupTimeHandler.class);
+                }
+            });
+        }
 
         controler.run();
 
