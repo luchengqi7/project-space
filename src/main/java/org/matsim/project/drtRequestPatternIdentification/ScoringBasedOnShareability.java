@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Deprecated
 public class ScoringBasedOnShareability {
 
     public static void main(String[] args) {
@@ -103,7 +104,7 @@ public class ScoringBasedOnShareability {
                     pooledTravelTime += o1o2;
                     double arrivalTimeO2 = now + o1o2;
                     if (arrivalTimeO2 <= tripBLatestDepartureTime) {
-                        now = tripB.departureTime() + stopDuration;
+                        now = Math.max(tripB.departureTime(), arrivalTimeO2) + stopDuration;
                         double o2d1 = travelTimeMatrix.getTravelTime(tripB.fromLink(), tripA.toLink(), now);
                         pooledTravelTime += o2d1;
                         double arrivalTimeD1 = now + o2d1;
@@ -130,7 +131,7 @@ public class ScoringBasedOnShareability {
                     pooledTravelTime += o1o2;
                     double arrivalTimeO2 = now + o1o2;
                     if (arrivalTimeO2 <= tripBLatestDepartureTime) {
-                        now = tripB.departureTime() + stopDuration;
+                        now = Math.max(tripB.departureTime(), arrivalTimeO2) + stopDuration;
                         double o2d2 = travelTimeMatrix.getTravelTime(tripB.fromLink(), tripB.toLink(), now);
                         double arrivalTimeD2 = now + o2d2;
                         pooledTravelTime += o2d2;
@@ -157,7 +158,7 @@ public class ScoringBasedOnShareability {
                     pooledTravelTime += o2o1;
                     double arrivalTimeO1 = now + o2o1;
                     if (arrivalTimeO1 <= tripALatestDepartureTime) {
-                        now = tripA.departureTime() + stopDuration;
+                        now = Math.max(tripA.departureTime(), arrivalTimeO1) + stopDuration;
                         double o1d1 = travelTimeMatrix.getTravelTime(tripA.fromLink(), tripA.toLink(), now);
                         double arrivalTimeD1 = now + o1d1;
                         pooledTravelTime += o1d1;
@@ -185,7 +186,7 @@ public class ScoringBasedOnShareability {
                     pooledTravelTime += o2o1;
                     double arrivalTimeO1 = now + o2o1;
                     if (arrivalTimeO1 <= tripALatestDepartureTime) {
-                        now = tripA.departureTime() + stopDuration;
+                        now = Math.max(tripA.departureTime(), arrivalTimeO1) + stopDuration;
                         double o1d2 = travelTimeMatrix.getTravelTime(tripA.fromLink(), tripB.toLink(), now);
                         double arrivalTimeD2 = now + o1d2;
                         pooledTravelTime += o1d2;
