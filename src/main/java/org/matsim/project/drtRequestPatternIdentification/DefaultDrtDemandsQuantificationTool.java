@@ -72,15 +72,16 @@ public class DefaultDrtDemandsQuantificationTool {
         }
 
         // Normalized based on total number of trips
-        log.info("Final score = " + overallScore / drtDemands.size());
-        return overallScore;
+        double finalScore = overallScore / drtDemands.size();
+        log.info("Final score = " + finalScore);
+        return finalScore;
     }
 
     private double quantifyDemands(List<DrtDemand> drtDemands) {
         // Go through each pair of drt demand and calculate share-ability and the total trip length (time).
         int numberOfPairs = 0;
         double shareablePairs = 0;
-        double savingsScore = 0;
+        double sumDriveTimeSavingRatio = 0;
         double totalTripLength = 0;
 
         for (int i = 0; i < drtDemands.size(); i++) {
@@ -212,18 +213,24 @@ public class DefaultDrtDemandsQuantificationTool {
                 if (shareable) {
                     shareablePairs++;
                     double unsharedSumDriveTime = directTravelTimeA + directTravelTimeB;
-                    savingsScore += unsharedSumDriveTime / minTotalPoolingDriveTime;
+                    sumDriveTimeSavingRatio += unsharedSumDriveTime / minTotalPoolingDriveTime;
                 }
                 numberOfPairs++;
             }
         }
+
+        double sharingPotential = sumDriveTimeSavingRatio / numberOfPairs;
         log.info("Number of shareable pairs = " + shareablePairs + " out of " + numberOfPairs +
                 " pairs. Ratio = " + shareablePairs / numberOfPairs);
-        log.info("Total drive time savings score = " + savingsScore / numberOfPairs);
+        log.info("Sharing potential = " + sharingPotential);
         log.info("Total trip length (time) = " + totalTripLength);
 
-        //TODO design this function
-        return totalTripLength / (savingsScore / numberOfPairs) / timeBin;
+        // Current: workload factor / sharing potential (exp)
+        // Higher workload -> more vehicles needed -> higher value
+        // Higher sharing potential -> fewer vehicles needed -> lower value
+        // exp operation takes care of extreme values when sharing potential is very low (or even 0)
+        // TODO maybe improve this function?
+        return (totalTripLength / timeBin) / Math.exp(sharingPotential);
     }
 
 }
