@@ -85,13 +85,12 @@ public class DefaultDrtDemandsQuantificationTool {
         double totalTripLength = 0;
 
         for (int i = 0; i < drtDemands.size(); i++) {
+            DrtDemand demandA = drtDemands.get(i);
+            double directTravelTimeA = travelTimeMatrix.getTravelTime(demandA.fromLink(), demandA.toLink(), demandA.departureTime());
+            totalTripLength += directTravelTimeA;
             for (int j = i + 1; j < drtDemands.size(); j++) {
-                DrtDemand demandA = drtDemands.get(i);
                 DrtDemand demandB = drtDemands.get(j);
-
-                double directTravelTimeA = travelTimeMatrix.getTravelTime(demandA.fromLink(), demandA.toLink(), demandA.departureTime());
                 double directTravelTimeB = travelTimeMatrix.getTravelTime(demandB.fromLink(), demandB.toLink(), demandB.departureTime());
-                totalTripLength += directTravelTimeA;
 
                 double latestDepartureTimeA = demandA.departureTime() + maxWaitTime;
                 double latestDepartureTimeB = demandB.departureTime() + maxWaitTime;
@@ -228,9 +227,13 @@ public class DefaultDrtDemandsQuantificationTool {
         // Current: workload factor / sharing potential (exp)
         // Higher workload -> more vehicles needed -> higher value
         // Higher sharing potential -> fewer vehicles needed -> lower value
-        // exp operation takes care of extreme values when sharing potential is very low (or even 0)
+
         // TODO maybe improve this function?
+        // option 1: exp operation takes care of extreme values when sharing potential is very low (or even 0)
         return (totalTripLength / timeBin) / Math.exp(sharingPotential);
+
+        // option 2: 1 + sharing potential as denominator
+//        return (totalTripLength / timeBin) / (1 + sharingPotential);
     }
 
 }
