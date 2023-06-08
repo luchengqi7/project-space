@@ -1,5 +1,7 @@
-package org.matsim.project.drtRequestPatternIdentification;
+package org.matsim.project.drtRequestPatternIdentification.run;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -15,11 +17,16 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.DemandsPatternCore;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.DrtDemand;
+import org.matsim.project.drtRequestPatternIdentification.shareability.PairwisePoolingCalculator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class RunDemandQuantification {
+    private static final Logger log = LogManager.getLogger(RunDemandQuantification.class);
+
     public static void main(String[] args) {
         String configPath = "/path/to/config/file";
         if (args.length != 0) {
@@ -28,6 +35,15 @@ public class RunDemandQuantification {
 
         // Load scenario from config file
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+        DemandsPatternCore patternCore = runQuantification(config);
+
+        log.info("Key demands pattern: ");
+        log.info("Number of trips = " + patternCore.numOfTrips());
+        log.info("Average trip duration = " + patternCore.averageDirectTripDuration());
+        log.info("Shareability = " + patternCore.shareability());
+    }
+
+    public static DemandsPatternCore runQuantification(Config config) {
         Scenario scenario = ScenarioUtils.loadScenario(config);
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
         DrtConfigGroup drtConfigGroup = multiModeDrtConfig.getModalElements().iterator().next();
@@ -50,9 +66,8 @@ public class RunDemandQuantification {
         }
 
         // Perform demand quantification
-        DefaultDrtDemandsQuantificationTool quantificationTool = new DefaultDrtDemandsQuantificationTool(drtConfigGroup, network);
-        double score = quantificationTool.performQuantification(demands);
-
-
+        PairwisePoolingCalculator calculator = new PairwisePoolingCalculator(drtConfigGroup, network);
+        return calculator.quantifyDemands(demands);
     }
+
 }
