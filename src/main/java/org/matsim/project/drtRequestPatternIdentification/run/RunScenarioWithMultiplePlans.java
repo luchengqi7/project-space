@@ -29,14 +29,18 @@ public class RunScenarioWithMultiplePlans implements MATSimAppCommand {
     @CommandLine.Option(names = "--plans-variable-part", description = "unique part in the names of the plan, separated by empty space", arity = "1..*", required = true)
     private List<String> plansNames;
 
+    @CommandLine.Option(names = "--output", description = "output directory", required = true)
+    private String outputDirectory;
+
     public static void main(String[] args) {
         new RunScenarioWithMultiplePlans().execute(args);
     }
 
     @Override
     public Integer call() throws Exception {
-        CSVPrinter summaryWriter = new CSVPrinter(new FileWriter(plansFolder + "/demands-pattern-summary.tsv"), CSVFormat.TDF);
-        summaryWriter.printRecord("drt_plans", "num_of_trips", "trip_average_direct_duration", "shareability");
+        CSVPrinter titleWriter = new CSVPrinter(new FileWriter(outputDirectory + "/demands-pattern-summary.tsv"), CSVFormat.TDF);
+        titleWriter.printRecord("drt_plans", "num_of_trips", "trip_average_direct_duration", "shareability");
+        titleWriter.close();
 
         for (String planNamePart : plansNames) {
             Config config = ConfigUtils.loadConfig(configPath.toString(), new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
@@ -47,9 +51,11 @@ public class RunScenarioWithMultiplePlans implements MATSimAppCommand {
                     Integer.toString(demandsPatternCore.numOfTrips()),
                     Double.toString(demandsPatternCore.averageDirectTripDuration()),
                     Double.toString(demandsPatternCore.shareability()));
-            summaryWriter.printRecord(outputRow);
+            CSVPrinter resultWriter = new CSVPrinter(new FileWriter(outputDirectory + "/demands-pattern-summary.tsv", true), CSVFormat.TDF);
+            resultWriter.printRecord(outputRow);
+            resultWriter.close();
         }
-        summaryWriter.close();
+
 
         return 0;
     }

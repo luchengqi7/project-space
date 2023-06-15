@@ -17,6 +17,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
@@ -46,6 +47,9 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--end-time", description = "Service hour end time", defaultValue = "86400")
     private double endTime;
+
+    @CommandLine.Option(names = "--min-euclidean-distance", description = "filter out short trips", defaultValue = "500")
+    private double minTripEuclideanDistance;
 
     @CommandLine.Mixin
     private ShpOptions shp = new ShpOptions();
@@ -86,19 +90,22 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
         for (Person person : inputPlans.getPersons().values()) {
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
             for (TripStructureUtils.Trip trip : trips) {
+                double departureTime = trip.getOriginActivity().getEndTime().orElse(-1);
+                if (departureTime < startTime || departureTime > endTime) {
+                    continue;
+                }
+
                 if (serviceArea != null) {
                     Point fromPoint = MGC.coord2Point(trip.getOriginActivity().getCoord());
-                    if (!fromPoint.within(serviceArea)) {
-                        continue;
-                    }
                     Point toPoint = MGC.coord2Point(trip.getDestinationActivity().getCoord());
-                    if (!toPoint.within(serviceArea)) {
+                    if (!fromPoint.within(serviceArea) || !toPoint.within(serviceArea)) {
                         continue;
                     }
                 }
 
-                double departureTime = trip.getOriginActivity().getEndTime().orElse(-1);
-                if (departureTime < startTime || departureTime > endTime) {
+                double euclideanDistance =
+                        CoordUtils.calcEuclideanDistance(trip.getOriginActivity().getCoord(), trip.getDestinationActivity().getCoord());
+                if (euclideanDistance <= minTripEuclideanDistance) {
                     continue;
                 }
 
