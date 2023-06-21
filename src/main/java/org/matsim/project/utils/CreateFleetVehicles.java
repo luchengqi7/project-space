@@ -137,7 +137,7 @@ public class CreateFleetVehicles implements MATSimAppCommand {
                 }
 
                 DvrpVehicleSpecification vehicleSpecification = ImmutableDvrpVehicleSpecification.newBuilder().
-                        id(Id.create(operator + "_" + i, DvrpVehicle.class)).
+                        id(Id.create(operator + "_vehicle_" + i, DvrpVehicle.class)).
                         startLinkId(startLinkId).
                         capacity(capacity).
                         serviceBeginTime(startTime).

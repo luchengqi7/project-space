@@ -42,7 +42,7 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
     @CommandLine.Option(names = "--percent", description = "Percentage of total trips", defaultValue = "1.0")
     private double percentage;
 
-    @CommandLine.Option(names = "--start-time", description = "Service hour start time", defaultValue = "0")
+    @CommandLine.Option(names = "--start-time", description = "Service hour start time", defaultValue = "1")
     private double startTime;
 
     @CommandLine.Option(names = "--end-time", description = "Service hour end time", defaultValue = "86400")

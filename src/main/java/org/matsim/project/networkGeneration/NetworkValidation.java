@@ -100,7 +100,8 @@ public class NetworkValidation implements MATSimAppCommand {
             int personTripCounter = 0;
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
             for (TripStructureUtils.Trip trip : trips) {
-                if (!mainModeIdentifier.identifyMainMode(trip.getTripElements()).equals(TransportMode.car)) {
+                String mainMode = mainModeIdentifier.identifyMainMode(trip.getTripElements());
+                if (!mainMode.equals(TransportMode.car) && !mainMode.equals(TransportMode.drt)) {
                     continue;
                 }
                 String tripId = person.getId().toString() + "_" + personTripCounter;
