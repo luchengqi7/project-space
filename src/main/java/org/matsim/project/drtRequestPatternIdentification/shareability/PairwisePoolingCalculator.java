@@ -1,4 +1,4 @@
-package org.matsim.project.drtRequestPatternIdentification;
+package org.matsim.project.drtRequestPatternIdentification.shareability;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,80 +8,59 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.DrtDemand;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.DemandsPatternCore;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.Tools;
 import org.matsim.project.utils.LinkToLinkTravelTimeMatrix;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 
-public class DefaultDrtDemandsQuantificationTool {
+public class PairwisePoolingCalculator {
     private final Network network;
     private final double alpha;
     private final double beta;
     private final double maxWaitTime;
     private final double stopDuration;
-    private final double timeBin;
     private final TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
-    private final Logger log = LogManager.getLogger(DefaultDrtDemandsQuantificationTool.class);
+    private final Logger log = LogManager.getLogger(PairwisePoolingCalculator.class);
     private LinkToLinkTravelTimeMatrix travelTimeMatrix;
 
-    public DefaultDrtDemandsQuantificationTool(DrtConfigGroup drtConfigGroup, Network network) {
+    public PairwisePoolingCalculator(DrtConfigGroup drtConfigGroup, Network network, LinkToLinkTravelTimeMatrix travelTimeMatrix) {
         this.network = network;
         this.alpha = drtConfigGroup.maxTravelTimeAlpha;
         this.beta = drtConfigGroup.maxTravelTimeBeta;
         this.maxWaitTime = drtConfigGroup.maxWaitTime;
         this.stopDuration = drtConfigGroup.stopDuration;
-        this.timeBin = 3600;
+        this.travelTimeMatrix = travelTimeMatrix;
     }
 
-    double performQuantification(List<DrtDemand> drtDemands) {
-        // collect all relevant links
-        Set<Id<Link>> relevantLinks = new HashSet<>();
-        for (DrtDemand demand : drtDemands) {
-            relevantLinks.add(demand.fromLink().getId());
-            relevantLinks.add(demand.toLink().getId());
-        }
-        // Construct travel time matrix for relevant links
-        travelTimeMatrix = new LinkToLinkTravelTimeMatrix(network, travelTime, relevantLinks, 0);
-
-        // Analyze score for each time bin
-        drtDemands.sort(Comparator.comparingDouble(DrtDemand::departureTime));
-        double overallScore = 0;
-        double startTime = 0;
-        while (startTime + timeBin < 86400) {
-            List<DrtDemand> demandsWithinThisTimeBin = new ArrayList<>();
-            double endTime = startTime + timeBin;
-            for (DrtDemand drtDemand : drtDemands) {
-                if (drtDemand.departureTime() < startTime) {
-                    continue;
-                }
-                if (drtDemand.departureTime() > endTime) {
-                    break;
-                }
-                demandsWithinThisTimeBin.add(drtDemand);
-            }
-
-            log.info("===================================================================================");
-            log.info("Analyzing for time bin " + startTime + " to " + endTime);
-            double scoreForThisTimeBin = quantifyDemands(demandsWithinThisTimeBin);
-            if (scoreForThisTimeBin > overallScore) {
-                // Current implementation: The time bin with the highest score is determinant one
-                overallScore = scoreForThisTimeBin;
-            }
-            log.info("Score for this time bin =  " + scoreForThisTimeBin + ". Overall score = " + overallScore);
-
-            startTime += 0.5 * timeBin;
-        }
-
-        // Normalized based on total number of trips
-        double finalScore = overallScore / drtDemands.size();
-        log.info("Final score = " + finalScore);
-        return finalScore;
+    public PairwisePoolingCalculator(DrtConfigGroup drtConfigGroup, Network network) {
+        this.network = network;
+        this.alpha = drtConfigGroup.maxTravelTimeAlpha;
+        this.beta = drtConfigGroup.maxTravelTimeBeta;
+        this.maxWaitTime = drtConfigGroup.maxWaitTime;
+        this.stopDuration = drtConfigGroup.stopDuration;
+        this.travelTimeMatrix = null;
     }
 
-    private double quantifyDemands(List<DrtDemand> drtDemands) {
+    public DemandsPatternCore quantifyDemands(List<DrtDemand> drtDemands) {
+        // initialize travelTimeMatrix if it is null
+        if (travelTimeMatrix == null) {
+            Set<Id<Link>> relevantLinks = Tools.collectRelevantLink(drtDemands);
+            travelTimeMatrix = new LinkToLinkTravelTimeMatrix(network, travelTime, relevantLinks, 0);
+        }
+
         // Go through each pair of drt demand and calculate share-ability and the total trip length (time).
+        int numOfTrips = drtDemands.size();
+
+        // Initialize sharing matrix
+        double[][] drtSharingMatrix = new double[numOfTrips][numOfTrips];
+
+        // Initialize other statistics
         int numberOfPairs = 0;
         double shareablePairs = 0;
-        double sumDriveTimeSavingRatio = 0;
+        double sumPoolingScore = 0;
         double totalTripLength = 0;
 
         for (int i = 0; i < drtDemands.size(); i++) {
@@ -212,28 +191,64 @@ public class DefaultDrtDemandsQuantificationTool {
                 if (shareable) {
                     shareablePairs++;
                     double unsharedSumDriveTime = directTravelTimeA + directTravelTimeB;
-                    sumDriveTimeSavingRatio += unsharedSumDriveTime / minTotalPoolingDriveTime;
+                    double poolingScore = unsharedSumDriveTime / minTotalPoolingDriveTime;
+                    drtSharingMatrix[i][j] = poolingScore;
+                    sumPoolingScore += poolingScore;
                 }
                 numberOfPairs++;
             }
         }
 
-        double sharingPotential = sumDriveTimeSavingRatio / numberOfPairs;
+        double averageTripDirectDuration = totalTripLength / numOfTrips;
+        double shareability = calculateShareability(drtSharingMatrix);
+
+        double sharingPotential = sumPoolingScore / numberOfPairs;
         log.info("Number of shareable pairs = " + shareablePairs + " out of " + numberOfPairs +
                 " pairs. Ratio = " + shareablePairs / numberOfPairs);
         log.info("Sharing potential = " + sharingPotential);
-        log.info("Total trip length (time) = " + totalTripLength);
+        log.info("Sum direct trip duration = " + totalTripLength);
 
-        // Current: workload factor / sharing potential (exp)
-        // Higher workload -> more vehicles needed -> higher value
-        // Higher sharing potential -> fewer vehicles needed -> lower value
-
-        // TODO maybe improve this function?
-        // option 1: exp operation takes care of extreme values when sharing potential is very low (or even 0)
-        return (totalTripLength / timeBin) / Math.exp(sharingPotential);
-
-        // option 2: 1 + sharing potential as denominator
-//        return (totalTripLength / timeBin) / (1 + sharingPotential);
+        return new DemandsPatternCore(numOfTrips, averageTripDirectDuration, shareability);
     }
 
+    private double calculateShareability(double[][] drtSharingMatrix) {
+        log.info("Calculating shareability based on heuristic approach...");
+        int numOfTrips = drtSharingMatrix[0].length;
+        int numOfSharedTrips = 0;
+        int iIndex = -1;
+        int jIndex = -1;
+
+        while (true) {
+            double maxPotential = -1;
+            for (int i = 0; i < numOfTrips; i++) {
+                for (int j = 0; j < numOfTrips; j++) {
+                    double sharingPotential = drtSharingMatrix[i][j];
+                    if (sharingPotential > maxPotential) {
+                        maxPotential = sharingPotential;
+                        iIndex = i;
+                        jIndex = j;
+                    }
+                }
+            }
+
+            if (maxPotential > 0) {
+                numOfSharedTrips += 2;
+            } else {
+                break;
+            }
+
+            for (int i = 0; i < numOfTrips; i++) {
+                drtSharingMatrix[i][iIndex] = 0;
+                drtSharingMatrix[i][jIndex] = 0;
+                drtSharingMatrix[iIndex][i] = 0;
+                drtSharingMatrix[jIndex][i] = 0;
+            }
+        }
+
+        double shareability = (double) numOfSharedTrips / numOfTrips;
+        log.info("Number of shared trips is " + numOfSharedTrips + ", out of total trips of " + numOfTrips);
+        log.info("Shareability = " + shareability);
+
+        return shareability;
+    }
 }

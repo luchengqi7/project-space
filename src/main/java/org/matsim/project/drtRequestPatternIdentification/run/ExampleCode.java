@@ -1,4 +1,4 @@
-package org.matsim.project.drtRequestPatternIdentification;
+package org.matsim.project.drtRequestPatternIdentification.run;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -10,13 +10,10 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
-import org.matsim.contrib.dvrp.path.VrpPathWithTravelData;
-import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
@@ -25,6 +22,7 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.project.drtRequestPatternIdentification.basicStructures.DrtDemand;
 import org.matsim.project.utils.LinkToLinkTravelTimeMatrix;
 
 import java.util.ArrayList;
@@ -32,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Deprecated
 public class ExampleCode {
 
     public static void main(String[] args) {
@@ -65,7 +64,7 @@ public class ExampleCode {
         // Go through input plans and collect all relevant links
         MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
         Set<Id<Link>> relevantLinks = new HashSet<>();
-        List<DrtTripInfo> drtTrips = new ArrayList<>();
+        List<DrtDemand> drtTrips = new ArrayList<>();
 
         for (Person person : population.getPersons().values()) {
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
@@ -82,7 +81,7 @@ public class ExampleCode {
 //                    Link fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
 //                    Link toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
 
-                    drtTrips.add(new DrtTripInfo(person.getId().toString(), fromLink, toLink, departureTime));
+                    drtTrips.add(new DrtDemand(person.getId().toString(), fromLink, toLink, departureTime));
                     relevantLinks.add(fromLink.getId());
                     relevantLinks.add(toLink.getId());
                 }
@@ -92,14 +91,11 @@ public class ExampleCode {
         LinkToLinkTravelTimeMatrix travelTimeMatrix = new LinkToLinkTravelTimeMatrix(network, travelTime, relevantLinks, 0);
 
         // Calculate route
-        for (DrtTripInfo trip : drtTrips) {
-            double legTravelTime = travelTimeMatrix.getTravelTime(trip.fromLink, trip.toLink, trip.departureTime);
-            System.out.println("Trip " + trip.idString + " has a travel time of " + legTravelTime + " seconds.");
+        for (DrtDemand trip : drtTrips) {
+            double legTravelTime = travelTimeMatrix.getTravelTime(trip.fromLink(), trip.toLink(), trip.departureTime());
+            System.out.println("Trip " + trip.tripIdString() + " has a travel time of " + legTravelTime + " seconds.");
         }
 
-    }
-
-    record DrtTripInfo(String idString, Link fromLink, Link toLink, double departureTime) {
     }
 
 

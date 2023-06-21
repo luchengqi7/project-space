@@ -1,4 +1,4 @@
-package org.matsim.project.drtRequestPatternIdentification;
+package org.matsim.project.drtRequestPatternIdentification.run;
 
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.run.DrtControlerCreator;
