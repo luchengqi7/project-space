@@ -63,6 +63,9 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
     @CommandLine.Option(names = "--interval", description = "path to output directory", defaultValue = "1800")
     private double interval;
 
+    @CommandLine.Option(names = "--multi-thread", defaultValue = "false", description = "enable multi-threading in JSprit to increase computation speed")
+    private boolean multiThread;
+
     public static void main(String[] args) {
         new RunRollingHorizonPrebookedDrt().execute(args);
     }
@@ -82,7 +85,7 @@ public class RunRollingHorizonPrebookedDrt implements MATSimAppCommand {
         Controler controler = PreplannedDrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModuleFixedTT(0)));
         // Add rolling horizon module with PDPTWSolverJsprit
-        var options = new PDPTWSolverJsprit.Options(maxIterations, true, new Random(4711));
+        var options = new PDPTWSolverJsprit.Options(maxIterations, multiThread, new Random(4711));
         controler.addOverridingQSimModule(new AbstractDvrpModeQSimModule(drtConfigGroup.getMode()) {
             @Override
             protected void configureQSim() {

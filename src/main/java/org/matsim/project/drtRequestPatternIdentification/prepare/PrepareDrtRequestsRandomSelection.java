@@ -10,21 +10,22 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 
 public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
     @CommandLine.Option(names = "--input", description = "path to input plans", required = true)
@@ -69,17 +70,11 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
         PopulationFactory populationFactory = inputPlans.getFactory();
         Network network = NetworkUtils.readNetwork(networkPath);
 
-        List<Link> linksToRemove = new ArrayList<>();
-        for (Link link : network.getLinks().values()) {
-            if (!link.getAllowedModes().contains(TransportMode.car)) {
-                linksToRemove.add(link);
-            }
-        }
-        for (Link link : linksToRemove) {
-            network.removeLink(link.getId());
-        }
-
         Geometry serviceArea = shp.isDefined() ? shp.getGeometry() : null;
+
+        if (serviceArea==null){
+            log.error("Service area is null!!!");
+        }
 
         int totalPersons = inputPlans.getPersons().size();
         log.info("There are total " + totalPersons + " persons to be processed");
@@ -93,6 +88,16 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
                 double departureTime = trip.getOriginActivity().getEndTime().orElse(-1);
                 if (departureTime < startTime || departureTime > endTime) {
                     continue;
+                }
+
+                if (trip.getOriginActivity().getCoord() == null) {
+                    Coord fromCoord = network.getLinks().get(trip.getOriginActivity().getLinkId()).getToNode().getCoord();
+                    trip.getOriginActivity().setCoord(fromCoord);
+                }
+
+                if (trip.getDestinationActivity().getCoord() == null) {
+                    Coord toCoord = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getToNode().getCoord();
+                    trip.getDestinationActivity().setCoord(toCoord);
                 }
 
                 if (serviceArea != null) {
@@ -122,6 +127,53 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
         log.info("There are in total " + allTrips.size() + " potential DRT trips in total.");
         int numberOfTripsToKeep = (int) Math.min(numberOfTrips, percentage * allTrips.size());
         Collections.shuffle(allTrips, new Random(4711));
+
+        // Process network
+        List<Link> linksToRemove = new ArrayList<>();
+        for (Link link : network.getLinks().values()) {
+            // Remove links that does not allow car
+            if (!link.getAllowedModes().contains(TransportMode.car)) {
+                linksToRemove.add(link);
+                continue;
+            }
+
+            // Remove links that are too long
+            if (link.getLength() > 500) {
+                linksToRemove.add(link);
+            }
+
+            // Remove motorways and trunk links, those are not feasible locations for DRT trips
+            if (link.getAttributes().getAttribute("type") == null) {
+                continue;
+            }
+            String linkType = link.getAttributes().getAttribute("type").toString();
+            if (linkType.equals("motorway") || linkType.equals("trunk") ||
+                    linkType.equals("motorway_link") || linkType.equals("trunk_link")) {
+                linksToRemove.add(link);
+            }
+
+        }
+
+        for (Link link : linksToRemove) {
+            network.removeLink(link.getId());
+        }
+
+        // Remove empty nodes
+        Set<Node> nodesToRemove = new HashSet<>();
+        for (Node node : network.getNodes().values()) {
+            if (node.getInLinks().isEmpty() && node.getOutLinks().isEmpty()) {
+                nodesToRemove.add(node);
+            }
+        }
+        for (Node node : nodesToRemove) {
+            network.removeNode(node.getId());
+        }
+
+        // Clean the network
+        MultimodalNetworkCleaner networkCleaner = new MultimodalNetworkCleaner(network);
+        networkCleaner.run(Set.of(TransportMode.car));
+
+
         for (int i = 0; i < numberOfTripsToKeep; i++) {
             TripStructureUtils.Trip trip = allTrips.get(i);
             Coord fromCoord = trip.getOriginActivity().getCoord();
@@ -134,7 +186,7 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
             Leg leg = populationFactory.createLeg(TransportMode.drt);
             Activity toAct = populationFactory.createActivityFromLinkId("dummy", toLink.getId());
 
-            Person person = populationFactory.createPerson(Id.createPersonId("drt_" + i));
+            Person person = populationFactory.createPerson(Id.createPersonId("drt_person_" + i));
             Plan plan = populationFactory.createPlan();
             plan.addActivity(fromAct);
             plan.addLeg(leg);
@@ -143,6 +195,10 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
             outputPlans.addPerson(person);
         }
 
+        Path folder = Path.of(outputPopulation).getParent();
+        if (!Files.exists(folder)) {
+            Files.createDirectories(folder);
+        }
         PopulationWriter populationWriter = new PopulationWriter(outputPlans);
         populationWriter.write(outputPopulation);
         return 0;

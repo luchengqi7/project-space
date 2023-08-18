@@ -10,12 +10,14 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
+import org.matsim.application.options.CrsOptions;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
@@ -53,6 +55,9 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
 
     @CommandLine.Mixin
     private ShpOptions shp = new ShpOptions();
+
+    @CommandLine.Mixin
+    private CrsOptions crs = new CrsOptions();
 
     private final Random random = new Random(1234);
 
@@ -145,6 +150,13 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                         if (!MGC.coord2Point(fromCoord).within(serviceArea) || !MGC.coord2Point(toCoord).within(serviceArea)) {
                             continue;
                         }
+                    }
+
+
+                    if (crs != null) {
+                        CoordinateTransformation cf = crs.getTransformation();
+                        fromCoord = cf.transform(fromCoord);
+                        toCoord = cf.transform(toCoord);
                     }
 
                     // Now,  we create a drt person based on this trip

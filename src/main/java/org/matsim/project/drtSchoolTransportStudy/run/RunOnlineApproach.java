@@ -50,10 +50,10 @@ public class RunOnlineApproach implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "root output folder", required = true)
     private String output;
 
-    @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2.0")
+    @CommandLine.Option(names = "--alpha", description = "travel time alpha", defaultValue = "2")
     private String alpha;
 
-    @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200.0")
+    @CommandLine.Option(names = "--beta", description = "travel time beta", defaultValue = "1200")
     private String beta;
 
     @CommandLine.Option(names = "--school-starting-time", description = "school starting time", defaultValue = "UNIFORM")

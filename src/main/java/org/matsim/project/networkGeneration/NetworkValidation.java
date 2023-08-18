@@ -113,7 +113,7 @@ public class NetworkValidation implements MATSimAppCommand {
 
                 Coord to = trip.getDestinationActivity().getCoord();
                 if (to == null) {
-                    to = network.getLinks().get(trip.getOriginActivity().getLinkId()).getToNode().getCoord();
+                    to = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getToNode().getCoord();
                 }
                 Link toLink = NetworkUtils.getNearestLink(network, to);
 
