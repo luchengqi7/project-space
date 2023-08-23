@@ -16,7 +16,6 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.geometry.CoordUtils;
@@ -168,11 +167,6 @@ public class PrepareDrtRequestsRandomSelection implements MATSimAppCommand {
         for (Node node : nodesToRemove) {
             network.removeNode(node.getId());
         }
-
-        // Clean the network
-        MultimodalNetworkCleaner networkCleaner = new MultimodalNetworkCleaner(network);
-        networkCleaner.run(Set.of(TransportMode.car));
-
 
         for (int i = 0; i < numberOfTripsToKeep; i++) {
             TripStructureUtils.Trip trip = allTrips.get(i);
