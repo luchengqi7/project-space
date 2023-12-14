@@ -100,7 +100,7 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                 linksToRemove.add(link);
             }
         }
-        linksToRemove.forEach(link -> network.removeLink(link.getId()));
+        linksToRemove.forEach(link -> outputNetwork.removeLink(link.getId()));
 
         List<Node> nodesToRemove = new ArrayList<>();
         for (Node node : outputNetwork.getNodes().values()) {
@@ -108,7 +108,7 @@ public class SimpleDrtRequestGenerator implements MATSimAppCommand {
                 nodesToRemove.add(node);
             }
         }
-        nodesToRemove.forEach(node -> network.removeNode(node.getId()));
+        nodesToRemove.forEach(node -> outputNetwork.removeNode(node.getId()));
 
         MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
         int counter = 0;
