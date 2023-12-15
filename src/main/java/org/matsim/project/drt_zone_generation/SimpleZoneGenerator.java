@@ -1,6 +1,5 @@
 package org.matsim.project.drt_zone_generation;
 
-import com.google.common.base.Preconditions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
@@ -12,6 +11,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.contrib.drt.analysis.zonal.DrtZonalSystem;
+import org.matsim.contrib.drt.analysis.zonal.DrtZone;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.contrib.zone.skims.SparseMatrix;
@@ -27,12 +27,13 @@ import java.util.*;
 
 /**
  * Generate zonal system for DRT network (i.e., only car mode network). All the links in a zone can be reached within a certain
- * time threshold from the centroid point.
+ * time threshold from the centroid point AND the other way around.
  */
 public class SimpleZoneGenerator {
-    // (Done) 1. Include # of departures on the link when ranking (use input plans)
-    // TODO 2. Add some disturbance in the ranking and generate zones multiple times and get the best one
+    // (Done) 1. Include # of departures on the link when scoring the links (use input plans)
+    // TODO 2. Improve the algorithm, such that as few zone as possible is needed, and the zones can be as similar in size as possible
     // TODO 3. Speed up (e.g. multi-threading?)
+    // TODO 4. Consider using node instead of link when determining the centroid -> choose the shortest incoming link to that node as the centroid
     private final Network network;
     private final double timeRadius;
 
@@ -102,7 +103,6 @@ public class SimpleZoneGenerator {
         }
     }
 
-
     public void analyzeNetwork() {
         int numLinks = network.getLinks().size();
         int counter = 0;
@@ -110,7 +110,7 @@ public class SimpleZoneGenerator {
         int tenPct = numLinks / 10;
 
         // Explore reachable links
-        log.info("Begin analyzing network " + pct + "% completed");
+        log.info("Begin analyzing network. This may take some time...");
         network.getLinks().keySet().forEach(linkId -> reachableLinksMap.put(linkId, new HashSet<>()));
         for (Link fromLink : network.getLinks().values()) {
             for (Link toLink : network.getLinks().values()) {
@@ -130,17 +130,13 @@ public class SimpleZoneGenerator {
                 }
 
                 // Check forward direction: from link -> to link
-                double forwardTravelTime = freeSpeedTravelTimeSparseMatrix.get(fromLink.getToNode(), toLink.getFromNode()) +
-                        Math.ceil(toLink.getLength() / toLink.getFreespeed()) + 2;
-                // (Based on VRP path logic)
+                double forwardTravelTime = calculateVrpLinkToLinkTravelTime(fromLink, toLink);
                 if (forwardTravelTime > timeRadius) {
                     continue;
                 }
 
                 // Check backward direction: to Link -> from link
-                double backwardTravelTime = freeSpeedTravelTimeSparseMatrix.get(toLink.getToNode(), fromLink.getFromNode()) +
-                        Math.ceil(fromLink.getLength() / fromLink.getFreespeed()) + 2;
-                // (Based on VRP path logic)
+                double backwardTravelTime = calculateVrpLinkToLinkTravelTime(toLink, fromLink);
                 if (backwardTravelTime > timeRadius) {
                     continue;
                 }
@@ -153,11 +149,26 @@ public class SimpleZoneGenerator {
             counter++;
             if (counter % tenPct == 0) {
                 pct += 10;
-                log.info("Processing..." + pct + "% completed");
+                log.info("Processing:" + pct + "% completed");
             }
         }
 
-        reachableLinksMap.forEach((linkId, ids) -> linksScoringMap.put(linkId, ids.size() + departuresAndArrivalsScore.get(linkId)));
+        // Calculate score:
+        // 1. (If provided) Number of departures and arrivals on reachable links (weighted by time distance)
+        // 2. Number of reachable links (weighted by time distance)
+        // 3. Length of the link (discourage very long links to be the centroid)
+        // 4. (Not yet included) Sum length of the reachable links (weighted by distance)
+        log.info("Begin scoring the links");
+        for (Id<Link> linkId : network.getLinks().keySet()) {
+            double score = 0;
+            for (Id<Link> reachableLinkId : reachableLinksMap.get(linkId)) {
+                double timeDistance = calculateVrpLinkToLinkTravelTime(network.getLinks().get(linkId), network.getLinks().get(reachableLinkId));
+                double departureAndArrivalScore = departuresAndArrivalsScore.get(reachableLinkId);
+                double discountFactor = Math.min(1, 200 / network.getLinks().get(linkId).getLength());
+                score += (1 + departureAndArrivalScore) * (2 - timeDistance / timeRadius) * discountFactor;
+            }
+            linksScoringMap.put(linkId, score);
+        }
     }
 
     public void selectCentroids() {
@@ -189,21 +200,22 @@ public class SimpleZoneGenerator {
             double minDistance = Double.POSITIVE_INFINITY;
             Id<Link> closestCentralLinkId = null;
             for (Id<Link> centroidLinkId : zonalSystemData.keySet()) {
+                // If the link is the centroid link, then assign directly and no need to continue
                 if (linkId.toString().equals(centroidLinkId.toString())) {
                     closestCentralLinkId = centroidLinkId;
                     break;
                 }
 
                 if (reachableLinksMap.get(centroidLinkId).contains(linkId)) {
+                    relevantZones.add(centroidLinkId.toString());
                     Link centroidLink = network.getLinks().get(centroidLinkId);
                     Link link = network.getLinks().get(linkId);
-                    double distance = freeSpeedTravelTimeSparseMatrix.get(centroidLink.getToNode(), link.getFromNode()) +
-                            Math.ceil(link.getLength() / link.getFreespeed()) + 2;
+                    double distance = calculateVrpLinkToLinkTravelTime(centroidLink, link) + calculateVrpLinkToLinkTravelTime(link, centroidLink);
+                    // Forward + backward : this will lead to a better zoning
                     if (distance < minDistance) {
                         minDistance = distance;
                         closestCentralLinkId = centroidLinkId;
                     }
-                    relevantZones.add(centroidLinkId.toString());
                 }
             }
             zonalSystemData.get(closestCentralLinkId).add(network.getLinks().get(linkId));
@@ -256,9 +268,17 @@ public class SimpleZoneGenerator {
         new NetworkWriter(network).write(outputNetwork);
     }
 
-    //TODO complete this after testing
     public DrtZonalSystem writeDrtZonalSystems() {
-        return null;
+        List<DrtZone> drtZones = new ArrayList<>();
+        for (Id<Link> centroidLinkId : zonalSystemData.keySet()) {
+            drtZones.add(DrtZone.createDummyZone(centroidLinkId.toString(), zonalSystemData.get(centroidLinkId),
+                    network.getLinks().get(centroidLinkId).getToNode().getCoord()));
+        }
+        return new DrtZonalSystem(drtZones);
     }
 
+    private double calculateVrpLinkToLinkTravelTime(Link fromLink, Link toLink) {
+        return freeSpeedTravelTimeSparseMatrix.get(fromLink.getToNode(), toLink.getFromNode()) +
+                Math.ceil(toLink.getLength() / toLink.getFreespeed()) + 2;
+    }
 }
