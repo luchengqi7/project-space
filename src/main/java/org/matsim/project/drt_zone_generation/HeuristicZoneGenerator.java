@@ -1,5 +1,6 @@
 package org.matsim.project.drt_zone_generation;
 
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
@@ -25,87 +26,56 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.project.utils.ProgressPrinter;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
-/**
- * Generate zonal system for DRT network (i.e., only car mode network). All the links in a zone can be reached within a certain
- * time threshold from the centroid point AND the other way around.
- */
-public class SimpleZoneGenerator {
-    // (Done) 1. Include # of departures on the link when scoring the links (use input plans)
-    // TODO 2. Improve the algorithm, such that as few zone as possible is needed, and the zones can be as similar in size as possible
-    // TODO 3. Speed up (e.g. multi-threading?)
-    // TODO 4. Consider using node instead of link when determining the centroid -> choose the shortest incoming link to that node as the centroid (?)
+// TODO make an interface / abstract class to eliminate repeating code
+
+public class HeuristicZoneGenerator {
     private final Network network;
     private final double timeRadius;
 
     private final Map<Id<Link>, Set<Id<Link>>> reachableLinksMap = new HashMap<>();
-    private final Map<Id<Link>, Double> departuresAndArrivalsScore = new HashMap<>();
-    private final Map<Id<Link>, Double> linksScoringMap = new HashMap<>();
     private final SparseMatrix freeSpeedTravelTimeSparseMatrix;
+    private final Map<Id<Link>, MutableInt> departuresMap = new HashMap<>();
 
     private final Map<Id<Link>, List<Link>> zonalSystemData = new LinkedHashMap<>();
 
-    private static final Logger log = LogManager.getLogger(SimpleZoneGenerator.class);
+    private static final Logger log = LogManager.getLogger(HeuristicZoneGenerator.class);
 
-    public SimpleZoneGenerator(double timeRadius, Network network, double sparseMatrixMaxDistance) {
-        this.timeRadius = timeRadius;
-        this.network = network;
-        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
-        TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
-        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, sparseMatrixMaxDistance,
-                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
-    }
-
-    public SimpleZoneGenerator(Network network) {
-        this.network = network;
-        this.timeRadius = 300;
-
-        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
-        TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
-        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, 10000,
-                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
-    }
+    private static final List<String> modes = Arrays.asList(TransportMode.drt, TransportMode.car, TransportMode.pt, TransportMode.bike, TransportMode.walk);
 
     public static void main(String[] args) {
         Network inputNetwork = NetworkUtils.readNetwork(args[0]);
         String visualisationNetworkPath = args[1];
         Population inputPlans = args.length == 3 ? PopulationUtils.readPopulation(args[2]) : null;
 
-        SimpleZoneGenerator zoneGenerator = new SimpleZoneGenerator(inputNetwork);
-        zoneGenerator.processPlans(inputPlans);
-        zoneGenerator.analyzeNetwork();
-        zoneGenerator.scoreLinks();
-        zoneGenerator.selectCentroids();
-        zoneGenerator.removeRedundantCentroid();
-        zoneGenerator.createZonesOnNetwork(visualisationNetworkPath);
+        HeuristicZoneGenerator heuristicZoneGenerator = new HeuristicZoneGenerator(inputNetwork);
+
+        heuristicZoneGenerator.analyzeNetwork();
+        heuristicZoneGenerator.processPlans(inputPlans);
+        heuristicZoneGenerator.selectCentroids();
+        heuristicZoneGenerator.removeRedundantCentroid();
+        heuristicZoneGenerator.createZonesOnNetwork(visualisationNetworkPath);
+//        heuristicZoneGenerator.generateDrtZonalSystems();
     }
 
-    public void processPlans(Population inputPlans) {
-        network.getLinks().keySet().forEach(linkId -> departuresAndArrivalsScore.put(linkId, 0.));
-        if (inputPlans == null) {
-            return;
-        }
-        MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
-        for (Person person : inputPlans.getPersons().values()) {
-            for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
-                if (mainModeIdentifier.identifyMainMode(trip.getTripElements()).equals(TransportMode.drt)) {
-                    Id<Link> fromLinkId = trip.getOriginActivity().getLinkId();
-                    if (fromLinkId == null) {
-                        fromLinkId = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord()).getId();
-                    }
-                    Id<Link> toLinkId = trip.getDestinationActivity().getLinkId();
-                    if (toLinkId == null) {
-                        toLinkId = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord()).getId();
-                    }
-                    double fromLinkNewValue = departuresAndArrivalsScore.get(fromLinkId) + 1;
-                    departuresAndArrivalsScore.put(fromLinkId, fromLinkNewValue);
-                    double toLinkNewValue = departuresAndArrivalsScore.get(toLinkId) + 0.5;
-                    departuresAndArrivalsScore.put(toLinkId, toLinkNewValue);
-                }
-            }
-        }
+    public HeuristicZoneGenerator(Network network, double timeRadius, double sparseMatrixMaxDistance) {
+        this.network = network;
+        this.timeRadius = timeRadius;
+        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
+        TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
+        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, sparseMatrixMaxDistance,
+                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
     }
+
+    public HeuristicZoneGenerator(Network network) {
+        this.network = network;
+        this.timeRadius = 300;
+        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
+        TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
+        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, 10000,
+                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
+    }
+
 
     public void analyzeNetwork() {
         // Explore reachable links
@@ -150,41 +120,101 @@ public class SimpleZoneGenerator {
         }
     }
 
-    public void scoreLinks() {
-        // Calculate score:
-        // 1. (If provided) Number of departures and arrivals on reachable links (weighted by time distance)
-        // 2. Number of reachable links (weighted by time distance)
-        // 3. Length of the link (discourage very long links to be the centroid)
-        // 4. (Not yet included) Sum length of the reachable links (weighted by distance)
-        log.info("Begin scoring the links");
-        for (Id<Link> linkId : network.getLinks().keySet()) {
-            double score = 0;
-            for (Id<Link> reachableLinkId : reachableLinksMap.get(linkId)) {
-                double timeDistance = calculateVrpLinkToLinkTravelTime(network.getLinks().get(linkId), network.getLinks().get(reachableLinkId));
-                double departureAndArrivalScore = departuresAndArrivalsScore.get(reachableLinkId);
-                double discountFactor = Math.min(1, 200 / network.getLinks().get(linkId).getLength());
-                score += (1 + departureAndArrivalScore) * (2 - timeDistance / timeRadius) * discountFactor;
+    public void processPlans(Population inputPlans) {
+        network.getLinks().keySet().forEach(linkId -> departuresMap.put(linkId, new MutableInt()));
+        if (inputPlans != null) {
+            MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
+            for (Person person : inputPlans.getPersons().values()) {
+                for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+                    if (modes.contains(mainModeIdentifier.identifyMainMode(trip.getTripElements()))) {
+                        Id<Link> fromLinkId = trip.getOriginActivity().getLinkId();
+                        if (fromLinkId == null) {
+                            fromLinkId = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord()).getId();
+                        }
+                        departuresMap.get(fromLinkId).increment();
+                    }
+                }
             }
-            linksScoringMap.put(linkId, score);
         }
-
     }
 
     public void selectCentroids() {
-        log.info("Begin choosing centroid of zones");
-        List<Id<Link>> rankedPotentialCentroids = new ArrayList<>();
-        linksScoringMap.entrySet().
-                stream().
-                sorted(Map.Entry.comparingByValue(Collections.reverseOrder())).
-                forEach(entry -> rankedPotentialCentroids.add(entry.getKey()));
-        while (!rankedPotentialCentroids.isEmpty()) {
-            Id<Link> chosenLinkId = rankedPotentialCentroids.get(0);
-            zonalSystemData.put(chosenLinkId, new ArrayList<>());
+        log.info("Begin selecting centroids. This may take some time...");
+        // Copy the reachable links map
+        Map<Id<Link>, Set<Id<Link>>> newlyCoveredLinksMap = createReachableLInksMapCopy();
 
-            // Remove the links that have been covered
-            rankedPotentialCentroids.removeAll(reachableLinksMap.get(chosenLinkId));
+        // Initialize uncovered links
+        Set<Id<Link>> uncoveredLinkIds = new HashSet<>(network.getLinks().keySet());
+        while (!uncoveredLinkIds.isEmpty()) {
+            // score the links
+            Map<Id<Link>, Double> linksScoresMap = scoreTheLinks(newlyCoveredLinksMap);
+            // choose the centroid based on score map
+            Id<Link> selectedLinkId = selectBasedOnScoreMap(linksScoresMap);
+
+            // add that link to the zonal system
+            zonalSystemData.put(selectedLinkId, new ArrayList<>());
+
+            // remove all the newly covered links from the uncoveredLinkIds
+            uncoveredLinkIds.removeAll(reachableLinksMap.get(selectedLinkId));
+
+            // update the newlyCoveredLinksMap by removing links that are already covered
+            for (Id<Link> linkId : newlyCoveredLinksMap.keySet()) {
+                newlyCoveredLinksMap.get(linkId).removeAll(reachableLinksMap.get(selectedLinkId));
+            }
         }
-        log.info("Centroids generation completed. There are " + zonalSystemData.size() + " centroids (i.e., zones)");
+        log.info("Potential centroids identified. There are in total " + zonalSystemData.size() + " potential centroid points");
+    }
+
+    private Id<Link> selectBasedOnScoreMap(Map<Id<Link>, Double> linksScoresMap) {
+        // Current implementation: Simply choose the link with best score
+        Id<Link> selectedLinkId = null;
+        double bestScore = 0;
+        for (Id<Link> linkId : linksScoresMap.keySet()) {
+            if (linksScoresMap.get(linkId) > bestScore) {
+                bestScore = linksScoresMap.get(linkId);
+                selectedLinkId = linkId;
+            }
+        }
+        return selectedLinkId;
+    }
+
+    private Map<Id<Link>, Double> scoreTheLinks(Map<Id<Link>, Set<Id<Link>>> newlyCoveredLinksMap) {
+        // weight for number of links with departures newly covered (highly prioritized)
+        double alpha = 100;
+        // weight for avg distances to newly covered departures from this point (prioritized)
+        double beta = 10;
+        // weight for the number of newly covered link (default)
+        double gamma = 1;
+        Map<Id<Link>, Double> linkScoresMap = new HashMap<>();
+
+        for (Id<Link> linkId : network.getLinks().keySet()) {
+            int numOfLinksNewlyCovered = newlyCoveredLinksMap.get(linkId).size();
+
+            int numNewlyCoveredLinkWithDepartures = 0;
+            List<Double> distancesToDepartures = new ArrayList<>();
+            for (Id<Link> newlyCoveredLinkId : newlyCoveredLinksMap.get(linkId)) {
+                int numDepartures = departuresMap.get(newlyCoveredLinkId).intValue();
+                if (numDepartures > 0) {
+                    numNewlyCoveredLinkWithDepartures++;
+                    for (int i = 0; i < numDepartures; i++) {
+                        distancesToDepartures.add(calculateVrpLinkToLinkTravelTime(network.getLinks().get(linkId), network.getLinks().get(newlyCoveredLinkId)) / timeRadius);
+                    }
+                }
+            }
+
+            double avgDistanceToDepartures = distancesToDepartures.isEmpty() ? 1 : distancesToDepartures.stream().mapToDouble(d -> d).average().orElse(1);
+            double score = alpha * numNewlyCoveredLinkWithDepartures + beta * (1 - avgDistanceToDepartures * avgDistanceToDepartures) + gamma * numOfLinksNewlyCovered;
+            linkScoresMap.put(linkId, score);
+        }
+        return linkScoresMap;
+    }
+
+    private Map<Id<Link>, Set<Id<Link>>> createReachableLInksMapCopy() {
+        Map<Id<Link>, Set<Id<Link>>> reachableLinksMapCopy = new HashMap<>();
+        for (Id<Link> linkId : network.getLinks().keySet()) {
+            reachableLinksMapCopy.put(linkId, new HashSet<>(reachableLinksMap.get(linkId)));
+        }
+        return reachableLinksMapCopy;
     }
 
     public void removeRedundantCentroid() {
@@ -320,7 +350,7 @@ public class SimpleZoneGenerator {
         return new DrtZonalSystem(drtZones);
     }
 
-    protected double calculateVrpLinkToLinkTravelTime(Link fromLink, Link toLink) {
+    private double calculateVrpLinkToLinkTravelTime(Link fromLink, Link toLink) {
         return freeSpeedTravelTimeSparseMatrix.get(fromLink.getToNode(), toLink.getFromNode()) +
                 Math.ceil(toLink.getLength() / toLink.getFreespeed()) + 2;
     }
