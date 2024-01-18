@@ -8,6 +8,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
@@ -44,18 +45,63 @@ public class HeuristicZoneGenerator {
     private static final List<String> modes = Arrays.asList(TransportMode.drt, TransportMode.car, TransportMode.pt, TransportMode.bike, TransportMode.walk);
 
     public static void main(String[] args) {
+        // TODO convert to MATSim command line input style
         Network inputNetwork = NetworkUtils.readNetwork(args[0]);
         String visualisationNetworkPath = args[1];
-        Population inputPlans = args.length == 3 ? PopulationUtils.readPopulation(args[2]) : null;
+        int zoneGenerationIterations = args[2] == null ? 0 : Integer.parseInt(args[2]);
+        Population inputPlans = args.length == 4 ? PopulationUtils.readPopulation(args[3]) : null;
 
         HeuristicZoneGenerator heuristicZoneGenerator = new HeuristicZoneGenerator(inputNetwork);
 
         heuristicZoneGenerator.analyzeNetwork();
         heuristicZoneGenerator.processPlans(inputPlans);
-        heuristicZoneGenerator.selectCentroids();
+        heuristicZoneGenerator.selectInitialCentroids();
         heuristicZoneGenerator.removeRedundantCentroid();
-        heuristicZoneGenerator.createZonesOnNetwork(visualisationNetworkPath);
-//        heuristicZoneGenerator.generateDrtZonalSystems();
+        heuristicZoneGenerator.generateZones(zoneGenerationIterations);
+        heuristicZoneGenerator.writeNetwork(visualisationNetworkPath);
+//        heuristicZoneGenerator.exportDrtZonalSystems();
+    }
+
+    private void generateZones(int iterations) {
+        log.info("Generating zones now.");
+        // generate initial zones by assigning links to nearest centroid
+        assignLinksToNearestZone();
+
+        // after the zone is generated, update the location of the centroids (move to a better location)
+        // this will lead to an updated zonal system --> we may need to run multiple iterations
+        for (int i = 0; i < iterations; i++) {
+            int it = i + 1;
+            log.info("Improving zones now. Iteration #" + it + " out of " + iterations);
+
+            List<Id<Link>> updatedCentroids = new ArrayList<>();
+            for (Id<Link> originalZoneCentroidLinkId : zonalSystemData.keySet()) {
+                List<Link> linksInZone = zonalSystemData.get(originalZoneCentroidLinkId);
+                Link updatedCentroid = network.getLinks().get(originalZoneCentroidLinkId);
+                double bestScore = Double.POSITIVE_INFINITY;
+                for (Link link : linksInZone) {
+                    double score = 0;
+                    for (Link anotherLink : linksInZone) {
+                        if (!reachableLinksMap.get(link.getId()).contains(anotherLink.getId())) {
+                            // if some link in the original zone is not reachable from here, this link cannot be a centroid
+                            score = Double.POSITIVE_INFINITY;
+                            break;
+                        }
+                        score += calculateVrpLinkToLinkTravelTime(link, anotherLink);
+                    }
+                    if (score < bestScore) {
+                        bestScore = score;
+                        updatedCentroid = link;
+                    }
+                }
+                updatedCentroids.add(updatedCentroid.getId());
+            }
+
+            // re-generate the zone based on updated centroids
+            zonalSystemData.clear();
+            updatedCentroids.forEach(zoneId -> zonalSystemData.put(zoneId, new ArrayList<>()));
+            removeRedundantCentroid();
+            assignLinksToNearestZone();
+        }
     }
 
     public HeuristicZoneGenerator(Network network, double timeRadius, double sparseMatrixMaxDistance) {
@@ -138,7 +184,7 @@ public class HeuristicZoneGenerator {
         }
     }
 
-    public void selectCentroids() {
+    public void selectInitialCentroids() {
         log.info("Begin selecting centroids. This may take some time...");
         // Copy the reachable links map
         Map<Id<Link>, Set<Id<Link>>> newlyCoveredLinksMap = createReachableLInksMapCopy();
@@ -250,6 +296,7 @@ public class HeuristicZoneGenerator {
             Set<Id<Link>> uniqueReachableLinkIds = new HashSet<>(reachableLinksMap.get(centroidLinkId));
             for (Id<Link> anotherCentriodLinkId : zonalSystemData.keySet()) {
                 if (centroidLinkId.toString().equals(anotherCentriodLinkId.toString())) {
+                    // skip itself
                     continue;
                 }
                 uniqueReachableLinkIds.removeAll(reachableLinksMap.get(anotherCentriodLinkId));
@@ -261,29 +308,23 @@ public class HeuristicZoneGenerator {
         return redundantCentroids;
     }
 
-    public void createZonesOnNetwork(String outputNetwork) {
-        // Add links to the zone
-        log.info("Assigning links into zones (based on closest centroid)");
-        // Record the neighbour for coloring (visualisation)
-        Map<String, Set<String>> zoneNeighborsMap = new HashMap<>();
-        zonalSystemData.keySet().forEach(linkId -> zoneNeighborsMap.put(linkId.toString(), new HashSet<>()));
-
+    public void assignLinksToNearestZone() {
+        log.info("Assigning links into nearest zones (i.e., nearest centroid)");
         for (Id<Link> linkId : network.getLinks().keySet()) {
-            Set<String> relevantZones = new HashSet<>();
+            // If the link is one of the centroid link, then assign directly
+            if (zonalSystemData.containsKey(linkId)) {
+                zonalSystemData.get(linkId).add(network.getLinks().get(linkId));
+                continue;
+            }
+
+            // Otherwise, find the closest centroid and assign the link to that zone
             double minDistance = Double.POSITIVE_INFINITY;
             Id<Link> closestCentralLinkId = null;
             for (Id<Link> centroidLinkId : zonalSystemData.keySet()) {
-                // If the link is the centroid link, then assign directly and no need to continue
-                if (linkId.toString().equals(centroidLinkId.toString())) {
-                    closestCentralLinkId = centroidLinkId;
-                    break;
-                }
-
                 if (reachableLinksMap.get(centroidLinkId).contains(linkId)) {
-                    relevantZones.add(centroidLinkId.toString());
                     Link centroidLink = network.getLinks().get(centroidLinkId);
-                    Link link = network.getLinks().get(linkId);
-                    double distance = calculateVrpLinkToLinkTravelTime(centroidLink, link) + calculateVrpLinkToLinkTravelTime(link, centroidLink);
+                    Link linkBeingAssigned = network.getLinks().get(linkId);
+                    double distance = calculateVrpLinkToLinkTravelTime(centroidLink, linkBeingAssigned) + calculateVrpLinkToLinkTravelTime(linkBeingAssigned, centroidLink);
                     // Forward + backward : this will lead to a better zoning
                     if (distance < minDistance) {
                         minDistance = distance;
@@ -292,10 +333,33 @@ public class HeuristicZoneGenerator {
                 }
             }
             zonalSystemData.get(closestCentralLinkId).add(network.getLinks().get(linkId));
-            if (relevantZones.size() > 1) {
-                // if a link is relevant to (i.e., reachable from) more than one zone, then those zones are neighbours
-                for (String zoneId : relevantZones) {
-                    zoneNeighborsMap.get(zoneId).addAll(relevantZones);
+        }
+    }
+
+    private void writeNetwork(String visualisationNetworkPath) {
+        // Identify the neighbours for each zone, such that we can color the neighboring zones in different colors
+        Map<String, Set<String>> zoneNeighborsMap = new HashMap<>();
+        zonalSystemData.keySet().forEach(linkId -> zoneNeighborsMap.put(linkId.toString(), new HashSet<>()));
+        List<String> centroids = new ArrayList<>(zoneNeighborsMap.keySet());
+        int numZones = centroids.size();
+        for (int i = 0; i < numZones; i++) {
+            String zoneI = centroids.get(i);
+//            zoneNeighborsMap.get(zoneI).add(zoneI);
+            for (int j = i + 1; j < numZones; j++) {
+                String zoneJ = centroids.get(j);
+
+                Set<Node> nodesInZoneI = new HashSet<>();
+                zonalSystemData.get(Id.createLinkId(zoneI)).forEach(link -> nodesInZoneI.add(link.getFromNode()));
+                zonalSystemData.get(Id.createLinkId(zoneI)).forEach(link -> nodesInZoneI.add(link.getToNode()));
+
+                Set<Node> nodesInZoneJ = new HashSet<>();
+                zonalSystemData.get(Id.createLinkId(zoneJ)).forEach(link -> nodesInZoneJ.add(link.getFromNode()));
+                zonalSystemData.get(Id.createLinkId(zoneJ)).forEach(link -> nodesInZoneJ.add(link.getToNode()));
+
+                if (!Collections.disjoint(nodesInZoneI, nodesInZoneJ)) {
+                    // If two zones shared any node, then we know they are neighbors
+                    zoneNeighborsMap.get(zoneI).add(zoneJ);
+                    zoneNeighborsMap.get(zoneJ).add(zoneI);
                 }
             }
         }
@@ -338,10 +402,10 @@ public class HeuristicZoneGenerator {
                 network.getLinks().get(linkId).getAttributes().putAttribute("isCentroid", "no");
             }
         }
-        new NetworkWriter(network).write(outputNetwork);
+        new NetworkWriter(network).write(visualisationNetworkPath);
     }
 
-    public DrtZonalSystem generateDrtZonalSystems() {
+    public DrtZonalSystem exportDrtZonalSystems() {
         List<DrtZone> drtZones = new ArrayList<>();
         for (Id<Link> centroidLinkId : zonalSystemData.keySet()) {
             drtZones.add(DrtZone.createDummyZone(centroidLinkId.toString(), zonalSystemData.get(centroidLinkId),
