@@ -32,18 +32,19 @@ import java.util.*;
 
 public class HeuristicZoneGenerator {
     private final Network network;
+    private final String outputNetworkWithZonesPath;
     private final double timeRadius;
-
     private final Map<Id<Link>, Set<Id<Link>>> reachableLinksMap = new HashMap<>();
     private final SparseMatrix freeSpeedTravelTimeSparseMatrix;
     private final Set<Id<Link>> linksTobeCovered = new HashSet<>();
     private final Map<Id<Link>, MutableInt> departuresMap = new HashMap<>();
-
+    private final int zoneGenerationIterations;
+    private final List<String> consideredTripModes;
     private final Map<Id<Link>, List<Link>> zonalSystemData = new LinkedHashMap<>();
 
     private static final Logger log = LogManager.getLogger(HeuristicZoneGenerator.class);
 
-    private static final List<String> consideredTripModes = Arrays.asList(TransportMode.drt, TransportMode.car, TransportMode.pt, TransportMode.bike, TransportMode.walk);
+
 
     public static void main(String[] args) {
         // TODO currently only support car only network (need to use mode-specific subnetwork in the normal MATSim simulations)
@@ -55,32 +56,98 @@ public class HeuristicZoneGenerator {
         int zoneGenerationIterations = args[2] == null ? 0 : Integer.parseInt(args[2]);
         Population inputPlans = args.length == 4 ? PopulationUtils.readPopulation(args[3]) : null;
 
-        HeuristicZoneGenerator heuristicZoneGenerator = new HeuristicZoneGenerator(inputNetwork);
-        heuristicZoneGenerator.processPlans(inputPlans);
-        heuristicZoneGenerator.analyzeNetwork();
-        heuristicZoneGenerator.selectInitialCentroids();
-        heuristicZoneGenerator.removeRedundantCentroid();
-        heuristicZoneGenerator.generateZones(zoneGenerationIterations);
-        heuristicZoneGenerator.writeNetwork(visualisationNetworkPath);
-//        heuristicZoneGenerator.exportDrtZonalSystems();
+        HeuristicZoneGenerator heuristicZoneGenerator = new ZoneGeneratorBuilder(inputNetwork, visualisationNetworkPath)
+                .setInputPlans(inputPlans)
+                .setZoneIterations(zoneGenerationIterations)
+                .build();
+        heuristicZoneGenerator.run();
     }
 
-    public HeuristicZoneGenerator(Network network, double timeRadius, double sparseMatrixMaxDistance) {
+    public void run(){
+        analyzeNetwork();
+        selectInitialCentroids();
+        removeRedundantCentroid();
+        generateZones();
+        writeOutputNetworkWithZones();
+        //exportDrtZonalSystems();
+    }
+
+    public static class ZoneGeneratorBuilder {
+        private final Network network;
+        // required
+        private final String outputNetworkWithZonesPath;
+        // required
+        private Population inputPlans = null;
+        private double timeRadius = 300;
+        private double sparseMatrixMaxDistance = 10000;
+        private TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
+        private TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
+        private int zoneIterations = 0;
+        private List<String> consideredTripModes = Arrays.asList(TransportMode.drt, TransportMode.car,
+                TransportMode.pt, TransportMode.bike, TransportMode.walk);
+
+        public ZoneGeneratorBuilder(Network network, String outputNetworkWithZonesPath) {
+            this.network = network;
+            this.outputNetworkWithZonesPath = outputNetworkWithZonesPath;
+        }
+
+
+        public ZoneGeneratorBuilder setInputPlans(Population inputPlans) {
+            this.inputPlans = inputPlans;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setTimeRadius(double timeRadius) {
+            this.timeRadius = timeRadius;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setSparseMatrixMaxDistance(double sparseMatrixMaxDistance) {
+            this.sparseMatrixMaxDistance = sparseMatrixMaxDistance;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setTravelTime(TravelTime travelTime) {
+            this.travelTime = travelTime;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setTravelDisutility(TravelDisutility travelDisutility) {
+            this.travelDisutility = travelDisutility;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setZoneIterations(int zoneIterations) {
+            this.zoneIterations = zoneIterations;
+            return this;
+        }
+
+        public ZoneGeneratorBuilder setConsideredTripModes(List<String> consideredTripModes) {
+            this.consideredTripModes = consideredTripModes;
+            return this;
+        }
+
+        public HeuristicZoneGenerator build(){
+            SparseMatrix freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network,
+                    sparseMatrixMaxDistance, 0, travelTime, travelDisutility,
+                    Runtime.getRuntime().availableProcessors());
+            return new HeuristicZoneGenerator(network, outputNetworkWithZonesPath, timeRadius,
+                    freeSpeedTravelTimeSparseMatrix, inputPlans, zoneIterations, consideredTripModes);
+        }
+    }
+
+    private HeuristicZoneGenerator(Network network, String outputNetworkWithZonesPath,
+                                  double timeRadius, SparseMatrix sparseMatrix, Population inputPlans,
+                                  int zoneGenerationIterations, List<String> consideredTripModes) {
         this.network = network;
+        this.outputNetworkWithZonesPath = outputNetworkWithZonesPath;
         this.timeRadius = timeRadius;
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
         TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
-        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, sparseMatrixMaxDistance,
-                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
-    }
-
-    public HeuristicZoneGenerator(Network network) {
-        this.network = network;
-        this.timeRadius = 300;
-        TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
-        TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
-        this.freeSpeedTravelTimeSparseMatrix = TravelTimeMatrices.calculateTravelTimeSparseMatrix(network, 10000,
-                0, travelTime, travelDisutility, Runtime.getRuntime().availableProcessors());
+        this.freeSpeedTravelTimeSparseMatrix = sparseMatrix;
+        this.zoneGenerationIterations = zoneGenerationIterations;
+        this.consideredTripModes = consideredTripModes;
+        processPlans(inputPlans);
     }
 
     public void processPlans(Population inputPlans) {
@@ -292,16 +359,16 @@ public class HeuristicZoneGenerator {
         return redundantCentroids;
     }
 
-    private void generateZones(int iterations) {
+    private void generateZones() {
         log.info("Generating zones now.");
         // generate initial zones by assigning links to nearest centroid
         assignLinksToNearestZone();
 
         // after the zone is generated, update the location of the centroids (move to a better location)
         // this will lead to an updated zonal system --> we may need to run multiple iterations
-        for (int i = 0; i < iterations; i++) {
+        for (int i = 0; i < zoneGenerationIterations; i++) {
             int it = i + 1;
-            log.info("Improving zones now. Iteration #" + it + " out of " + iterations);
+            log.info("Improving zones now. Iteration #" + it + " out of " + zoneGenerationIterations);
 
             List<Id<Link>> updatedCentroids = new ArrayList<>();
             for (Id<Link> originalZoneCentroidLinkId : zonalSystemData.keySet()) {
@@ -376,7 +443,7 @@ public class HeuristicZoneGenerator {
     }
 
 
-    private void writeNetwork(String visualisationNetworkPath) {
+    private void writeOutputNetworkWithZones() {
         // Identify the neighbours for each zone, such that we can color the neighboring zones in different colors
         Map<String, Set<String>> zoneNeighborsMap = new HashMap<>();
         zonalSystemData.keySet().forEach(linkId -> zoneNeighborsMap.put(linkId.toString(), new HashSet<>()));
@@ -447,7 +514,7 @@ public class HeuristicZoneGenerator {
                 network.getLinks().get(linkId).getAttributes().putAttribute("relevant", "no");
             }
         }
-        new NetworkWriter(network).write(visualisationNetworkPath);
+        new NetworkWriter(network).write(outputNetworkWithZonesPath);
     }
 
     public DrtZonalSystem exportDrtZonalSystems() {
