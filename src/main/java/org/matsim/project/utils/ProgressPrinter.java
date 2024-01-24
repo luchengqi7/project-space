@@ -12,7 +12,6 @@ public class ProgressPrinter {
     private int pct = 0;
     private boolean valid = true;
 
-
     /**
      * Progress printer with customizable step size
      */
@@ -42,6 +41,12 @@ public class ProgressPrinter {
         if (valid && counter % mileStone == 0) {
             pct += stepSize;
             log.info(processName + " in progress: " + pct + "% completed");
+        }
+    }
+
+    public void countTo(int currentProgress) {
+        while (counter < currentProgress) {
+            countUp();
         }
     }
 }
