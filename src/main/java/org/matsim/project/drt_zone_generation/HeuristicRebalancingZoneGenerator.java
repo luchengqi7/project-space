@@ -59,12 +59,12 @@ public class HeuristicRebalancingZoneGenerator {
         heuristicRebalancingZoneGenerator.compute();
     }
 
-    public void compute() {
+    public DrtZonalSystem compute() {
         analyzeNetwork();
         selectInitialCentroids();
         generateZones();
         writeOutputNetworkWithZones();
-        //exportDrtZonalSystems();
+        return exportDrtZonalSystems();
     }
 
     public static class ZoneGeneratorBuilder {
@@ -291,11 +291,10 @@ public class HeuristicRebalancingZoneGenerator {
     }
 
     private void removeRedundantCentroid() {
-        log.info("Begin removing redundant centroids");
         // Find all redundant centroids
+        log.info("Checking for redundant centroids");
         Set<Id<Node>> redundantCentroids = identifyRedundantCentroids();
-
-        log.info("Initial number of redundant centroids (i.e., zones) identified = " + redundantCentroids.size());
+        log.info("Number of redundant centroids identified = " + redundantCentroids.size());
 
         // Remove the redundant centroid that covers the minimum number of links
         while (!redundantCentroids.isEmpty()) {
@@ -314,7 +313,7 @@ public class HeuristicRebalancingZoneGenerator {
             redundantCentroids = identifyRedundantCentroids();
             log.info("Removing in progress: " + redundantCentroids.size() + " redundant centroids (i.e., zones) left");
         }
-        log.info("Removal of redundant centroids complete. There are " + zonalSystemData.size() + " centroids (i.e., zones) remaining");
+        log.info("After removal, there are " + zonalSystemData.size() + " centroids (i.e., zones) remaining");
     }
 
     protected Set<Id<Node>> identifyRedundantCentroids() {
@@ -410,7 +409,7 @@ public class HeuristicRebalancingZoneGenerator {
             zonalSystemData.get(closestCentralNodeId).add(linkBeingAssigned);
         }
     }
-    
+
     private void writeOutputNetworkWithZones() {
         // Identify the neighbours for each zone, such that we can color the neighboring zones in different colors
         Map<String, Set<String>> zoneNeighborsMap = new HashMap<>();
